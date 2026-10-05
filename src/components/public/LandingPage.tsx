@@ -130,48 +130,48 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className="space-y-16 sm:space-y-24 pb-16">
-      {/* 1. CUSTOMER HERO SECTION WITH LIVE INSTANT BOOKING LAUNCHER */}
-      <section className="relative overflow-hidden pt-8 sm:pt-16 pb-16 bg-gradient-to-b from-blue-950 via-slate-900 to-slate-950 text-white">
-        {/* Glow backdrop decorative elements */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[550px] bg-blue-500/15 blur-3xl pointer-events-none" />
-        <div className="absolute top-24 right-10 w-80 h-80 bg-emerald-500/10 blur-3xl pointer-events-none" />
+      {/* 1. CUSTOMER HERO SECTION WITH LIVE INSTANT BOOKING LAUNCHER (LIGHT THEME) */}
+      <section className="relative overflow-hidden pt-8 sm:pt-16 pb-16 bg-gradient-to-b from-blue-50/60 via-slate-50 to-white text-slate-900 border-b border-slate-200/60">
+        {/* Soft atmospheric gradient accents */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[450px] bg-blue-400/10 blur-3xl pointer-events-none" />
+        <div className="absolute top-20 right-10 w-80 h-80 bg-emerald-400/10 blur-3xl pointer-events-none" />
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10 space-y-8">
           {/* Top Badge & Customer Headline */}
           <div className="text-center space-y-4 max-w-4xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold shadow-lg shadow-emerald-500/10">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold shadow-xs">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
               <span>DOORSTEP BADMINTON RACQUET RESTORATION &amp; STRINGING</span>
             </div>
 
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-950 leading-tight">
               Professional Bat Getting &amp; Structural Repair — Delivered to Your Doorstep
             </h1>
 
-            <p className="text-base sm:text-xl text-blue-200 leading-relaxed max-w-3xl mx-auto">
-              Never waste hours driving to sports shops again. We pick up your badminton racquet, string it to exact tournament tension (20–32 lbs) or composite-repair frame fractures, and deliver it back — <span className="text-emerald-400 font-bold">100% Free Doorstep Pickup within {distanceConfig.freeRadiusKm} KM</span> with <span className="text-emerald-400 font-bold">Zero Advance Payment</span>.
+            <p className="text-base sm:text-xl text-slate-600 leading-relaxed max-w-3xl mx-auto">
+              Never waste hours driving to sports shops again. We pick up your badminton racquet, string it to exact tournament tension (20–32 lbs) or composite-repair frame fractures, and deliver it back — <span className="text-blue-700 font-bold">100% Free Doorstep Pickup within {distanceConfig.freeRadiusKm} KM</span> with <span className="text-emerald-700 font-bold">Zero Advance Payment</span>.
             </p>
           </div>
 
           {/* CUSTOMER 1-CLICK INSTANT BOOKING LAUNCHER CARD */}
-          <div className="max-w-3xl mx-auto bg-slate-900/95 border-2 border-blue-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
+          <div className="max-w-3xl mx-auto bg-white border-2 border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 ring-1 ring-slate-900/5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
               <div>
-                <h3 className="text-lg font-black text-white flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-amber-400" /> Quick Doorstep Booking
+                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-amber-500" /> Quick Doorstep Booking
                 </h3>
-                <p className="text-xs text-slate-300">Choose your service, see instant upfront pricing, and book in 60 seconds</p>
+                <p className="text-xs text-slate-500">Choose your service, see instant upfront pricing, and book in 60 seconds</p>
               </div>
 
               {/* Service Toggle Switch */}
-              <div className="flex bg-slate-950 p-1 rounded-2xl border border-white/10 shrink-0">
+              <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 shrink-0">
                 <button
                   type="button"
                   onClick={() => setHeroService('GETTING')}
                   className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
                     heroService === 'GETTING'
                       ? 'bg-blue-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <Zap className="w-3.5 h-3.5 text-amber-300" />
@@ -183,7 +183,7 @@ export const LandingPage: React.FC = () => {
                   className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
                     heroService === 'REPAIR'
                       ? 'bg-amber-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <Wrench className="w-3.5 h-3.5 text-white" />
@@ -196,13 +196,13 @@ export const LandingPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
               {/* Field 1: Racquet Brand */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Racquet Brand
                 </label>
                 <select
                   value={heroBrand}
                   onChange={(e) => setHeroBrand(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 text-white text-xs font-semibold rounded-xl p-3 outline-none focus:border-blue-400"
+                  className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-semibold rounded-xl p-3 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all"
                 >
                   <option value="Yonex">Yonex (Japan)</option>
                   <option value="Li-Ning">Li-Ning (China)</option>
@@ -218,13 +218,13 @@ export const LandingPage: React.FC = () => {
               {heroService === 'GETTING' ? (
                 <>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                       Tournament String
                     </label>
                     <select
                       value={heroString}
                       onChange={(e) => setHeroString(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 text-white text-xs font-semibold rounded-xl p-3 outline-none focus:border-blue-400"
+                      className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-semibold rounded-xl p-3 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all"
                     >
                       <option value="Yonex BG65">Yonex BG65 (All-Round Durability)</option>
                       <option value="Yonex BG80 Power">Yonex BG80 Power (Hard Smashing)</option>
@@ -235,14 +235,14 @@ export const LandingPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5 flex justify-between">
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex justify-between">
                       <span>Target Tension</span>
-                      <span className="text-emerald-400 font-mono font-bold">{heroTension} LBS</span>
+                      <span className="text-blue-700 font-mono font-bold">{heroTension} LBS</span>
                     </label>
                     <select
                       value={heroTension}
                       onChange={(e) => setHeroTension(parseInt(e.target.value, 10))}
-                      className="w-full bg-slate-950 border border-slate-700 text-white text-xs font-semibold rounded-xl p-3 outline-none focus:border-blue-400"
+                      className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-semibold rounded-xl p-3 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all"
                     >
                       <option value={22}>22 lbs (Beginner / Power Trampoline)</option>
                       <option value={24}>24 lbs (Club Intermediate)</option>
@@ -255,13 +255,13 @@ export const LandingPage: React.FC = () => {
               ) : (
                 <>
                   <div className="sm:col-span-2">
-                    <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                       Reported Damage / Fracture Issue
                     </label>
                     <select
                       value={heroRepairIssue}
                       onChange={(e) => setHeroRepairIssue(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 text-white text-xs font-semibold rounded-xl p-3 outline-none focus:border-amber-400"
+                      className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-semibold rounded-xl p-3 outline-none focus:border-amber-600 focus:bg-white focus:ring-2 focus:ring-amber-100 transition-all"
                     >
                       <option value="Upper Frame Crack (10–2 o'clock)">Upper Frame Crack (10–2 o'clock) • Toray Carbon Splice</option>
                       <option value="Full Frame Fracture / Snapped">Full Frame Fracture • Heavy Aerospace Splinting</option>
@@ -275,26 +275,26 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {/* Upfront Transparency Pill Box */}
-            <div className="bg-slate-950/80 rounded-2xl p-4 border border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-3 text-left text-xs">
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-left text-xs">
               <div>
-                <span className="text-[10px] text-slate-400 uppercase font-semibold block">Service Fee</span>
-                <span className="text-base font-black text-white">
+                <span className="text-[10px] text-slate-500 uppercase font-semibold block">Service Fee</span>
+                <span className="text-base font-black text-slate-900">
                   {heroService === 'GETTING' ? '₹450' : 'From ₹350'}
                 </span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 uppercase font-semibold block">Doorstep Pickup</span>
-                <span className="text-base font-black text-emerald-400">₹0 FREE</span>
+                <span className="text-[10px] text-slate-500 uppercase font-semibold block">Doorstep Pickup</span>
+                <span className="text-base font-black text-emerald-700">₹0 FREE</span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 uppercase font-semibold block">Turnaround SLA</span>
-                <span className="text-base font-black text-blue-400">
+                <span className="text-[10px] text-slate-500 uppercase font-semibold block">Turnaround SLA</span>
+                <span className="text-base font-black text-blue-700">
                   {heroService === 'GETTING' ? '24–48 Hours' : 'Within 7 Days'}
                 </span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 uppercase font-semibold block">Advance Required</span>
-                <span className="text-base font-black text-emerald-400">₹0 (Zero Advance)</span>
+                <span className="text-[10px] text-slate-500 uppercase font-semibold block">Advance Required</span>
+                <span className="text-base font-black text-emerald-700">₹0 (Zero Advance)</span>
               </div>
             </div>
 
@@ -303,10 +303,10 @@ export const LandingPage: React.FC = () => {
               onClick={handleHeroBookingSubmit}
               size="lg"
               variant="primary"
-              className={`w-full font-black text-base py-4 shadow-xl ${
+              className={`w-full font-black text-base py-4 shadow-lg text-white ${
                 heroService === 'GETTING'
-                  ? 'bg-blue-600 hover:bg-blue-500'
-                  : 'bg-amber-600 hover:bg-amber-500'
+                  ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'
+                  : 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/20'
               }`}
               rightIcon={<ArrowRight className="w-5 h-5" />}
             >
@@ -318,20 +318,20 @@ export const LandingPage: React.FC = () => {
 
           {/* Customer Trust Value Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 max-w-4xl mx-auto">
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs flex items-center justify-center gap-2 text-xs font-semibold text-slate-200">
-              <Truck className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-center gap-2 text-xs font-semibold text-slate-700">
+              <Truck className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>100% Free Pickup ({distanceConfig.freeRadiusKm} KM)</span>
             </div>
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs flex items-center justify-center gap-2 text-xs font-semibold text-slate-200">
-              <Zap className="w-4 h-4 text-amber-400 shrink-0" />
+            <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-center gap-2 text-xs font-semibold text-slate-700">
+              <Zap className="w-4 h-4 text-amber-500 shrink-0" />
               <span>Zero Advance Payment</span>
             </div>
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs flex items-center justify-center gap-2 text-xs font-semibold text-slate-200">
-              <ShieldCheck className="w-4 h-4 text-blue-400 shrink-0" />
+            <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-center gap-2 text-xs font-semibold text-slate-700">
+              <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
               <span>7-Day Repair Warranty</span>
             </div>
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs flex items-center justify-center gap-2 text-xs font-semibold text-slate-200">
-              <Star className="w-4 h-4 text-yellow-400 fill-yellow-400 shrink-0" />
+            <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-center gap-2 text-xs font-semibold text-slate-700">
+              <Star className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0" />
               <span>4.9 / 5 by 1,200+ Players</span>
             </div>
           </div>
@@ -695,32 +695,32 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* 5. INTERACTIVE TENSION & SERVICE ESTIMATOR */}
+      {/* 5. INTERACTIVE TENSION & SERVICE ESTIMATOR (LIGHT THEME) */}
       <section id="calculator" className="max-w-4xl mx-auto px-4 sm:px-6">
-        <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-10 border border-slate-800 shadow-2xl space-y-8">
+        <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-10 border-2 border-slate-200 shadow-xl space-y-8">
           <div className="text-center space-y-2 max-w-xl mx-auto">
-            <span className="text-xs font-bold uppercase tracking-widest text-emerald-400 bg-emerald-500/20 px-3.5 py-1 rounded-full border border-emerald-500/30">
+            <span className="text-xs font-bold uppercase tracking-widest text-emerald-800 bg-emerald-50 px-3.5 py-1 rounded-full border border-emerald-200">
               CUSTOMIZE YOUR SERVICE
             </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-white">
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-950">
               Interactive Tension &amp; Cost Estimator
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300">
+            <p className="text-xs sm:text-sm text-slate-600">
               Slide to your preferred string tension to see its playing profile and exact upfront pricing:
             </p>
           </div>
 
           <div className="space-y-6 max-w-2xl mx-auto">
             {/* Tension Slider */}
-            <div className="bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-4">
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
               <div className="flex justify-between items-center">
                 <div>
-                  <span className="text-xs text-slate-400 block font-semibold">Selected Tension</span>
-                  <span className="text-3xl font-black text-emerald-400 font-mono">{estimatorTension} LBS</span>
+                  <span className="text-xs text-slate-500 block font-semibold">Selected Tension</span>
+                  <span className="text-3xl font-black text-blue-700 font-mono">{estimatorTension} LBS</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] text-slate-400 block uppercase font-semibold">Playing Profile</span>
-                  <span className="text-xs font-bold text-blue-300">
+                  <span className="text-[10px] text-slate-500 block uppercase font-semibold">Playing Profile</span>
+                  <span className="text-xs font-bold text-slate-800">
                     {estimatorTension <= 23
                       ? 'Maximum Power & Sweet Spot (Beginner)'
                       : estimatorTension <= 27
@@ -737,10 +737,10 @@ export const LandingPage: React.FC = () => {
                 step="1"
                 value={estimatorTension}
                 onChange={(e) => setEstimatorTension(parseInt(e.target.value, 10))}
-                className="w-full accent-emerald-500 cursor-pointer h-2 bg-slate-800 rounded-lg"
+                className="w-full accent-blue-600 cursor-pointer h-2 bg-slate-200 rounded-lg"
               />
 
-              <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+              <div className="flex justify-between text-[10px] text-slate-500 font-mono font-medium">
                 <span>20 LBS (Max Repulsion)</span>
                 <span>26 LBS (Standard Match)</span>
                 <span>32 LBS (Pro Stiff)</span>
@@ -757,36 +757,36 @@ export const LandingPage: React.FC = () => {
                 <div
                   key={str.name}
                   onClick={() => setEstimatorString(str.name)}
-                  className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                  className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
                     estimatorString === str.name
-                      ? 'bg-blue-600/20 border-blue-400 text-white shadow-md'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                      ? 'bg-blue-50/80 border-blue-500 text-slate-900 shadow-sm ring-1 ring-blue-500/20'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-100/50'
                   }`}
                 >
-                  <p className="font-bold text-sm text-white">{str.name}</p>
-                  <p className="text-[11px] text-slate-300">{str.type}</p>
-                  <p className="text-base font-extrabold text-emerald-400 mt-2">₹{str.price}</p>
+                  <p className="font-bold text-sm text-slate-900">{str.name}</p>
+                  <p className="text-[11px] text-slate-500">{str.type}</p>
+                  <p className="text-base font-extrabold text-blue-700 mt-2">₹{str.price}</p>
                 </div>
               ))}
             </div>
 
             {/* Total Estimate Breakdown */}
-            <div className="p-5 bg-slate-950/90 rounded-2xl border border-slate-800 space-y-3 text-xs">
-              <div className="flex justify-between text-slate-300">
+            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 text-xs">
+              <div className="flex justify-between text-slate-600">
                 <span>Selected String &amp; Digital Tension:</span>
-                <span className="font-bold text-white">{estimatorString} @ {estimatorTension} lbs</span>
+                <span className="font-bold text-slate-900">{estimatorString} @ {estimatorTension} lbs</span>
               </div>
-              <div className="flex justify-between text-slate-300">
+              <div className="flex justify-between text-slate-600">
                 <span>Doorstep Collection &amp; Return:</span>
-                <span className="font-bold text-emerald-400">₹0 (Free within {distanceConfig.freeRadiusKm} KM)</span>
+                <span className="font-bold text-emerald-700">₹0 (Free within {distanceConfig.freeRadiusKm} KM)</span>
               </div>
-              <div className="flex justify-between text-slate-300">
+              <div className="flex justify-between text-slate-600">
                 <span>Advance Required:</span>
-                <span className="font-bold text-emerald-400">₹0 (Zero Advance)</span>
+                <span className="font-bold text-emerald-700">₹0 (Zero Advance)</span>
               </div>
-              <div className="pt-3 border-t border-slate-800 flex justify-between text-base font-black">
-                <span>Total Due on Delivery:</span>
-                <span className="text-emerald-400 font-mono text-xl">
+              <div className="pt-3 border-t border-slate-200 flex justify-between text-base font-black">
+                <span className="text-slate-900">Total Due on Delivery:</span>
+                <span className="text-blue-700 font-mono text-2xl">
                   ₹{estimatorString === 'Yonex BG65' ? 400 : estimatorString === 'Yonex BG80 Power' ? 500 : 600}
                 </span>
               </div>
@@ -796,7 +796,7 @@ export const LandingPage: React.FC = () => {
               onClick={() => handleStartBooking('getting')}
               size="lg"
               variant="primary"
-              className="w-full font-black text-base py-4 bg-blue-600 hover:bg-blue-500 shadow-xl"
+              className="w-full font-black text-base py-4 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20"
               rightIcon={<ArrowRight className="w-5 h-5" />}
             >
               Book Doorstep Pickup for this Setup →
@@ -963,17 +963,17 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* 8. 15 KM FREE RADIUS PROMOTIONAL SECTION WITH INTERACTIVE MAP */}
+      {/* 8. 15 KM FREE RADIUS PROMOTIONAL SECTION WITH INTERACTIVE MAP (LIGHT THEME) */}
       <section id="distance-map" className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white rounded-3xl p-6 sm:p-10 border border-slate-800 shadow-2xl space-y-8">
+        <div className="bg-gradient-to-b from-blue-50/70 via-slate-50 to-white text-slate-900 rounded-3xl p-6 sm:p-10 border-2 border-slate-200 shadow-xl space-y-8">
           <div className="text-center max-w-2xl mx-auto space-y-3">
-            <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-black border border-emerald-500/30">
+            <span className="inline-block px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-black border border-emerald-300 shadow-xs">
               UNBEATABLE CONVENIENCE
             </span>
-            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+            <h2 className="text-3xl sm:text-5xl font-black text-slate-950 tracking-tight">
               FREE PICKUP &amp; DELIVERY WITHIN {distanceConfig.freeRadiusKm} KM
             </h2>
-            <p className="text-sm text-slate-300 leading-relaxed">
+            <p className="text-sm text-slate-600 leading-relaxed">
               Locations beyond {distanceConfig.freeRadiusKm} KM are serviced with transparent distance-based charges. Use the interactive calculator below to test your address.
             </p>
           </div>
@@ -1033,25 +1033,24 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* 10. REPAIR PROMOTION BANNER WITH ACTION BACKGROUND */}
+      {/* 10. REPAIR PROMOTION BANNER */}
       <section id="pricing-sla" className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-slate-800">
+        <div className="relative rounded-3xl overflow-hidden shadow-xl border-2 border-amber-300 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600">
           <img
             src="/images/jump-smash.jpg"
             alt="Badminton Match Action"
-            className="absolute inset-0 w-full h-full object-cover object-center"
+            className="absolute inset-0 w-full h-full object-cover object-center mix-blend-overlay opacity-25"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/90 to-amber-950/75" />
 
           <div className="relative z-10 p-8 sm:p-12 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="space-y-3 max-w-xl text-white">
-              <span className="inline-block px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-black uppercase tracking-wider border border-amber-400/30">
+              <span className="inline-block px-3 py-1 rounded-full bg-white/20 text-white text-xs font-black uppercase tracking-wider border border-white/30 backdrop-blur-xs shadow-xs">
                 7-DAY STRUCTURAL SLA GUARANTEE
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-white">
                 Bat Damaged or Broken in Match Play?
               </h2>
-              <p className="text-sm text-slate-200 leading-relaxed">
+              <p className="text-sm text-amber-50 leading-relaxed font-medium">
                 Don’t discard your favorite badminton racquet! We handle doorstep pickup, precision carbon composite bonding, electronic stringing, and return delivery.
               </p>
             </div>
@@ -1061,7 +1060,7 @@ export const LandingPage: React.FC = () => {
                 onClick={() => handleStartBooking('repair')}
                 variant="white"
                 size="lg"
-                className="font-extrabold shadow-2xl text-base px-8 py-4 !text-slate-900 !bg-white hover:!bg-slate-100 hover:!text-black"
+                className="font-extrabold shadow-2xl text-base px-8 py-4 !text-amber-900 !bg-white hover:!bg-amber-50"
                 rightIcon={<ArrowRight className="w-5 h-5 text-amber-600" />}
               >
                 Request Repair Now
