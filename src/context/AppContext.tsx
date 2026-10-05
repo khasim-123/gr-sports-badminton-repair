@@ -55,6 +55,9 @@ interface AppContextType {
   // Modals
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
+  authModalRole: UserRole;
+  setAuthModalRole: (role: UserRole) => void;
+  openAuthModal: (role?: UserRole) => void;
   qrModalOpen: boolean;
   setQrModalOpen: (open: boolean) => void;
   repairEstimateModalOpen: boolean;
@@ -158,6 +161,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Modals
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
+  const [authModalRole, setAuthModalRole] = useState<UserRole>('CUSTOMER');
   const [qrModalOpen, setQrModalOpen] = useState<boolean>(false);
   const [repairEstimateModalOpen, setRepairEstimateModalOpen] = useState<boolean>(false);
   const [revisedEstimateModalOpen, setRevisedEstimateModalOpen] = useState<boolean>(false);
@@ -350,6 +354,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const openLoginWithRole = (role: UserRole) => {
     setLoginRoleTab(role);
     setActiveView('login');
+  };
+
+  const openAuthModal = (role: UserRole = 'CUSTOMER') => {
+    setAuthModalRole(role);
+    setAuthModalOpen(true);
   };
 
   const openWizardWithService = (type: ServiceType) => {
@@ -1040,6 +1049,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         authModalOpen,
         setAuthModalOpen,
+        authModalRole,
+        setAuthModalRole,
+        openAuthModal,
         qrModalOpen,
         setQrModalOpen,
         repairEstimateModalOpen,

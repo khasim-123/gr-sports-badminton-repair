@@ -26,6 +26,7 @@ export const Navbar: React.FC = () => {
     userName,
     setQrModalOpen,
     openLoginWithRole,
+    openAuthModal,
     openWizardWithService,
     logout,
     distanceConfig,
@@ -351,9 +352,9 @@ export const Navbar: React.FC = () => {
                   <span>Back to Home</span>
                 </button>
               ) : (
-                /* On Public Landing Page: single prominent Sign In button */
+                /* On Public Landing Page: single prominent Sign In button (Customer Login Popup Only) */
                 <button
-                  onClick={() => openLoginWithRole('CUSTOMER')}
+                  onClick={() => openAuthModal('CUSTOMER')}
                   className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-blue-500/20 transition-all hover:scale-102"
                 >
                   <LogIn className="w-3.5 h-3.5" />

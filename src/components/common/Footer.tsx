@@ -10,6 +10,7 @@ import {
   Truck,
   QrCode,
   Zap,
+  Wrench,
 } from 'lucide-react';
 
 export const Footer: React.FC = () => {
@@ -17,6 +18,7 @@ export const Footer: React.FC = () => {
     setActiveView,
     setCustomerSubView,
     openLoginWithRole,
+    openAuthModal,
     setQrModalOpen,
     distanceConfig,
     isLoggedIn,
@@ -114,7 +116,7 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Col 4: Platform Portals */}
+          {/* Col 4: Platform Portals & Staff Access */}
           <div className="space-y-3">
             <h4 className="text-xs font-black uppercase tracking-wider text-white">
               Platform Portals
@@ -128,30 +130,12 @@ export const Footer: React.FC = () => {
                       setActiveView('customer_portal');
                       setCustomerSubView('dashboard');
                     } else {
-                      openLoginWithRole('CUSTOMER');
+                      openAuthModal('CUSTOMER');
                     }
                   }}
                   className="hover:text-blue-400 transition-colors text-left flex items-center gap-1"
                 >
                   <ChevronBullet /> Customer Portal
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => openLoginWithRole('EMPLOYEE')}
-                  className="hover:text-blue-400 transition-colors text-left flex items-center gap-1"
-                >
-                  <ChevronBullet /> Technician Field Ops
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => openLoginWithRole('ADMIN')}
-                  className="hover:text-blue-400 transition-colors text-left flex items-center gap-1"
-                >
-                  <ChevronBullet /> Admin Workshop Console
                 </button>
               </li>
               <li>
@@ -173,6 +157,38 @@ export const Footer: React.FC = () => {
                 </button>
               </li>
             </ul>
+
+            {/* Dedicated Popup Action Buttons for Staff & Admin */}
+            <div className="pt-2.5 space-y-2 border-t border-slate-800">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                Staff &amp; Management Access
+              </span>
+              <button
+                type="button"
+                onClick={() => openAuthModal('EMPLOYEE')}
+                className="w-full px-3 py-2 rounded-xl bg-slate-900 hover:bg-emerald-950/60 border border-slate-800 hover:border-emerald-600/50 text-emerald-400 font-bold text-xs flex items-center justify-between transition-all group shadow-2xs"
+                title="Click to open Employee Login popup"
+              >
+                <span className="flex items-center gap-2">
+                  <Wrench className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Employee Login</span>
+                </span>
+                <span className="text-[10px] text-slate-500 group-hover:text-emerald-400">Ops Portal →</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openAuthModal('ADMIN')}
+                className="w-full px-3 py-2 rounded-xl bg-slate-900 hover:bg-purple-950/60 border border-slate-800 hover:border-purple-600/50 text-purple-400 font-bold text-xs flex items-center justify-between transition-all group shadow-2xs"
+                title="Click to open Admin Login popup"
+              >
+                <span className="flex items-center gap-2">
+                  <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Admin Login</span>
+                </span>
+                <span className="text-[10px] text-slate-500 group-hover:text-purple-400">Console →</span>
+              </button>
+            </div>
           </div>
 
           {/* Col 5: Contact & Workshop Concierge */}
