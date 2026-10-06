@@ -62,7 +62,18 @@ export const AdminPortal: React.FC = () => {
     addRepairCategory,
     resetPricingToDefaults,
     addToast,
+    employees,
+    addEmployee,
+    removeEmployee,
   } = useApp();
+
+  // Team & Admin Management Form State
+  const [teamName, setTeamName] = useState('');
+  const [teamEmail, setTeamEmail] = useState('');
+  const [teamPhone, setTeamPhone] = useState('');
+  const [teamRole, setTeamRole] = useState<'Technician' | 'Pickup & Delivery Agent' | 'Master Stringer'>('Technician');
+  const [teamUserRole, setTeamUserRole] = useState<'EMPLOYEE' | 'ADMIN'>('EMPLOYEE');
+  const [teamPassword, setTeamPassword] = useState('');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -189,6 +200,7 @@ export const AdminPortal: React.FC = () => {
               { id: 'repair_config', label: 'Repair Categories', icon: Wrench },
               { id: 'reports', label: 'Reports & Export', icon: BarChart3 },
               { id: 'templates', label: 'Email Templates', icon: Mail },
+              { id: 'team', label: 'Manage Staff & Admins', icon: UserCheck, badge: employees.length },
               { id: 'settings', label: 'Shop Settings', icon: Settings },
             ].map((item) => {
               const Icon = item.icon;
@@ -1510,6 +1522,249 @@ export const AdminPortal: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* SUBVIEW: MANAGE STAFF & ADMINS */}
+        {adminSubView === 'team' && (
+          <div className="space-y-6 animate-in fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900">Staff & Administrator Management</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Add field technicians, master stringers, delivery executives, and platform administrators.
+                </p>
+              </div>
+              <span className="text-xs font-semibold bg-blue-50 text-blue-800 px-3 py-1.5 rounded-xl border border-blue-200">
+                Total Team Members: {employees.length}
+              </span>
+            </div>
+
+            {/* Account Creation Card */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h3 className="font-bold text-base text-slate-900">
+                  Create New Account
+                </h3>
+                {/* Switch between Employee and Admin */}
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setTeamUserRole('EMPLOYEE')}
+                    className={`px-3 py-1.5 rounded-lg transition-all ${
+                      teamUserRole === 'EMPLOYEE'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    + New Employee
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTeamUserRole('ADMIN')}
+                    className={`px-3 py-1.5 rounded-lg transition-all ${
+                      teamUserRole === 'ADMIN'
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    + New Admin
+                  </button>
+                </div>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!teamName.trim() || !teamEmail.trim() || !teamPhone.trim()) {
+                    addToast('error', 'Incomplete Form', 'Please fill in all required fields.');
+                    return;
+                  }
+                  addEmployee({
+                    name: teamName.trim(),
+                    email: teamEmail.trim(),
+                    phone: teamPhone.trim(),
+                    role: teamRole,
+                    userRole: teamUserRole,
+                    password: teamPassword.trim() || 'grsports2026',
+                  });
+                  setTeamName('');
+                  setTeamEmail('');
+                  setTeamPhone('');
+                  setTeamPassword('');
+                }}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={teamName}
+                      onChange={(e) => setTeamName(e.target.value)}
+                      placeholder={teamUserRole === 'ADMIN' ? 'e.g. Ramesh V (Admin)' : 'e.g. Suresh Nair'}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Email Address *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={teamEmail}
+                      onChange={(e) => setTeamEmail(e.target.value)}
+                      placeholder={teamUserRole === 'ADMIN' ? 'admin@grsports.in' : 'employee@grsports.in'}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Mobile Number *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={teamPhone}
+                      onChange={(e) => setTeamPhone(e.target.value)}
+                      placeholder="+91 98765 43210"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {teamUserRole === 'EMPLOYEE' ? (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Designation / Operational Role *
+                      </label>
+                      <select
+                        value={teamRole}
+                        onChange={(e) => setTeamRole(e.target.value as any)}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                      >
+                        <option value="Technician">Technician (Composite Repair)</option>
+                        <option value="Pickup & Delivery Agent">Pickup & Delivery Agent (Logistics)</option>
+                        <option value="Master Stringer">Master Stringer (Electronic Getting)</option>
+                      </select>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Administrative Role
+                      </label>
+                      <input
+                        type="text"
+                        disabled
+                        value="Full Platform Administrator (Root Access)"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-purple-700 font-bold outline-none"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Portal Password (Optional)
+                    </label>
+                    <input
+                      type="password"
+                      value={teamPassword}
+                      onChange={(e) => setTeamPassword(e.target.value)}
+                      placeholder="Default: grsports2026"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="md"
+                    className={teamUserRole === 'ADMIN' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+                    leftIcon={<Plus className="w-4 h-4" />}
+                  >
+                    {teamUserRole === 'ADMIN' ? 'Register Administrator Account' : 'Register Employee Account'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+
+            {/* Team Members List */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
+              <h3 className="font-bold text-base text-slate-900">
+                Active Staff & Administrators ({employees.filter(e => e.isActive !== false).length})
+              </h3>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider border-b border-slate-200 text-[10px]">
+                    <tr>
+                      <th className="py-3 px-3">Member</th>
+                      <th className="py-3 px-3">Role / Specialty</th>
+                      <th className="py-3 px-3">Access Level</th>
+                      <th className="py-3 px-3">Contact</th>
+                      <th className="py-3 px-3">Active Jobs</th>
+                      <th className="py-3 px-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {employees.map((emp) => (
+                      <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3 px-3 flex items-center gap-2.5">
+                          <img
+                            src={emp.avatar}
+                            alt={emp.name}
+                            className="w-8 h-8 rounded-full object-cover border border-slate-200"
+                          />
+                          <div>
+                            <p className="font-bold text-slate-900">{emp.name}</p>
+                            <p className="text-[10px] text-slate-400 font-mono">{emp.id}</p>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 font-medium text-slate-700">
+                          {emp.role}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                            emp.userRole === 'ADMIN'
+                              ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                              : 'bg-blue-100 text-blue-800 border border-blue-200'
+                          }`}>
+                            {emp.userRole || 'EMPLOYEE'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-slate-600">
+                          <p>{emp.phone}</p>
+                          <p className="text-[10px] text-slate-400">{emp.email}</p>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className="font-mono font-bold text-slate-800">
+                            {emp.activeJobsCount} Jobs
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => removeEmployee(emp.id)}
+                            className="text-red-600 hover:text-red-800 font-semibold text-[11px] hover:underline"
+                          >
+                            Deactivate
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* MODAL: ASSIGN EMPLOYEE */}
@@ -1528,7 +1783,7 @@ export const AdminPortal: React.FC = () => {
             </div>
 
             <div className="space-y-2 overflow-y-auto">
-              {mockEmployees.map((emp) => (
+              {employees.filter(e => e.isActive !== false).map((emp) => (
                 <div
                   key={emp.id}
                   onClick={() => setSelectedEmpId(emp.id)}

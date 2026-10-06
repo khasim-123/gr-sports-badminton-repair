@@ -93,6 +93,49 @@ export const EmployeePortal: React.FC = () => {
   );
   const paymentsCollected = requests.filter((r) => r.paymentStatus === 'Paid' && r.paymentRecord);
 
+  // User requested detailed metrics:
+  // "how many getting has done and repair req he received"
+  const gettingDoneCount = requests.filter(
+    (r) => r.serviceType === 'GETTING' && (r.status === 'Getting Completed' || r.status === 'Completed' || r.status === 'Delivered')
+  ).length;
+  const gettingActiveCount = requests.filter(
+    (r) => r.serviceType === 'GETTING' && r.status !== 'Getting Completed' && r.status !== 'Completed' && r.status !== 'Delivered' && r.status !== 'Cancelled'
+  ).length;
+  const repairReceivedCount = requests.filter((r) => r.serviceType === 'REPAIR').length;
+  const repairDoneCount = requests.filter(
+    (r) => r.serviceType === 'REPAIR' && (r.status === 'Repair Completed' || r.status === 'Completed' || r.status === 'Delivered')
+  ).length;
+  const repairActiveCount = requests.filter(
+    (r) => r.serviceType === 'REPAIR' && r.status !== 'Repair Completed' && r.status !== 'Completed' && r.status !== 'Delivered' && r.status !== 'Cancelled'
+  ).length;
+
+  // Requests view filter state
+  const [reqFilter, setReqFilter] = useState<'ALL' | 'GETTING_DONE' | 'GETTING_ACTIVE' | 'REPAIR_RECEIVED' | 'REPAIR_DONE'>('ALL');
+  const [reqSearch, setReqSearch] = useState('');
+
+  const filteredEmployeeRequests = requests.filter((req) => {
+    if (reqSearch.trim()) {
+      const q = reqSearch.toLowerCase();
+      const matchId = req.id.toLowerCase().includes(q);
+      const matchCust = req.customerName.toLowerCase().includes(q);
+      const matchBat = (req.batBrand + ' ' + req.batModel).toLowerCase().includes(q);
+      if (!matchId && !matchCust && !matchBat) return false;
+    }
+    if (reqFilter === 'GETTING_DONE') {
+      return req.serviceType === 'GETTING' && (req.status === 'Getting Completed' || req.status === 'Completed' || req.status === 'Delivered');
+    }
+    if (reqFilter === 'GETTING_ACTIVE') {
+      return req.serviceType === 'GETTING' && req.status !== 'Getting Completed' && req.status !== 'Completed' && req.status !== 'Delivered';
+    }
+    if (reqFilter === 'REPAIR_RECEIVED') {
+      return req.serviceType === 'REPAIR';
+    }
+    if (reqFilter === 'REPAIR_DONE') {
+      return req.serviceType === 'REPAIR' && (req.status === 'Repair Completed' || req.status === 'Completed' || req.status === 'Delivered');
+    }
+    return true;
+  });
+
   // Total collected by employee
   const totalCollectedToday = paymentsCollected.reduce(
     (acc, curr) => acc + (curr.paymentRecord?.amount || 0),
@@ -120,6 +163,7 @@ export const EmployeePortal: React.FC = () => {
       <div className="md:hidden flex overflow-x-auto gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
         {[
           { id: 'dashboard', label: 'Dashboard', count: null },
+          { id: 'my_requests', label: 'All Requests (Summary)', count: requests.length },
           { id: 'pickups', label: 'Pickups', count: pickupTasks.length },
           { id: 'getting', label: 'Getting Jobs', count: gettingJobs.length },
           { id: 'repair', label: 'Repair & Inspect', count: repairJobs.length },
@@ -152,6 +196,40 @@ export const EmployeePortal: React.FC = () => {
       {/* SUBVIEW: DASHBOARD */}
       {employeeSubView === 'dashboard' && (
         <div className="space-y-6 animate-in fade-in">
+          {/* Workload Performance Summary (User Requirement: Getting Done vs Repair Received) */}
+          <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white p-5 rounded-3xl shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 rounded-full">
+                OPERATIONAL PERFORMANCE METRICS
+              </span>
+              <h3 className="text-lg font-black">All Assigned Requests Summary</h3>
+              <p className="text-xs text-blue-200">
+                Track how many getting stringing jobs you have finished vs repair requests received.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="bg-white/10 backdrop-blur-xs px-3.5 py-2 rounded-2xl border border-white/15 text-center">
+                <span className="text-[10px] uppercase text-blue-300 font-bold">Getting Done</span>
+                <p className="text-xl font-black text-emerald-300">{gettingDoneCount}</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-xs px-3.5 py-2 rounded-2xl border border-white/15 text-center">
+                <span className="text-[10px] uppercase text-blue-300 font-bold">Repair Received</span>
+                <p className="text-xl font-black text-amber-300">{repairReceivedCount}</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-xs px-3.5 py-2 rounded-2xl border border-white/15 text-center">
+                <span className="text-[10px] uppercase text-blue-300 font-bold">Repair Done</span>
+                <p className="text-xl font-black text-teal-300">{repairDoneCount}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEmployeeSubView('my_requests')}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white text-xs font-bold rounded-xl shadow-xs transition-colors"
+              >
+                View Details →
+              </button>
+            </div>
+          </div>
+
           {/* Quick Metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div
@@ -952,6 +1030,165 @@ export const EmployeePortal: React.FC = () => {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* SUBVIEW: ALL MY REQUESTS & WORK SUMMARY */}
+      {employeeSubView === 'my_requests' && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-black text-slate-900">Workload & Requests Summary</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Overview of completed getting jobs, active stringing queues, and repair requests received.
+              </p>
+            </div>
+            <span className="text-xs font-bold bg-blue-50 text-blue-900 px-3 py-1.5 rounded-xl border border-blue-200">
+              Total Managed: {requests.length} Rackets
+            </span>
+          </div>
+
+          {/* KPI Summary Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div
+              onClick={() => setReqFilter('GETTING_DONE')}
+              className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                reqFilter === 'GETTING_DONE'
+                  ? 'border-teal-500 bg-teal-50/70 shadow-sm ring-1 ring-teal-400'
+                  : 'bg-white border-slate-200 hover:border-teal-300'
+              }`}
+            >
+              <span className="text-[11px] font-bold uppercase tracking-wider text-teal-700">Getting Done</span>
+              <p className="text-2xl font-black text-slate-900 mt-1">{gettingDoneCount}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Completed & Restrung</p>
+            </div>
+
+            <div
+              onClick={() => setReqFilter('GETTING_ACTIVE')}
+              className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                reqFilter === 'GETTING_ACTIVE'
+                  ? 'border-blue-500 bg-blue-50/70 shadow-sm ring-1 ring-blue-400'
+                  : 'bg-white border-slate-200 hover:border-blue-300'
+              }`}
+            >
+              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700">Getting In Progress</span>
+              <p className="text-2xl font-black text-slate-900 mt-1">{gettingActiveCount}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">In stringing queue</p>
+            </div>
+
+            <div
+              onClick={() => setReqFilter('REPAIR_RECEIVED')}
+              className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                reqFilter === 'REPAIR_RECEIVED'
+                  ? 'border-amber-500 bg-amber-50/70 shadow-sm ring-1 ring-amber-400'
+                  : 'bg-white border-slate-200 hover:border-amber-300'
+              }`}
+            >
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700">Repair Received</span>
+              <p className="text-2xl font-black text-slate-900 mt-1">{repairReceivedCount}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Total repair requests</p>
+            </div>
+
+            <div
+              onClick={() => setReqFilter('REPAIR_DONE')}
+              className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                reqFilter === 'REPAIR_DONE'
+                  ? 'border-emerald-500 bg-emerald-50/70 shadow-sm ring-1 ring-emerald-400'
+                  : 'bg-white border-slate-200 hover:border-emerald-300'
+              }`}
+            >
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Repair Completed</span>
+              <p className="text-2xl font-black text-slate-900 mt-1">{repairDoneCount}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Carbon splices cured</p>
+            </div>
+          </div>
+
+          {/* Filter Bar & Search */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+            <div className="flex overflow-x-auto gap-1 text-xs font-semibold">
+              {[
+                { id: 'ALL', label: `All Requests (${requests.length})` },
+                { id: 'GETTING_DONE', label: `Getting Done (${gettingDoneCount})` },
+                { id: 'GETTING_ACTIVE', label: `Getting In Progress (${gettingActiveCount})` },
+                { id: 'REPAIR_RECEIVED', label: `Repair Received (${repairReceivedCount})` },
+                { id: 'REPAIR_DONE', label: `Repair Done (${repairDoneCount})` },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setReqFilter(f.id as any)}
+                  className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all ${
+                    reqFilter === f.id
+                      ? 'bg-blue-600 text-white font-bold shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <input
+              type="text"
+              value={reqSearch}
+              onChange={(e) => setReqSearch(e.target.value)}
+              placeholder="Search by ID, Customer or Model..."
+              className="px-3.5 py-1.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-64"
+            />
+          </div>
+
+          {/* Requests List */}
+          <div className="space-y-3">
+            {filteredEmployeeRequests.map((req) => (
+              <div
+                key={req.id}
+                className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs hover:border-blue-400 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-white shrink-0 ${
+                    req.serviceType === 'GETTING' ? 'bg-blue-600' : 'bg-amber-600'
+                  }`}>
+                    {req.serviceType === 'GETTING' ? <Wrench className="w-5 h-5" /> : <Wrench className="w-5 h-5" />}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded-md">
+                        {req.id}
+                      </span>
+                      <h4 className="text-sm font-bold text-slate-900">
+                        {req.batBrand} {req.batModel}
+                      </h4>
+                      <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                        {req.serviceType}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 mt-1">
+                      Customer: <b>{req.customerName}</b> ({req.customerMobile}) • {req.pickupAddress.area} ({req.distanceKm} KM)
+                    </p>
+                    {req.serviceType === 'GETTING' && (
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Preference: {req.stringPreference || req.stringType || 'Standard'} {req.colour ? `(${req.colour})` : ''} • {req.stringTensionLbs || 26} lbs
+                      </p>
+                    )}
+                    {req.serviceType === 'REPAIR' && req.repairIssue && (
+                      <p className="text-[11px] text-amber-700 font-semibold mt-0.5">
+                        Issue: {req.repairIssue} {req.repairEstimate ? `• Estimate: ₹${req.repairEstimate.totalEstimate}` : ''}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
+                  <StatusBadge status={req.status} size="sm" />
+                  <p className="text-xs font-bold text-slate-900 mt-1">
+                    {req.totalAmount > 0 ? `₹${req.totalAmount}` : 'Inspection pending'}
+                  </p>
+                  <span className="text-[10px] text-slate-400">
+                    {req.paymentStatus === 'Paid' ? 'Paid ✓' : 'Payment on Delivery'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -25,7 +25,24 @@ export type RequestStatus =
   | 'Completed Without Repair'
   | 'Cancelled';
 
-export type BatBrand = 'Yonex' | 'Li-Ning' | 'Victor' | 'Apacs' | 'Carlton' | 'Other';
+export type BatBrand = string; // Free text — any brand
+
+export interface AppNotification {
+  id: string;
+  type: 'new_request' | 'status_update' | 'estimate_ready' | 'payment' | 'system';
+  title: string;
+  message: string;
+  requestId?: string;
+  timestamp: string;
+  isRead: boolean;
+  targetRoles: UserRole[];
+}
+
+export interface Review {
+  rating: number; // 1-5
+  comment: string;
+  createdAt: string;
+}
 
 export type BatType =
   | 'Even Balance (All-Round)'
@@ -36,9 +53,11 @@ export type BatType =
 
 export type GettingType =
   | 'Basic Getting'
+  | 'Tournament Getting'
+  | 'Durability Getting'
+  | 'Custom Getting'
   | 'Standard Getting'
-  | 'Premium Getting'
-  | 'Custom Getting';
+  | 'Premium Getting';
 
 export type RepairIssue =
   | 'Broken Bat'
@@ -108,9 +127,11 @@ export interface ServiceRequest {
   
   // Getting specific
   gettingType?: GettingType;
+  stringPreference?: string;
   stringType?: string;
   stringTensionLbs?: number;
   gettingPrice?: number;
+  colour?: string; // String colour choice
   
   // Repair specific
   repairIssue?: RepairIssue;
@@ -154,6 +175,7 @@ export interface ServiceRequest {
   // Audit & Timeline
   timeline: TimelineEvent[];
   additionalNotes?: string;
+  review?: Review;
 }
 
 export interface DistancePricingConfig {
@@ -197,8 +219,11 @@ export interface Employee {
   email: string;
   phone: string;
   role: 'Technician' | 'Pickup & Delivery Agent' | 'Master Stringer';
+  userRole: 'EMPLOYEE' | 'ADMIN';
   activeJobsCount: number;
   avatar: string;
+  password?: string;
+  isActive?: boolean;
 }
 
 export interface AuditLogItem {

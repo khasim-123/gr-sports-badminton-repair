@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   ServiceType,
-  BatBrand,
   BatType,
   GettingType,
   RepairIssue,
@@ -21,9 +20,13 @@ import {
   Info,
   Calendar,
   Sparkles,
+  Locate,
+  Star,
 } from 'lucide-react';
 import { Button } from '../common/Button';
 import { MapSimulation } from '../common/MapSimulation';
+
+const STRING_COLOURS = ['White', 'Yellow', 'Orange', 'Red', 'Blue', 'Black', 'Pink', 'Green', 'Silver'];
 
 export const NewServiceWizard: React.FC = () => {
   const {
@@ -55,32 +58,32 @@ export const NewServiceWizard: React.FC = () => {
   }, [wizardServiceType]);
 
   // Bat Details
-  const [batBrand, setBatBrand] = useState<BatBrand>('Yonex');
-  const [batModel, setBatModel] = useState<string>('Astrox 88D Pro');
+  const [batBrand, setBatBrand] = useState<string>('');
+  const [batModel, setBatModel] = useState<string>('');
   const [batType, setBatType] = useState<BatType>('Head Heavy (Power / Smash)');
-  const [gettingType, setGettingType] = useState<GettingType>('Standard Getting');
+  const [gettingType, setGettingType] = useState<GettingType>('Basic Getting');
   const [stringTension, setStringTension] = useState<number>(26);
-  const [stringType, setStringType] = useState<string>('Yonex BG65 (White)');
+  const [stringPreference, setStringPreference] = useState<string>('Yonex BG65');
+  const [stringColour, setStringColour] = useState<string>('White');
   const [repairIssue, setRepairIssue] = useState<RepairIssue>('Frame Damage');
-  const [repairDescription, setRepairDescription] = useState<string>(
-    'Crack near 12 o’clock frame grommet after doubles partner clash.'
-  );
-  const [batPhotos, setBatPhotos] = useState<string[]>([
-    'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&w=600&q=80',
-  ]);
-  const [additionalNotes, setAdditionalNotes] = useState<string>('Please handle carefully, favorite tournament racquet.');
+  const [repairDescription, setRepairDescription] = useState<string>('');
+  const [batPhotos, setBatPhotos] = useState<string[]>([]);
+  const [additionalNotes, setAdditionalNotes] = useState<string>('');
+
+  // Geolocation state
+  const [fetchingLocation, setFetchingLocation] = useState<boolean>(false);
 
   // Location & Distance
   const defaultFallbackAddress: Address = {
     id: 'ADDR-DEFAULT',
     label: 'Home',
-    houseFlat: 'No. 42, Shuttle Residency',
-    street: '100ft Road',
-    area: 'Indiranagar',
+    houseFlat: '',
+    street: '',
+    area: '',
     city: 'Bengaluru',
     state: 'Karnataka',
-    pincode: '560038',
-    distanceKm: 4.5,
+    pincode: '',
+    distanceKm: 5,
   };
 
   const initialAddress = savedAddresses.length > 0 ? savedAddresses[0] : defaultFallbackAddress;
@@ -93,6 +96,85 @@ export const NewServiceWizard: React.FC = () => {
     repairCategories.find((r) => r.name.toLowerCase().includes(repairIssue.toLowerCase())) || repairCategories[0];
 
   const distanceCalc = calculateDistanceCharge(customDistanceKm);
+
+  const handleFetchCurrentLocation = () => {
+    setFetchingLocation(true);
+    if (!navigator.geolocation) {
+      // Fallback if browser doesn't support
+      const fallbackGPSAddress: Address = {
+        id: `ADDR-GPS-${Date.now()}`,
+        label: 'Other',
+        houseFlat: 'Current GPS Location (Simulated)',
+        street: '100 Feet Rd, Indiranagar',
+        area: 'Indiranagar',
+        city: 'Bengaluru',
+        state: 'Karnataka',
+        pincode: '560038',
+        distanceKm: 3.8,
+      };
+      setSelectedAddress(fallbackGPSAddress);
+      setCustomDistanceKm(3.8);
+      setFetchingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const shopLat = distanceConfig.shopLat || 12.9716;
+        const shopLng = distanceConfig.shopLng || 77.6412;
+        // Haversine formula
+        const R = 6371; // km
+        const dLat = ((latitude - shopLat) * Math.PI) / 180;
+        const dLon = ((longitude - shopLng) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos((shopLat * Math.PI) / 180) *
+            Math.cos((latitude * Math.PI) / 180) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        let calculatedDistance = +(R * c).toFixed(1);
+        if (calculatedDistance < 1) calculatedDistance = 2.5;
+
+        const detectedAddress: Address = {
+          id: `ADDR-GPS-${Date.now()}`,
+          label: 'Other',
+          houseFlat: 'Current Location',
+          street: `Coordinates: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+          area: 'Detected via GPS',
+          city: 'Bengaluru',
+          state: 'Karnataka',
+          pincode: '560038',
+          distanceKm: calculatedDistance,
+          lat: latitude,
+          lng: longitude,
+        };
+
+        setSelectedAddress(detectedAddress);
+        setCustomDistanceKm(calculatedDistance);
+        setFetchingLocation(false);
+      },
+      () => {
+        // Fallback on permission denial or timeout: 4.2 KM (Within 10 KM free radius)
+        const fallbackGPSAddress: Address = {
+          id: `ADDR-GPS-${Date.now()}`,
+          label: 'Other',
+          houseFlat: 'Near Current Location',
+          street: 'Indiranagar 12th Main',
+          area: 'Indiranagar Hub Area',
+          city: 'Bengaluru',
+          state: 'Karnataka',
+          pincode: '560038',
+          distanceKm: 4.2,
+        };
+        setSelectedAddress(fallbackGPSAddress);
+        setCustomDistanceKm(4.2);
+        setFetchingLocation(false);
+      },
+      { timeout: 7000 }
+    );
+  };
 
   // Step 4 calculations
   const servicePrice = serviceType === 'GETTING' ? (selectedGettingConfig?.price ?? 350) : 0; // Repair is inspection based!
@@ -117,7 +199,9 @@ export const NewServiceWizard: React.FC = () => {
       batType,
       batPhotos,
       gettingType: serviceType === 'GETTING' ? gettingType : undefined,
-      stringType: serviceType === 'GETTING' ? stringType : undefined,
+      stringPreference: serviceType === 'GETTING' ? stringPreference : undefined,
+      stringType: serviceType === 'GETTING' ? `${stringPreference} (${stringColour})` : undefined,
+      colour: serviceType === 'GETTING' ? stringColour : undefined,
       stringTensionLbs: serviceType === 'GETTING' ? stringTension : undefined,
       gettingPrice: serviceType === 'GETTING' ? selectedGettingConfig.price : 0,
       repairIssue: serviceType === 'REPAIR' ? repairIssue : undefined,
@@ -289,24 +373,20 @@ export const NewServiceWizard: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-5 shadow-xs">
-            {/* Brand & Model */}
+            {/* Brand & Model — Both manual text inputs */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Bat Brand *
                 </label>
-                <select
+                <input
+                  type="text"
                   value={batBrand}
-                  onChange={(e) => setBatBrand(e.target.value as BatBrand)}
+                  onChange={(e) => setBatBrand(e.target.value)}
+                  placeholder="e.g. Yonex, Li-Ning, Victor, Apacs..."
+                  required
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium"
-                >
-                  <option value="Yonex">Yonex</option>
-                  <option value="Li-Ning">Li-Ning</option>
-                  <option value="Victor">Victor</option>
-                  <option value="Apacs">Apacs</option>
-                  <option value="Carlton">Carlton</option>
-                  <option value="Other">Other Brand</option>
-                </select>
+                />
               </div>
 
               <div>
@@ -348,7 +428,7 @@ export const NewServiceWizard: React.FC = () => {
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                   Select Getting Tier *
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {gettingServices.map((item) => (
                     <div
                       key={item.id}
@@ -361,7 +441,9 @@ export const NewServiceWizard: React.FC = () => {
                     >
                       <div className="flex justify-between items-center mb-1">
                         <span className="font-bold text-sm text-slate-900">{item.name}</span>
-                        <span className="text-sm font-extrabold text-blue-700">₹{item.price}</span>
+                        <span className="text-sm font-extrabold text-blue-700">
+                          {item.price === 0 ? 'On Request' : `₹${item.price}`}
+                        </span>
                       </div>
                       <p className="text-xs text-slate-500">{item.description}</p>
                       <div className="mt-2 text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
@@ -371,41 +453,68 @@ export const NewServiceWizard: React.FC = () => {
                   ))}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Desired String Tension (lbs)
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="range"
-                        min="20"
-                        max="32"
-                        value={stringTension}
-                        onChange={(e) => setStringTension(parseInt(e.target.value))}
-                        className="w-full accent-blue-600"
-                      />
-                      <span className="px-3 py-1 bg-blue-100 text-blue-800 font-black rounded-lg text-sm shrink-0">
-                        {stringTension} lbs
-                      </span>
-                    </div>
+                {/* String Tension */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Desired String Tension (lbs)
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min="20"
+                      max="32"
+                      value={stringTension}
+                      onChange={(e) => setStringTension(parseInt(e.target.value))}
+                      className="w-full accent-blue-600"
+                    />
+                    <span className="px-3 py-1 bg-blue-100 text-blue-800 font-black rounded-lg text-sm shrink-0">
+                      {stringTension} lbs
+                    </span>
                   </div>
+                </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* String Preference */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                       String Preference
                     </label>
                     <select
-                      value={stringType}
-                      onChange={(e) => setStringType(e.target.value)}
+                      value={stringPreference}
+                      onChange={(e) => setStringPreference(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium"
                     >
-                      <option value="Yonex BG65 (White) - All Round Durability">Yonex BG65 (White) - All Round Durability</option>
-                      <option value="Yonex BG80 Power (Neon Orange) - Maximum Smash Repulsion">Yonex BG80 Power (Neon Orange) - Maximum Smash Repulsion</option>
-                      <option value="Yonex Aerobite (Red/White) - Hybrid Spin & Control">Yonex Aerobite (Red/White) - Hybrid Spin & Control</option>
-                      <option value="Yonex Exbolt 65 (Yellow) - Quick Repulsion & Crisp Sound">Yonex Exbolt 65 (Yellow) - Quick Repulsion & Crisp Sound</option>
-                      <option value="Li-Ning No.1 - High Tension Durability">Li-Ning No.1 - High Tension Durability</option>
+                      <option value="Yonex BG65">Yonex BG65 — All Round Durability</option>
+                      <option value="Yonex BG80 Power">Yonex BG80 Power — Maximum Smash Repulsion</option>
+                      <option value="Yonex Aerobite">Yonex Aerobite — Hybrid Spin & Control</option>
+                      <option value="Yonex Exbolt 65">Yonex Exbolt 65 — Quick Repulsion & Crisp Sound</option>
+                      <option value="Li-Ning No.1">Li-Ning No.1 — High Tension Durability</option>
+                      <option value="Victor VS-850">Victor VS-850 — Soft Touch & Control</option>
+                      <option value="Any (Technician's Choice)">Any (Technician's Choice)</option>
                     </select>
+                  </div>
+
+                  {/* Colour Choice */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      String Colour
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {STRING_COLOURS.map((colour) => (
+                        <button
+                          key={colour}
+                          type="button"
+                          onClick={() => setStringColour(colour)}
+                          className={`py-1.5 px-2 rounded-lg border text-xs font-semibold transition-all ${
+                            stringColour === colour
+                              ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-xs ring-1 ring-blue-400'
+                              : 'border-slate-200 text-slate-600 hover:border-blue-300'
+                          }`}
+                        >
+                          {colour}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -523,10 +632,40 @@ export const NewServiceWizard: React.FC = () => {
             </p>
           </div>
 
+          {/* Current Location GPS Button & Banner */}
+          <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 bg-blue-600 text-white rounded-xl shadow-xs mt-0.5">
+                <Locate className={`w-5 h-5 ${fetchingLocation ? 'animate-spin' : ''}`} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">Auto-Detect Current Location</h4>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Fetch your live device GPS location to verify <b>{distanceConfig.freeRadiusKm} KM Free Pickup</b> eligibility instantly.
+                </p>
+                {selectedAddress.lat && (
+                  <span className="inline-flex items-center gap-1 mt-1 text-[11px] font-semibold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-md">
+                    ✓ GPS Location Active: {customDistanceKm} KM from Hub ({customDistanceKm <= distanceConfig.freeRadiusKm ? 'FREE Delivery' : `₹${calculateDistanceCharge(customDistanceKm).charge}`})
+                  </span>
+                )}
+              </div>
+            </div>
+            <Button
+              type="button"
+              onClick={handleFetchCurrentLocation}
+              disabled={fetchingLocation}
+              variant="primary"
+              size="sm"
+              leftIcon={<Locate className="w-4 h-4" />}
+            >
+              {fetchingLocation ? 'Detecting Location...' : 'Use Current Location'}
+            </Button>
+          </div>
+
           {/* Saved Addresses list */}
           <div className="space-y-3">
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Saved Addresses
+              Or Choose From Saved Addresses
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {savedAddresses.map((addr) => {
@@ -605,7 +744,8 @@ export const NewServiceWizard: React.FC = () => {
                 </h4>
                 {serviceType === 'GETTING' ? (
                   <div className="text-xs text-slate-600 space-y-1">
-                    <p>String: <b>{stringType}</b></p>
+                    <p>String: <b>{stringPreference}</b></p>
+                    <p>Colour: <b>{stringColour}</b></p>
                     <p>Tension: <b>{stringTension} lbs</b></p>
                     <p>Turnaround: <b>{selectedGettingConfig.turnaround}</b></p>
                   </div>

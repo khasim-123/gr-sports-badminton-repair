@@ -8,7 +8,9 @@ import {
   ArrowLeft,
   PlusCircle,
   Menu,
-  X
+  X,
+  Bell,
+  Check,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -31,9 +33,20 @@ export const Navbar: React.FC = () => {
     logout,
     distanceConfig,
     requests,
+    notifications,
+    markNotificationRead,
+    markAllNotificationsRead,
+    openRequestDetail,
   } = useApp();
 
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [notificationsOpen, setNotificationsOpen] = React.useState(false);
+
+  // Role-filtered notifications
+  const roleNotifications = notifications.filter(
+    (n) => n.targetRoles.includes(currentRole) || n.targetRoles.length === 0
+  );
+  const roleUnreadCount = roleNotifications.filter((n) => !n.isRead).length;
 
   // Real-time task counts for Employee Portal navigation
   const employeePickupCount = requests.filter(
@@ -213,6 +226,7 @@ export const Navbar: React.FC = () => {
                 <>
                   {[
                     { id: 'dashboard', label: 'Dashboard', count: null },
+                    { id: 'my_requests', label: 'All Requests (Summary)', count: requests.length },
                     { id: 'pickups', label: 'Pickups', count: employeePickupCount },
                     { id: 'getting', label: 'Getting Jobs', count: employeeGettingCount },
                     { id: 'repair', label: 'Repair & Inspect', count: employeeRepairCount },
@@ -308,6 +322,19 @@ export const Navbar: React.FC = () => {
                   <button
                     onClick={() => {
                       setActiveView('admin_portal');
+                      setAdminSubView('team');
+                    }}
+                    className={`px-3 py-1.5 rounded-xl transition-colors ${
+                      activeView === 'admin_portal' && adminSubView === 'team'
+                        ? 'bg-purple-600 text-white font-bold'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    Team &amp; Admins
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveView('admin_portal');
                       setAdminSubView('templates');
                     }}
                     className={`px-3 py-1.5 rounded-xl transition-colors ${
@@ -326,6 +353,93 @@ export const Navbar: React.FC = () => {
 
         {/* Right: Actions, Identity & Controls */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Notification Bell Dropdown (User Requirement: Notification System) */}
+          <div className="relative">
+            <button
+              onClick={() => setNotificationsOpen(!notificationsOpen)}
+              className="p-2 rounded-xl text-slate-600 hover:text-blue-600 hover:bg-slate-100 transition-colors border border-slate-200 relative"
+              title="Notifications"
+            >
+              <Bell className="w-4 h-4" />
+              {roleUnreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
+                  {roleUnreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* Notification Dropdown Popover */}
+            {notificationsOpen && (
+              <div
+                className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 z-50 space-y-3 animate-in fade-in zoom-in-95"
+              >
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-blue-600" />
+                    <h4 className="text-xs font-bold text-slate-900">Notifications</h4>
+                    {roleUnreadCount > 0 && (
+                      <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.2 rounded-full">
+                        {roleUnreadCount} new
+                      </span>
+                    )}
+                  </div>
+                  {roleNotifications.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => markAllNotificationsRead()}
+                      className="text-[11px] text-blue-600 hover:underline font-semibold"
+                    >
+                      Mark all as read
+                    </button>
+                  )}
+                </div>
+
+                {roleNotifications.length === 0 ? (
+                  <p className="text-xs text-slate-500 py-6 text-center">
+                    No new notifications right now.
+                  </p>
+                ) : (
+                  <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+                    {roleNotifications.map((notif) => (
+                      <div
+                        key={notif.id}
+                        onClick={() => {
+                          markNotificationRead(notif.id);
+                          if (notif.requestId) {
+                            openRequestDetail(notif.requestId);
+                            setNotificationsOpen(false);
+                          }
+                        }}
+                        className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${
+                          !notif.isRead
+                            ? 'bg-blue-50/70 border-blue-200'
+                            : 'bg-slate-50/50 border-slate-100 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start gap-2">
+                          <p className={`font-bold ${!notif.isRead ? 'text-blue-900' : 'text-slate-800'}`}>
+                            {notif.title}
+                          </p>
+                          <span className="text-[10px] text-slate-400 shrink-0 font-mono">
+                            {notif.timestamp}
+                          </span>
+                        </div>
+                        <p className="text-slate-600 mt-1 text-[11px] leading-relaxed">
+                          {notif.message}
+                        </p>
+                        {notif.requestId && (
+                          <span className="inline-block mt-1 text-[10px] font-mono font-bold text-blue-700 bg-white px-1.5 py-0.2 rounded border border-blue-200">
+                            View {notif.requestId} →
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Court QR Poster Button */}
           <button
             onClick={() => setQrModalOpen(true)}

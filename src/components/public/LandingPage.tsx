@@ -47,6 +47,7 @@ export const LandingPage: React.FC = () => {
   // Interactive Hero Quick Booking Widget State
   const [heroService, setHeroService] = useState<'GETTING' | 'REPAIR'>('GETTING');
   const [heroBrand, setHeroBrand] = useState('Yonex');
+  const [heroModel, setHeroModel] = useState('Astrox 88D Pro');
   const [heroString, setHeroString] = useState('Yonex BG65');
   const [heroTension, setHeroTension] = useState(26);
   const [heroRepairIssue, setHeroRepairIssue] = useState('Upper Frame Crack (10–2 o\'clock)');
@@ -193,25 +194,33 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {/* Dynamic Form Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
-              {/* Field 1: Racquet Brand */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-left">
+              {/* Field 1: Racquet Brand (Manual Fill) */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Racquet Brand
+                  Racquet Brand *
                 </label>
-                <select
+                <input
+                  type="text"
                   value={heroBrand}
                   onChange={(e) => setHeroBrand(e.target.value)}
+                  placeholder="e.g. Yonex, Li-Ning..."
                   className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-semibold rounded-xl p-3 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all"
-                >
-                  <option value="Yonex">Yonex (Japan)</option>
-                  <option value="Li-Ning">Li-Ning (China)</option>
-                  <option value="Victor">Victor (Taiwan)</option>
-                  <option value="Apacs">Apacs</option>
-                  <option value="Hundred">Hundred</option>
-                  <option value="Carlton">Carlton</option>
-                  <option value="Other">Other Brand</option>
-                </select>
+                />
+              </div>
+
+              {/* Field 2: Racquet Model (Manual Fill) */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Racquet Model *
+                </label>
+                <input
+                  type="text"
+                  value={heroModel}
+                  onChange={(e) => setHeroModel(e.target.value)}
+                  placeholder="e.g. Astrox 88D Pro..."
+                  className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-semibold rounded-xl p-3 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all"
+                />
               </div>
 
               {/* Field 2 & 3: Service Specifics */}
@@ -430,7 +439,7 @@ export const LandingPage: React.FC = () => {
                 <div>
                   <span className="text-[11px] text-slate-400 block">Doorstep Pickup</span>
                   <span className="font-bold text-emerald-700">
-                    {trackedRequest.isFreeDelivery ? 'Free (Within 15 KM)' : `+₹${trackedRequest.pickupDeliveryCharge}`}
+                    {trackedRequest.isFreeDelivery ? `Free (Within ${distanceConfig.freeRadiusKm} KM)` : `+₹${trackedRequest.pickupDeliveryCharge}`}
                   </span>
                 </div>
                 <div>
@@ -511,7 +520,7 @@ export const LandingPage: React.FC = () => {
             </div>
             <h4 className="text-base font-bold text-slate-900">Free Doorstep Pickup</h4>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Never drive through traffic or waste weekends visiting sports stores. We collect and deliver in protective padded racket carriers within 15 KM at ₹0 fee.
+              Never drive through traffic or waste weekends visiting sports stores. We collect and deliver in protective padded racket carriers within {distanceConfig.freeRadiusKm} KM at ₹0 fee.
             </p>
             <span className="inline-block text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-md">
               100% Free Radius: {distanceConfig.freeRadiusKm} KM

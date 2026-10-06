@@ -15,6 +15,7 @@ import {
   Mail,
   User,
   ShieldAlert,
+  Star,
 } from 'lucide-react';
 
 export const RequestDetailView: React.FC = () => {
@@ -26,7 +27,12 @@ export const RequestDetailView: React.FC = () => {
     setRevisedEstimateModalOpen,
     setModalTargetRequestId,
     distanceConfig,
+    submitReview,
   } = useApp();
+
+  const [reviewRating, setReviewRating] = React.useState<number>(5);
+  const [reviewComment, setReviewComment] = React.useState<string>('');
+  const [hoverRating, setHoverRating] = React.useState<number>(0);
 
   const request = requests.find((r) => r.id === selectedRequestId);
 
@@ -286,6 +292,110 @@ export const RequestDetailView: React.FC = () => {
                   <p className="text-xs text-slate-500">Certified Badminton Technician</p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Customer Review Section (Only for Completed requests or can review anytime) */}
+          {request.status === 'Completed' && (
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                  Service Review & Rating
+                </h3>
+                {request.review && (
+                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                    Reviewed ✓
+                  </span>
+                )}
+              </div>
+
+              {request.review ? (
+                <div className="space-y-2 bg-amber-50/50 p-4 rounded-2xl border border-amber-200/60">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star
+                        key={s}
+                        className={`w-5 h-5 ${
+                          s <= request.review!.rating
+                            ? 'text-amber-500 fill-amber-500'
+                            : 'text-slate-300'
+                        }`}
+                      />
+                    ))}
+                    <span className="ml-2 text-sm font-bold text-slate-900">
+                      {request.review.rating} / 5 Stars
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-700 italic">"{request.review.comment}"</p>
+                  <p className="text-[10px] text-slate-400">
+                    Submitted on {new Date(request.review.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs text-slate-600">
+                    How was your experience with our stringing / repair craftsmanship?
+                  </p>
+                  {/* Star selector */}
+                  <div className="flex items-center gap-1.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setReviewRating(star)}
+                        onMouseEnter={() => setHoverRating(star)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        className="p-1 hover:scale-110 transition-transform"
+                      >
+                        <Star
+                          className={`w-6 h-6 transition-colors ${
+                            star <= (hoverRating || reviewRating)
+                              ? 'text-amber-500 fill-amber-500'
+                              : 'text-slate-300'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                    <span className="text-xs font-bold text-slate-700 ml-2">
+                      {hoverRating || reviewRating} Stars
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Your Comments
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={reviewComment}
+                      onChange={(e) => setReviewComment(e.target.value)}
+                      placeholder="Share your thoughts on tension accuracy, repair strength, delivery speed..."
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+
+                  <Button
+                    onClick={() => {
+                      if (!reviewComment.trim()) {
+                        alert('Please add a short comment for your review.');
+                        return;
+                      }
+                      submitReview(request.id, {
+                        rating: reviewRating,
+                        comment: reviewComment,
+                        createdAt: new Date().toISOString(),
+                      });
+                    }}
+                    variant="primary"
+                    size="sm"
+                    className="w-full"
+                    leftIcon={<Star className="w-3.5 h-3.5" />}
+                  >
+                    Submit Customer Review
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>

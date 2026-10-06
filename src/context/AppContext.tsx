@@ -13,6 +13,9 @@ import {
   BatConditionAtPickup,
   GettingServiceTier,
   RepairCategoryTier,
+  AppNotification,
+  Review,
+  Employee,
 } from '../types';
 import {
   initialRequests,
@@ -142,6 +145,21 @@ interface AppContextType {
 
   // Helper for opening request detail directly
   openRequestDetail: (id: string) => void;
+
+  // Notifications
+  notifications: AppNotification[];
+  addNotification: (notif: Omit<AppNotification, 'id' | 'timestamp' | 'isRead'>) => void;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  unreadCount: number;
+
+  // Employee & Admin Management
+  employees: Employee[];
+  addEmployee: (emp: Omit<Employee, 'id' | 'activeJobsCount' | 'avatar'>) => void;
+  removeEmployee: (id: string) => void;
+
+  // Customer Review
+  submitReview: (requestId: string, review: Review) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -209,6 +227,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(initialAuditLogs);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>(initialEmailTemplates);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>(() => {
+    try {
+      const saved = localStorage.getItem('shuttlecraft_employees');
+      return saved ? JSON.parse(saved) : mockEmployees;
+    } catch {
+      return mockEmployees;
+    }
+  });
 
   // Persist requests to localStorage
   useEffect(() => {
@@ -477,6 +504,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRequests((prev) => [createdRequest, ...prev]);
     logAudit(userName, 'CUSTOMER', `Created ${createdRequest.serviceType} request`, newId, `${createdRequest.batBrand} ${createdRequest.batModel}`);
     addToast('success', 'Request Created!', `Your request ${newId} has been successfully placed.`);
+
+    // Notify employee and admin (simulated email)
+    addNotification({
+      type: 'new_request',
+      title: `New ${createdRequest.serviceType === 'GETTING' ? 'Getting' : 'Repair'} Request`,
+      message: `${createdRequest.customerName} submitted ${newId} — ${createdRequest.batBrand} ${createdRequest.batModel}. Pickup: ${createdRequest.pickupAddress.area}.`,
+      requestId: newId,
+      targetRoles: ['ADMIN', 'EMPLOYEE'],
+    });
+    addToast('info', '📧 Email Sent', `Notification sent to Employee & Admin for request ${newId}.`);
 
     try {
       confetti({ particleCount: 75, spread: 60, origin: { y: 0.7 } });
@@ -1016,6 +1053,79 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('success', 'Email Template Saved', `Template updated successfully.`);
   };
 
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const addNotification = (notif: Omit<AppNotification, 'id' | 'timestamp' | 'isRead'>) => {
+    const now = new Date();
+    const timestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
+      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const newNotif: AppNotification = {
+      ...notif,
+      id: 'NOTIF-' + Date.now().toString().slice(-6),
+      timestamp,
+      isRead: false,
+    };
+    setNotifications((prev) => [newNotif, ...prev.slice(0, 49)]);
+  };
+
+  const markNotificationRead = (id: string) => {
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
+  };
+
+  const markAllNotificationsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  };
+
+  const addEmployee = (empData: Omit<Employee, 'id' | 'activeJobsCount' | 'avatar'>) => {
+    const newEmp: Employee = {
+      ...empData,
+      id: 'EMP-' + Date.now().toString().slice(-4),
+      activeJobsCount: 0,
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(empData.name)}&background=3b82f6&color=fff&size=200`,
+      isActive: true,
+    };
+    setEmployees((prev) => {
+      const next = [...prev, newEmp];
+      try { localStorage.setItem('shuttlecraft_employees', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
+    logAudit('Admin', 'ADMIN', `Added ${empData.userRole === 'ADMIN' ? 'admin' : 'employee'}: ${empData.name}`, 'SYSTEM', `Email: ${empData.email}`);
+    addToast('success', `${empData.userRole === 'ADMIN' ? 'Admin' : 'Employee'} Added`, `${empData.name} (${empData.email}) created successfully.`);
+    addNotification({
+      type: 'system',
+      title: 'New Team Member Added',
+      message: `${empData.name} has been added as ${empData.userRole === 'ADMIN' ? 'Admin' : 'Employee'}.`,
+      targetRoles: ['ADMIN'],
+    });
+  };
+
+  const removeEmployee = (id: string) => {
+    setEmployees((prev) => {
+      const next = prev.map((e) => e.id === id ? { ...e, isActive: false } : e);
+      try { localStorage.setItem('shuttlecraft_employees', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
+    addToast('info', 'Employee Deactivated', `Employee account has been deactivated.`);
+  };
+
+  const submitReview = (requestId: string, review: Review) => {
+    setRequests((prev) =>
+      prev.map((req) => {
+        if (req.id !== requestId) return req;
+        return { ...req, review };
+      })
+    );
+    logAudit(userName || 'Customer', 'CUSTOMER', `Submitted review (${review.rating}★) for ${requestId}`, requestId, review.comment);
+    addToast('success', 'Review Submitted!', `Thank you for your ${review.rating}-star feedback.`);
+    addNotification({
+      type: 'system',
+      title: 'New Customer Review',
+      message: `${userName || 'Customer'} left a ${review.rating}★ review for ${requestId}: "${review.comment.slice(0, 60)}..."`,
+      requestId,
+      targetRoles: ['ADMIN', 'EMPLOYEE'],
+    });
+  };
+
   const openRequestDetail = (id: string) => {
     setSelectedRequestId(id);
     if (currentRole === 'CUSTOMER') {
@@ -1113,6 +1223,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addRepairCategory,
         resetPricingToDefaults,
         openRequestDetail,
+
+        notifications,
+        addNotification,
+        markNotificationRead,
+        markAllNotificationsRead,
+        unreadCount,
+
+        employees,
+        addEmployee,
+        removeEmployee,
+
+        submitReview,
       }}
     >
       {children}
