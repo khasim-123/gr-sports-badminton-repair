@@ -7,7 +7,6 @@ import {
   RepairIssue,
   Address,
 } from '../../types';
-import { gettingTypesData, repairCategoriesData } from '../../data/mockData';
 import {
   Wrench,
   CheckCircle2,

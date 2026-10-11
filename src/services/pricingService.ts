@@ -81,4 +81,33 @@ export const pricingService = {
     }
     return { ...category, id } as RepairCategoryTier;
   },
+
+  /**
+   * Add a new getting service tier
+   * POST /api/config/getting-services
+   */
+  async addGettingService(
+    tier: Omit<GettingServiceTier, 'id'>
+  ): Promise<GettingServiceTier> {
+    const id = tier.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    if (!apiClient.isMockEnabled()) {
+      return apiClient.post<GettingServiceTier>('/config/getting-services', { ...tier, id });
+    }
+    return { ...tier, id } as GettingServiceTier;
+  },
+
+  /**
+   * Add a new repair category tier
+   * POST /api/config/repair-categories
+   */
+  async addRepairCategory(
+    category: Omit<RepairCategoryTier, 'id'>
+  ): Promise<RepairCategoryTier> {
+    const id = category.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    if (!apiClient.isMockEnabled()) {
+      return apiClient.post<RepairCategoryTier>('/config/repair-categories', { ...category, id });
+    }
+    return { ...category, id } as RepairCategoryTier;
+  },
 };
+

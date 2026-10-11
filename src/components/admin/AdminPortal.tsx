@@ -9,7 +9,6 @@ import {
   GettingServiceTier,
   RepairCategoryTier,
 } from '../../types';
-import { mockEmployees } from '../../data/mockData';
 import {
   LayoutDashboard,
   FileSpreadsheet,

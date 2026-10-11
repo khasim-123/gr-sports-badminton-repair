@@ -27,7 +27,15 @@ import {
   gettingTypesData,
   repairCategoriesData,
 } from '../data/mockData';
-import { authService } from '../services/authService';
+import {
+  authService,
+  requestService,
+  pricingService,
+  employeeService,
+  notificationService,
+  auditService,
+  emailService,
+} from '../services';
 import confetti from 'canvas-confetti';
 
 interface ToastMessage {
@@ -237,7 +245,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
-  // Persist requests to localStorage
+  // Fetch live database records from PostgreSQL backend on mount
+  useEffect(() => {
+    const fetchBackendData = async () => {
+      try {
+        const [
+          serverReqs,
+          serverDist,
+          serverGetting,
+          serverRepair,
+          serverEmps,
+          serverNotifs,
+          serverAudits,
+          serverTemplates,
+        ] = await Promise.all([
+          requestService.getRequests().catch(() => null),
+          pricingService.getDistanceConfig().catch(() => null),
+          pricingService.getGettingServices().catch(() => null),
+          pricingService.getRepairCategories().catch(() => null),
+          employeeService.getEmployees().catch(() => null),
+          notificationService.getNotifications().catch(() => null),
+          auditService.getAuditLogs().catch(() => null),
+          emailService.getTemplates().catch(() => null),
+        ]);
+
+        if (serverReqs && serverReqs.length > 0) setRequests(serverReqs);
+        if (serverDist) setDistanceConfig(serverDist);
+        if (serverGetting && serverGetting.length > 0) setGettingServices(serverGetting);
+        if (serverRepair && serverRepair.length > 0) setRepairCategories(serverRepair);
+        if (serverEmps && serverEmps.length > 0) setEmployees(serverEmps);
+        if (serverNotifs) setNotifications(serverNotifs);
+        if (serverAudits && serverAudits.length > 0) setAuditLogs(serverAudits);
+        if (serverTemplates && serverTemplates.length > 0) setEmailTemplates(serverTemplates);
+      } catch (err) {
+        console.error('Error fetching backend data:', err);
+      }
+    };
+
+    fetchBackendData();
+  }, []);
+
+  // Persist requests to localStorage as secondary cache
   useEffect(() => {
     try {
       localStorage.setItem('shuttlecraft_requests', JSON.stringify(requests));
@@ -502,6 +550,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setRequests((prev) => [createdRequest, ...prev]);
+
+    // Persist to PostgreSQL backend via REST API
+    requestService.createRequest(createdRequest).then((saved) => {
+      setRequests((prev) => [saved, ...prev.filter((r) => r.id !== saved.id && r.id !== newId)]);
+      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
+      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
+    }).catch((err) => {
+      console.error('Failed to create request in backend:', err);
+    });
+
     logAudit(userName, 'CUSTOMER', `Created ${createdRequest.serviceType} request`, newId, `${createdRequest.batBrand} ${createdRequest.batModel}`);
     addToast('success', 'Request Created!', `Your request ${newId} has been successfully placed.`);
 
@@ -552,11 +610,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     logAudit(actor, currentRole, `Updated status to ${status}`, id, notes);
     addToast('info', 'Status Updated', `${id} is now ${status}`);
+
+    // Persist to PostgreSQL backend via REST API
+    requestService.updateStatus(id, status, actor, notes).then((updated) => {
+      setRequests((prev) => prev.map((r) => r.id === id ? updated : r));
+      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
+      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
+    }).catch(console.error);
   };
 
   const assignEmployee = (requestId: string, employeeId: string) => {
-    const employee = mockEmployees.find((e) => e.id === employeeId);
+    const employee = employees.find((e) => e.id === employeeId);
     if (!employee) return;
+
+    // Persist to PostgreSQL backend via REST API
+    requestService.assignTechnician(requestId, employeeId).then((updated) => {
+      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
+      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
+      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
+    }).catch(console.error);
 
     const now = new Date();
     const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
@@ -594,6 +666,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     notes: string,
     photos: string[]
   ) => {
+    // Persist to PostgreSQL backend via REST API
+    requestService.recordPickupCondition(requestId, condition, notes, photos).then((updated) => {
+      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
+      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
+      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
+    }).catch(console.error);
+
     const now = new Date();
     const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
       now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -631,6 +710,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const createRepairEstimate = (requestId: string, estimate: RepairEstimate) => {
+    // Persist to PostgreSQL backend via REST API
+    requestService.createRepairEstimate(requestId, estimate).then((updated) => {
+      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
+      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
+      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
+    }).catch(console.error);
+
     const now = new Date();
     const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
       now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -671,6 +757,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approveRepairEstimate = (requestId: string) => {
+    // Persist to PostgreSQL backend via REST API
+    requestService.approveRepairEstimate(requestId).then((updated) => {
+      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
+      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
+      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
+    }).catch(console.error);
+
     const now = new Date();
     const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
       now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -705,6 +798,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const declineRepairEstimate = (requestId: string) => {
+    // Persist to PostgreSQL backend via REST API
+    requestService.declineRepairEstimate(requestId).then((updated) => {
+      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
+      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
+      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
+    }).catch(console.error);
+
     const now = new Date();
     const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
       now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -743,6 +843,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     newTotal: number,
     reason: string
   ) => {
+    // Persist to PostgreSQL backend via REST API
+    requestService.requestPriceRevision(requestId, additionalAmount, newTotal, reason).then((updated) => {
+      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
+      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
+      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
+    }).catch(console.error);
+
     const now = new Date();
     const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
       now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -796,6 +903,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const completeGettingJob = (requestId: string, notes?: string) => {
+    // Persist to PostgreSQL backend via REST API
+    requestService.updateStatus(requestId, 'Getting Completed', 'Stringer', notes).then((updated) => {
+      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
+      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
+      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
+    }).catch(console.error);
+
     const now = new Date();
     const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
       now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -825,6 +939,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const completeRepairJob = (requestId: string, notes?: string) => {
+    // Persist to PostgreSQL backend via REST API
+    requestService.updateStatus(requestId, 'Repair Completed', 'Technician', notes).then((updated) => {
+      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
+      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
+      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
+    }).catch(console.error);
+
     const now = new Date();
     const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
       now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -854,6 +975,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const startDelivery = (requestId: string) => {
+    // Persist to PostgreSQL backend via REST API
+    requestService.updateStatus(requestId, 'Out for Delivery', 'Logistics Agent', 'Dispatched for doorstep delivery.').then((updated) => {
+      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
+      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
+      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
+    }).catch(console.error);
+
     const now = new Date();
     const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
       now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -888,6 +1016,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     method: PaymentMethod,
     notes?: string
   ) => {
+    // Persist to PostgreSQL backend via REST API
+    requestService.recordPayment(requestId, amount, method, notes).then((updated) => {
+      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
+      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
+      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
+    }).catch(console.error);
+
     const now = new Date();
     const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
       now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -963,6 +1098,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setDistanceConfig(finalizedConfig);
+    pricingService.updateDistanceConfig(finalizedConfig).catch(console.error);
     try {
       localStorage.setItem('shuttlecraft_dist_config', JSON.stringify(finalizedConfig));
     } catch (e) {}
@@ -981,6 +1117,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateGettingService = (id: string, updated: Partial<GettingServiceTier>) => {
+    pricingService.updateGettingService(id, updated).catch(console.error);
     setGettingServices((prev) => {
       const next = prev.map((item) => (item.id === id ? { ...item, ...updated } : item));
       try {
@@ -993,6 +1130,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateRepairCategory = (id: string, updated: Partial<RepairCategoryTier>) => {
+    pricingService.updateRepairCategory(id, updated).catch(console.error);
     setRepairCategories((prev) => {
       const next = prev.map((item) => (item.id === id ? { ...item, ...updated } : item));
       try {
@@ -1007,6 +1145,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addGettingService = (newTier: Omit<GettingServiceTier, 'id'>) => {
     const id = 'tier_' + Date.now().toString().slice(-4);
     const created: GettingServiceTier = { ...newTier, id };
+    pricingService.addGettingService(newTier).catch(console.error);
     setGettingServices((prev) => {
       const next = [...prev, created];
       try {
@@ -1021,6 +1160,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addRepairCategory = (newCategory: Omit<RepairCategoryTier, 'id'>) => {
     const id = 'rep_' + Date.now().toString().slice(-4);
     const created: RepairCategoryTier = { ...newCategory, id };
+    pricingService.addRepairCategory(newCategory).catch(console.error);
     setRepairCategories((prev) => {
       const next = [...prev, created];
       try {
@@ -1036,6 +1176,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDistanceConfig(initialDistanceConfig);
     setGettingServices(gettingTypesData);
     setRepairCategories(repairCategoriesData);
+    pricingService.updateDistanceConfig(initialDistanceConfig).catch(console.error);
     try {
       localStorage.removeItem('shuttlecraft_dist_config');
       localStorage.removeItem('shuttlecraft_getting_services');
@@ -1046,6 +1187,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateEmailTemplate = (id: string, subject: string, body: string) => {
+    emailService.updateTemplate(id, subject, body).catch(console.error);
     setEmailTemplates((prev) =>
       prev.map((t) => (t.id === id ? { ...t, subject, body } : t))
     );
@@ -1069,10 +1211,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const markNotificationRead = (id: string) => {
+    notificationService.markAsRead(id).catch(console.error);
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
   };
 
   const markAllNotificationsRead = () => {
+    notificationService.markAllRead().catch(console.error);
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
 
@@ -1084,11 +1228,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(empData.name)}&background=3b82f6&color=fff&size=200`,
       isActive: true,
     };
-    setEmployees((prev) => {
-      const next = [...prev, newEmp];
-      try { localStorage.setItem('shuttlecraft_employees', JSON.stringify(next)); } catch (e) {}
-      return next;
+    setEmployees((prev) => [...prev, newEmp]);
+
+    // Persist to PostgreSQL backend via REST API
+    employeeService.createEmployee(empData).then((savedEmp) => {
+      setEmployees((prev) => [...prev.filter((e) => e.id !== newEmp.id && e.id !== savedEmp.id), savedEmp]);
+      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
+      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
+    }).catch((err) => {
+      console.error('Failed to create employee via API:', err);
     });
+
     logAudit('Admin', 'ADMIN', `Added ${empData.userRole === 'ADMIN' ? 'admin' : 'employee'}: ${empData.name}`, 'SYSTEM', `Email: ${empData.email}`);
     addToast('success', `${empData.userRole === 'ADMIN' ? 'Admin' : 'Employee'} Added`, `${empData.name} (${empData.email}) created successfully.`);
     addNotification({
@@ -1100,6 +1250,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const removeEmployee = (id: string) => {
+    employeeService.deleteEmployee(id).catch(console.error);
     setEmployees((prev) => {
       const next = prev.map((e) => e.id === id ? { ...e, isActive: false } : e);
       try { localStorage.setItem('shuttlecraft_employees', JSON.stringify(next)); } catch (e) {}
@@ -1109,6 +1260,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const submitReview = (requestId: string, review: Review) => {
+    // Persist to PostgreSQL backend via REST API
+    requestService.submitReview(requestId, review).then((updated) => {
+      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
+      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
+      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
+    }).catch(console.error);
+
     setRequests((prev) =>
       prev.map((req) => {
         if (req.id !== requestId) return req;

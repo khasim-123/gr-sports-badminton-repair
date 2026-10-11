@@ -198,4 +198,21 @@ export const requestService = {
     if (!current) throw new Error('Request not found');
     return current;
   },
+
+  /**
+   * Submit customer review
+   * POST /api/requests/:id/review
+   */
+  async submitReview(
+    id: string,
+    review: { rating: number; comment: string }
+  ): Promise<ServiceRequest> {
+    if (!apiClient.isMockEnabled()) {
+      return apiClient.post<ServiceRequest>(`/requests/${id}/review`, review);
+    }
+    const current = await this.getRequestById(id);
+    if (!current) throw new Error('Request not found');
+    return { ...current, review };
+  },
 };
+

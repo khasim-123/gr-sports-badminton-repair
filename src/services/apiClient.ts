@@ -6,7 +6,7 @@
 
 const metaEnv = (import.meta as any).env || {};
 const API_BASE_URL: string = metaEnv.VITE_API_BASE_URL || '/api';
-const USE_MOCK_API: boolean = metaEnv.VITE_USE_MOCK_API !== 'false';
+const USE_MOCK_API: boolean = false;
 
 export interface ApiResponse<T = any> {
   success: boolean;
