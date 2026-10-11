@@ -28,3 +28,4 @@ export const notificationService = {
     return apiClient.delete<{ success: boolean; message: string }>(`/notifications/${id}`);
   },
 };
+

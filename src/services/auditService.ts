@@ -6,3 +6,4 @@ export const auditService = {
     return apiClient.get<AuditLogItem[]>('/audit-logs');
   },
 };
+

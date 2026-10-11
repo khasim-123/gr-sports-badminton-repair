@@ -24,3 +24,4 @@ export const employeeService = {
     return apiClient.get<any>(`/employees/${id}/workload`);
   },
 };
+

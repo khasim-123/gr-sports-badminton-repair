@@ -5,7 +5,13 @@
  */
 
 const metaEnv = (import.meta as any).env || {};
-const API_BASE_URL: string = metaEnv.VITE_API_BASE_URL || '/api';
+const API_BASE_URL: string =
+  metaEnv.VITE_API_BASE_URL ||
+  (typeof window !== 'undefined' &&
+  window.location.hostname !== 'localhost' &&
+  window.location.hostname !== '127.0.0.1'
+    ? 'https://badminton-service-backend.onrender.com/api'
+    : '/api');
 const USE_MOCK_API: boolean = false;
 
 export interface ApiResponse<T = any> {
