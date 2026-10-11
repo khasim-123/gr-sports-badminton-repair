@@ -35,6 +35,8 @@ export const CentralLogin: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [authMethod, setAuthMethod] = useState<'OTP' | 'PASSWORD'>('OTP');
   const [showPassword, setShowPassword] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -64,6 +66,7 @@ export const CentralLogin: React.FC = () => {
     setEmail('');
     setPassword('');
     setOtp('');
+    setOtpSent(false);
     if (role === 'CUSTOMER') {
       setAuthMethod('OTP');
     } else {
@@ -124,22 +127,31 @@ export const CentralLogin: React.FC = () => {
     }
   };
 
-  // Smart detection if user types email manually
   const handleEmailChange = (val: string) => {
     setEmail(val);
-    const lower = val.toLowerCase();
-    if (lower.includes('admin') && activeTab !== 'ADMIN') {
-      setActiveTab('ADMIN');
-      setPassword('admin2026');
-      setAuthMethod('PASSWORD');
-    } else if ((lower.includes('employee') || lower.includes('ops') || lower.includes('tech') || lower.includes('staff')) && activeTab !== 'EMPLOYEE') {
-      setActiveTab('EMPLOYEE');
-      setPassword('ops2026');
-      setAuthMethod('PASSWORD');
+    setErrorMessage(null);
+  };
+
+  const handleRequestOtp = async () => {
+    if (!email || !email.includes('@')) {
+      setErrorMessage('Please enter a valid email address first.');
+      return;
+    }
+    setIsSendingOtp(true);
+    setErrorMessage(null);
+    try {
+      const res = await apiClient.post<any>('/auth/otp/request', { identifier: email.trim() });
+      setIsSendingOtp(false);
+      setOtpSent(true);
+      setOtp('');
+      addToast(res.message || `Verification code sent to ${email}`, 'success');
+    } catch (err: any) {
+      setIsSendingOtp(false);
+      setErrorMessage(err.message || 'Failed to dispatch verification email.');
     }
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -149,77 +161,36 @@ export const CentralLogin: React.FC = () => {
     }
 
     if (activeTab === 'CUSTOMER' && authMethod === 'OTP') {
+      if (!otpSent) {
+        await handleRequestOtp();
+        return;
+      }
       if (!otp || otp.length < 6) {
         setErrorMessage('Please enter the 6-digit verification code.');
         return;
       }
-      if (otp === '000000' || otp === '999999') {
-        setErrorMessage('Invalid verification code. Please use demo OTP: 849201');
-        return;
-      }
     } else {
-      if (!password || password.length < 4) {
-        setErrorMessage('Please enter a valid password or security PIN.');
+      if (!password) {
+        setErrorMessage('Please enter your password.');
         return;
       }
     }
 
-    // Determine target role based on current active tab or smart detection
-    let targetRole: UserRole = activeTab;
-    const lowerEmail = email.toLowerCase();
-    if (lowerEmail.includes('admin')) {
-      targetRole = 'ADMIN';
-    } else if (lowerEmail.includes('employee') || lowerEmail.includes('ops') || lowerEmail.includes('tech')) {
-      targetRole = 'EMPLOYEE';
-    }
-
     setIsAuthenticating(true);
-    setAuthStageText('Verifying credentials with GR Sports Security...');
+    setAuthStageText(`Verifying credentials with GR Sports security...`);
 
-    setTimeout(() => {
-      setAuthStageText(`Validating ${targetRole} role permissions...`);
-      setTimeout(() => {
-        setAuthStageText(`Authentication successful! Navigating to ${targetRole} portal...`);
-        setTimeout(() => {
-          setIsAuthenticating(false);
-          if (targetRole === 'CUSTOMER') {
-            loginAsRole('CUSTOMER', email, 'Vikram Malhotra', '+91 99887 76655', 'Tournament Player');
-          } else if (targetRole === 'EMPLOYEE') {
-            loginAsRole('EMPLOYEE', email, 'Rahul Sharma', '+91 98765 43210', 'Field Operations & Stringer');
-          } else {
-            loginAsRole('ADMIN', email, 'Priya Anand', '+91 98451 11223', 'Platform Admin & Operations Lead');
-          }
-        }, 500);
-      }, 500);
-    }, 600);
-  };
-
-  const executeQuickDemoLogin = (role: UserRole) => {
-    setIsAuthenticating(true);
-    setActiveTab(role);
-    setErrorMessage(null);
-
-    if (role === 'CUSTOMER') {
-      setEmail('customer@grsports.com');
-      setAuthStageText('Signing in as Customer (Vikram Malhotra)...');
-      setTimeout(() => {
-        setIsAuthenticating(false);
-        loginAsRole('CUSTOMER', 'customer@grsports.com', 'Vikram Malhotra', '+91 99887 76655', 'Tournament Player');
-      }, 700);
-    } else if (role === 'EMPLOYEE') {
-      setEmail('employee@grsports.com');
-      setAuthStageText('Signing in as Operations Staff (Rahul Sharma)...');
-      setTimeout(() => {
-        setIsAuthenticating(false);
-        loginAsRole('EMPLOYEE', 'employee@grsports.com', 'Rahul Sharma', '+91 98765 43210', 'Field Operations & Stringer');
-      }, 700);
-    } else {
-      setEmail('admin@grsports.com');
-      setAuthStageText('Signing in as Master Admin (Priya Anand)...');
-      setTimeout(() => {
-        setIsAuthenticating(false);
-        loginAsRole('ADMIN', 'admin@grsports.com', 'Priya Anand', '+91 98451 11223', 'Platform Admin');
-      }, 700);
+    try {
+      const session = await authService.login(
+        activeTab === 'CUSTOMER' && authMethod === 'OTP'
+          ? { email: email.trim(), otp: otp.trim(), role: 'CUSTOMER' }
+          : { email: email.trim(), password: password.trim(), role: activeTab }
+      );
+      setIsAuthenticating(false);
+      loginAsRole(session.role, session.email, session.name, session.mobile, session.title);
+      addToast(`Welcome back, ${session.name}!`, 'success');
+    } catch (err: any) {
+      setIsAuthenticating(false);
+      setErrorMessage(err.message || 'Authentication failed. Please check your credentials.');
     }
   };
 
@@ -555,23 +526,62 @@ export const CentralLogin: React.FC = () => {
 
                   {/* OTP Input for Customer */}
                   {activeTab === 'CUSTOMER' && authMethod === 'OTP' ? (
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between items-center text-xs font-bold text-slate-300">
-                        <span>6-Digit Verification Code</span>
-                        <span className="text-[11px] text-emerald-400 font-normal">Enter verification code</span>
-                      </div>
-                      <div className="relative">
-                        <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                        <input
-                          type="text"
-                          maxLength={6}
-                          value={otp}
-                          onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                          placeholder="Enter 6-digit OTP (e.g. 849201)"
-                          required
-                          className="w-full bg-slate-900/80 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white font-mono tracking-widest placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                        />
-                      </div>
+                    <div className="space-y-3">
+                      {!otpSent ? (
+                        <div className="space-y-3 pt-1">
+                          <p className="text-xs text-slate-400">
+                            We will send a secure 6-digit verification code to <span className="text-blue-300 font-semibold">{email || 'your email'}</span>.
+                          </p>
+                          <Button
+                            type="button"
+                            onClick={handleRequestOtp}
+                            isLoading={isSendingOtp}
+                            variant="primary"
+                            className="w-full font-bold shadow-lg"
+                            rightIcon={<Mail className="w-4 h-4" />}
+                          >
+                            Send Verification OTP
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 pt-1">
+                          <div className="flex justify-between items-center text-xs font-bold text-slate-300">
+                            <span>6-Digit Verification Code</span>
+                            <button
+                              type="button"
+                              onClick={handleRequestOtp}
+                              className="text-[11px] text-blue-400 hover:underline font-normal"
+                            >
+                              Resend OTP
+                            </button>
+                          </div>
+                          <div className="relative">
+                            <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <input
+                              type="text"
+                              maxLength={6}
+                              value={otp}
+                              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                              placeholder="Enter 6-digit code from email"
+                              required
+                              className="w-full bg-slate-900/80 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white font-mono tracking-widest text-center placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            />
+                          </div>
+                          <div className="flex justify-between items-center text-[11px] text-slate-400">
+                            <span>Code sent to {email}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOtpSent(false);
+                                setOtp('');
+                              }}
+                              className="text-slate-400 hover:text-white underline"
+                            >
+                              Change Email
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     /* Password Input */
@@ -604,17 +614,22 @@ export const CentralLogin: React.FC = () => {
                   )}
 
                   {/* Submit Button */}
-                  <Button
-                    type="submit"
-                    variant={activeTab === 'CUSTOMER' ? 'primary' : activeTab === 'EMPLOYEE' ? 'secondary' : 'primary'}
-                    size="lg"
-                    className={`w-full font-bold shadow-xl transition-all ${
-                      activeTab === 'ADMIN' ? '!bg-purple-600 hover:!bg-purple-500 !text-white' : ''
-                    }`}
-                    rightIcon={<ArrowRight className="w-4 h-4" />}
-                  >
-                    Authenticate &amp; Enter {activeTab === 'CUSTOMER' ? 'Customer Portal' : activeTab === 'EMPLOYEE' ? 'Operations Portal' : 'Admin Console'}
-                  </Button>
+                  {!(activeTab === 'CUSTOMER' && authMethod === 'OTP' && !otpSent) && (
+                    <Button
+                      type="submit"
+                      variant={activeTab === 'CUSTOMER' ? 'primary' : activeTab === 'EMPLOYEE' ? 'secondary' : 'primary'}
+                      size="lg"
+                      isLoading={isAuthenticating}
+                      className={`w-full font-bold shadow-xl transition-all ${
+                        activeTab === 'ADMIN' ? '!bg-purple-600 hover:!bg-purple-500 !text-white' : ''
+                      }`}
+                      rightIcon={<ArrowRight className="w-4 h-4" />}
+                    >
+                      {activeTab === 'CUSTOMER' && authMethod === 'OTP'
+                        ? 'Verify Code & Enter Customer Portal'
+                        : `Authenticate & Enter ${activeTab === 'CUSTOMER' ? 'Customer Portal' : activeTab === 'EMPLOYEE' ? 'Operations Portal' : 'Admin Console'}`}
+                    </Button>
+                  )}
                 </form>
               )}
             </div>
@@ -706,65 +721,24 @@ export const CentralLogin: React.FC = () => {
           </div>
         </div>
 
-        {/* 1-Click Demo Evaluation Row (Prompt Requirement: realworld scenarios) */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-400 px-1">
-            <span className="flex items-center gap-1.5 text-slate-300">
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              1-Click Instant Persona Switchers (For Fast Evaluation &amp; Testing):
+        {/* Credentials & Access Guidance */}
+        <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-slate-400">
+          <div className="flex items-center gap-2.5">
+            <Shield className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>
+              <strong className="text-white">Secure Multi-Persona Gateway:</strong> Customers authenticate via 6-digit OTP dispatched to their email or password. Staff & Admins authenticate using their assigned portal email and password.
             </span>
-            <span className="text-[11px] text-slate-500 hidden sm:inline">Bypasses manual password typing</span>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Quick Card 1: Customer */}
-            <button
-              onClick={() => executeQuickDemoLogin('CUSTOMER')}
-              className="bg-slate-800/90 hover:bg-slate-750 p-4 rounded-2xl border border-blue-500/30 hover:border-blue-400 text-left transition-all group shadow-md"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded">
-                  Player / Customer
-                </span>
-                <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
-              </div>
-              <p className="font-black text-white text-sm">Vikram Malhotra</p>
-              <p className="text-[11px] text-slate-400 font-mono">customer@grsports.com</p>
-              <p className="text-[10px] text-blue-300 mt-2 font-semibold">Enter Customer Portal →</p>
-            </button>
-
-            {/* Quick Card 2: Operations */}
-            <button
-              onClick={() => executeQuickDemoLogin('EMPLOYEE')}
-              className="bg-slate-800/90 hover:bg-slate-750 p-4 rounded-2xl border border-emerald-500/30 hover:border-emerald-400 text-left transition-all group shadow-md"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
-                  Operations &amp; Tech
-                </span>
-                <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
-              </div>
-              <p className="font-black text-white text-sm">Rahul Sharma</p>
-              <p className="text-[11px] text-slate-400 font-mono">employee@grsports.com</p>
-              <p className="text-[10px] text-emerald-300 mt-2 font-semibold">Enter Operations Portal →</p>
-            </button>
-
-            {/* Quick Card 3: Admin */}
-            <button
-              onClick={() => executeQuickDemoLogin('ADMIN')}
-              className="bg-slate-800/90 hover:bg-slate-750 p-4 rounded-2xl border border-purple-500/30 hover:border-purple-400 text-left transition-all group shadow-md"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
-                  Master Administrator
-                </span>
-                <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
-              </div>
-              <p className="font-black text-white text-sm">Priya Anand</p>
-              <p className="text-[11px] text-slate-400 font-mono">admin@grsports.com</p>
-              <p className="text-[10px] text-purple-300 mt-2 font-semibold">Enter Admin Console →</p>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('CUSTOMER');
+              setCustomerMode('REGISTER');
+            }}
+            className="text-xs text-blue-400 hover:text-blue-300 font-semibold whitespace-nowrap"
+          >
+            New Customer? Register here →
+          </button>
         </div>
       </div>
 
