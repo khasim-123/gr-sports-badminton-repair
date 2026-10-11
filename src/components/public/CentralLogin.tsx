@@ -76,7 +76,7 @@ export const CentralLogin: React.FC = () => {
 
   const handleFetchLocation = () => {
     if (!navigator.geolocation) {
-      addToast('Geolocation is not supported by your browser', 'error');
+      addToast('error', 'Location Error', 'Geolocation is not supported by your browser');
       return;
     }
     setIsFetchingLocation(true);
@@ -85,11 +85,11 @@ export const CentralLogin: React.FC = () => {
         setIsFetchingLocation(false);
         const loc = `GPS Coordinates (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}) - Bengaluru`;
         setRegAddress(loc);
-        addToast('Fetched your current GPS location for doorstep delivery!', 'success');
+        addToast('success', 'Location Detected', 'Fetched your current GPS location for doorstep delivery!');
       },
       () => {
         setIsFetchingLocation(false);
-        addToast('Unable to detect location. Please type your delivery address.', 'warning');
+        addToast('warning', 'Location Warning', 'Unable to detect location. Please type your delivery address.');
       }
     );
   };
@@ -119,7 +119,7 @@ export const CentralLogin: React.FC = () => {
       setTimeout(() => {
         setIsAuthenticating(false);
         loginAsRole('CUSTOMER', regEmail.trim(), regName.trim(), regPhone.trim(), 'Registered Player');
-        addToast(`Welcome to GR Sports, ${regName}! Your account is active.`, 'success');
+        addToast('success', 'Account Created', `Welcome to GR Sports, ${regName}! Your account is active.`);
       }, 600);
     } catch (err: any) {
       setIsAuthenticating(false);
@@ -144,7 +144,7 @@ export const CentralLogin: React.FC = () => {
       setIsSendingOtp(false);
       setOtpSent(true);
       setOtp('');
-      addToast(res.message || `Verification code sent to ${email}`, 'success');
+      addToast('success', 'Verification Code Sent', res.message || `Verification code sent to ${email}`);
     } catch (err: any) {
       setIsSendingOtp(false);
       setErrorMessage(err.message || 'Failed to dispatch verification email.');
@@ -187,7 +187,7 @@ export const CentralLogin: React.FC = () => {
       );
       setIsAuthenticating(false);
       loginAsRole(session.role, session.email, session.name, session.mobile, session.title);
-      addToast(`Welcome back, ${session.name}!`, 'success');
+      addToast('success', 'Authentication Successful', `Welcome back, ${session.name}!`);
     } catch (err: any) {
       setIsAuthenticating(false);
       setErrorMessage(err.message || 'Authentication failed. Please check your credentials.');
