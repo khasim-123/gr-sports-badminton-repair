@@ -20,12 +20,13 @@ class Settings(BaseSettings):
     DEFAULT_FREE_RADIUS_KM: float = 10.0
     DEFAULT_PER_KM_RATE: float = 15.0
     
-    # SMTP Email Configuration
-    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+    # Resend & SMTP Email Configuration (injected via environment variables)
+    RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.resend.com")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
-    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_USER: str = os.getenv("SMTP_USER", "resend")
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
-    SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "noreply@grsports.com")
+    SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "onboarding@resend.dev")
     
     # CORS
     BACKEND_CORS_ORIGINS: list[str] = [

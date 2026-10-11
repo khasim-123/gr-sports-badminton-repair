@@ -16,6 +16,8 @@ services:
         value: postgresql://neondb_owner:npg_AygEc1f4VMSb@ep-divine-dawn-b4jpbxy7.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require
       - key: SECRET_KEY
         generateValue: true
+      - key: RESEND_API_KEY
+        sync: false
 
   # 2. React Vite Frontend Static Site
   - type: web

@@ -66,8 +66,46 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+def send_email_via_resend_api(to_email: str, subject: str, body: str) -> bool:
+    """Dispatches a real email using Resend REST API."""
+    if not settings.RESEND_API_KEY:
+        return False
+    try:
+        import urllib.request
+        import json
+
+        html_body = body.replace("\n", "<br/>") if ("<html" not in body and "<div" not in body and "<p" not in body) else body
+        from_email = settings.SMTP_FROM_EMAIL or "onboarding@resend.dev"
+
+        data = {
+            "from": from_email,
+            "to": [to_email],
+            "subject": subject,
+            "html": html_body
+        }
+        req = urllib.request.Request(
+            "https://api.resend.com/emails",
+            data=json.dumps(data).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {settings.RESEND_API_KEY}",
+                "Content-Type": "application/json",
+                "User-Agent": "GRSportsPlatform/1.0"
+            }
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return r.status in [200, 201]
+    except Exception as e:
+        print(f"[Resend API Note] REST API dispatch result for {to_email}: {e}")
+        return False
+
 def send_email_via_smtp(to_email: str, subject: str, body: str) -> bool:
-    """Dispatches a real email if SMTP settings are configured in environment."""
+    """Dispatches a real email using Resend REST API or SMTP."""
+    # Priority 1: Resend REST API
+    if settings.RESEND_API_KEY:
+        if send_email_via_resend_api(to_email, subject, body):
+            return True
+
+    # Priority 2: SMTP server
     if not settings.SMTP_HOST or not settings.SMTP_USER or not settings.SMTP_PASSWORD:
         return False
     try:
