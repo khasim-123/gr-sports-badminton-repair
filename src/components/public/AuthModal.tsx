@@ -33,33 +33,30 @@ export const AuthModal: React.FC = () => {
 
   // Customer State
   const [step, setStep] = useState<'EMAIL' | 'OTP' | 'PROFILE'>('EMAIL');
-  const [email, setEmail] = useState('vikram.m@example.com');
+  const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
-  const [name, setName] = useState('Vikram Malhotra');
-  const [mobile, setMobile] = useState('+91 99887 76655');
-  const [address, setAddress] = useState('Flat 402, Green Glen, Bellandur, Bengaluru');
+  const [name, setName] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [address, setAddress] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(45);
   const [isNewUser, setIsNewUser] = useState(false);
 
   // Staff / Admin Password State
-  const [staffEmail, setStaffEmail] = useState('employee@grsports.com');
-  const [staffPassword, setStaffPassword] = useState('ops2026');
-  const [adminEmail, setAdminEmail] = useState('admin@grsports.com');
-  const [adminPassword, setAdminPassword] = useState('admin2026');
+  const [staffEmail, setStaffEmail] = useState('');
+  const [staffPassword, setStaffPassword] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   // Sync default credentials if role changes
   React.useEffect(() => {
     setErrorMsg(null);
-    if (authModalRole === 'EMPLOYEE') {
-      setStaffEmail('employee@grsports.com');
-      setStaffPassword('ops2026');
-    } else if (authModalRole === 'ADMIN') {
-      setAdminEmail('admin@grsports.com');
-      setAdminPassword('admin2026');
-    }
+    setStaffEmail('');
+    setStaffPassword('');
+    setAdminEmail('');
+    setAdminPassword('');
   }, [authModalRole]);
 
   if (!authModalOpen) return null;

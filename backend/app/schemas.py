@@ -320,3 +320,18 @@ class AuthSessionResponse(BaseModel):
 
 class OtpRequest(BaseModel):
     identifier: str
+
+class CustomerCreate(BaseModel):
+    name: str
+    email: str
+    phone: str
+    address: Optional[str] = None
+    password: Optional[str] = None
+
+class CustomerResponse(BaseModel):
+    id: str
+    name: str
+    email: str
+    phone: str
+    address: Optional[str] = None
+    createdAt: str

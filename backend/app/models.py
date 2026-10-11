@@ -59,6 +59,18 @@ class ServiceRequestModel(Base):
     review = Column(JSON, nullable=True)
 
 
+class CustomerModel(Base):
+    __tablename__ = "customers"
+
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
+    phone = Column(String, nullable=False)
+    address = Column(String, nullable=True)
+    password = Column(String, nullable=True)
+    createdAt = Column(String, nullable=False)
+
+
 class EmployeeModel(Base):
     __tablename__ = "employees"
 

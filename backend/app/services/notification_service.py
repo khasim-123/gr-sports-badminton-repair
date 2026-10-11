@@ -61,6 +61,34 @@ def log_audit(
     db.refresh(log)
     return log
 
+from app.config import settings
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def send_email_via_smtp(to_email: str, subject: str, body: str) -> bool:
+    """Dispatches a real email if SMTP settings are configured in environment."""
+    if not settings.SMTP_HOST or not settings.SMTP_USER or not settings.SMTP_PASSWORD:
+        return False
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["From"] = settings.SMTP_FROM_EMAIL
+        msg["To"] = to_email
+        msg["Subject"] = subject
+
+        mime_type = "html" if ("<html" in body or "<div" in body or "<p" in body) else "plain"
+        msg.attach(MIMEText(body, mime_type))
+
+        server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10)
+        server.starttls()
+        server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+        server.sendmail(settings.SMTP_FROM_EMAIL, [to_email], msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"[SMTP Warning] Failed to send email to {to_email}: {e}")
+        return False
+
 def render_and_simulate_email(
     db: Session,
     template_id: str,
@@ -79,14 +107,18 @@ def render_and_simulate_email(
         subject = subject.replace(placeholder, str(v))
         body = body.replace(placeholder, str(v))
 
-    # Log email simulation audit
+    # Attempt real SMTP send if configured
+    smtp_sent = send_email_via_smtp(recipient_email, subject, body)
+
+    # Log email audit
+    status_label = "Dispatched real SMTP email" if smtp_sent else "Dispatched simulated email"
     log_audit(
         db=db,
         user="System Mailer",
         role="ADMIN",
-        action=f"Dispatched simulated email: {template.name}",
+        action=f"{status_label}: {template.name}",
         request_id=str(variables.get("request_id", "SYSTEM")),
-        details=f"To: {recipient_email} | Subject: {subject}"
+        details=f"To: {recipient_email} | Subject: {subject} | SMTP Delivered: {smtp_sent}"
     )
 
     return {
@@ -95,5 +127,6 @@ def render_and_simulate_email(
         "subject": subject,
         "body": body,
         "templateId": template_id,
-        "message": f"Email successfully simulated to {recipient_email}"
+        "smtpSent": smtp_sent,
+        "message": f"Email {'delivered via SMTP' if smtp_sent else 'simulated'} to {recipient_email}"
     }

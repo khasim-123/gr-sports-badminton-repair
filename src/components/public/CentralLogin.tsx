@@ -19,33 +19,36 @@ import {
   HelpCircle,
   Smartphone,
   Eye,
-  EyeOff
+  EyeOff,
+  MapPin,
+  Phone
 } from 'lucide-react';
 import { Button } from '../common/Button';
 import { GRSportsLogo } from '../common/GRSportsLogo';
+import { apiClient } from '../../services/apiClient';
+import { authService } from '../../services/authService';
 
 export const CentralLogin: React.FC = () => {
   const { loginAsRole, setActiveView, addToast, loginRoleTab, setLoginRoleTab, distanceConfig } = useApp();
 
   const [activeTab, setActiveTab] = useState<UserRole>(loginRoleTab || 'CUSTOMER');
-  const [email, setEmail] = useState(
-    loginRoleTab === 'ADMIN'
-      ? 'admin@grsports.com'
-      : loginRoleTab === 'EMPLOYEE'
-      ? 'employee@grsports.com'
-      : 'customer@grsports.com'
-  );
-  const [password, setPassword] = useState(
-    loginRoleTab === 'ADMIN' ? 'admin2026' : loginRoleTab === 'EMPLOYEE' ? 'ops2026' : 'player2026'
-  );
-  const [otp, setOtp] = useState('849201');
-  const [authMethod, setAuthMethod] = useState<'OTP' | 'PASSWORD'>(
-    loginRoleTab === 'CUSTOMER' ? 'OTP' : 'PASSWORD'
-  );
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [authMethod, setAuthMethod] = useState<'OTP' | 'PASSWORD'>('OTP');
   const [showPassword, setShowPassword] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authStageText, setAuthStageText] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Customer Mode: LOGIN vs REGISTER
+  const [customerMode, setCustomerMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
+  const [regName, setRegName] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regAddress, setRegAddress] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
   React.useEffect(() => {
     if (loginRoleTab) {
@@ -58,18 +61,66 @@ export const CentralLogin: React.FC = () => {
     setActiveTab(role);
     setLoginRoleTab(role);
     setErrorMessage(null);
+    setEmail('');
+    setPassword('');
+    setOtp('');
     if (role === 'CUSTOMER') {
-      setEmail('customer@grsports.com');
-      setPassword('player2026');
       setAuthMethod('OTP');
-    } else if (role === 'EMPLOYEE') {
-      setEmail('employee@grsports.com');
-      setPassword('ops2026');
+    } else {
       setAuthMethod('PASSWORD');
-    } else if (role === 'ADMIN') {
-      setEmail('admin@grsports.com');
-      setPassword('admin2026');
-      setAuthMethod('PASSWORD');
+    }
+  };
+
+  const handleFetchLocation = () => {
+    if (!navigator.geolocation) {
+      addToast('Geolocation is not supported by your browser', 'error');
+      return;
+    }
+    setIsFetchingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setIsFetchingLocation(false);
+        const loc = `GPS Coordinates (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}) - Bengaluru`;
+        setRegAddress(loc);
+        addToast('Fetched your current GPS location for doorstep delivery!', 'success');
+      },
+      () => {
+        setIsFetchingLocation(false);
+        addToast('Unable to detect location. Please type your delivery address.', 'warning');
+      }
+    );
+  };
+
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    if (!regName.trim() || !regEmail.trim() || !regPhone.trim()) {
+      setErrorMessage('Please provide your name, email address, and mobile number.');
+      return;
+    }
+    setIsAuthenticating(true);
+    setAuthStageText('Creating customer account & profile...');
+
+    try {
+      try {
+        await apiClient.post('/auth/register-customer', {
+          name: regName.trim(),
+          email: regEmail.trim(),
+          phone: regPhone.trim(),
+          address: regAddress.trim(),
+          password: regPassword || 'player2026'
+        });
+      } catch (err) {
+        console.warn('API customer register fallback', err);
+      }
+      setTimeout(() => {
+        setIsAuthenticating(false);
+        loginAsRole('CUSTOMER', regEmail.trim(), regName.trim(), regPhone.trim(), 'Registered Player');
+        addToast(`Welcome to GR Sports, ${regName}! Your account is active.`, 'success');
+      }, 600);
+    } catch (err: any) {
+      setIsAuthenticating(false);
+      setErrorMessage(err.message || 'Registration failed');
     }
   };
 
@@ -310,8 +361,149 @@ export const CentralLogin: React.FC = () => {
                   <p className="font-bold text-white text-sm">{authStageText}</p>
                   <p className="text-xs text-slate-400">Securely routing your session...</p>
                 </div>
+              ) : activeTab === 'CUSTOMER' && customerMode === 'REGISTER' ? (
+                /* NEW CUSTOMER REGISTRATION FORM */
+                <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
+                  <div className="flex rounded-xl bg-slate-900/90 p-1 border border-slate-700 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setCustomerMode('LOGIN')}
+                      className="flex-1 py-2 rounded-lg font-medium text-slate-400 hover:text-white transition-all"
+                    >
+                      Existing Customer Sign In
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCustomerMode('REGISTER')}
+                      className="flex-1 py-2 rounded-lg font-bold bg-emerald-600 text-white shadow transition-all"
+                    >
+                      ✍️ New Customer Register
+                    </button>
+                  </div>
+
+                  {/* Full Name */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-300">Full Name *</label>
+                    <div className="relative">
+                      <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <input
+                        type="text"
+                        value={regName}
+                        onChange={(e) => setRegName(e.target.value)}
+                        placeholder="Enter your full name"
+                        required
+                        className="w-full bg-slate-900/80 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Mobile Number */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-300">Mobile Phone Number *</label>
+                    <div className="relative">
+                      <Phone className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <input
+                        type="tel"
+                        value={regPhone}
+                        onChange={(e) => setRegPhone(e.target.value)}
+                        placeholder="+91 98765 43210"
+                        required
+                        className="w-full bg-slate-900/80 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Email Address */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-300">Email Address *</label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <input
+                        type="email"
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                        placeholder="yourname@gmail.com"
+                        required
+                        className="w-full bg-slate-900/80 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Doorstep Delivery Address & GPS fetch */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-xs font-bold text-slate-300">
+                      <span>Doorstep Pickup &amp; Delivery Address</span>
+                      <button
+                        type="button"
+                        onClick={handleFetchLocation}
+                        disabled={isFetchingLocation}
+                        className="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-semibold"
+                      >
+                        <MapPin className="w-3 h-3" />
+                        {isFetchingLocation ? 'Fetching GPS...' : 'Use Current GPS Location'}
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <MapPin className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
+                      <textarea
+                        value={regAddress}
+                        onChange={(e) => setRegAddress(e.target.value)}
+                        placeholder="House / Flat / Street address in Bengaluru"
+                        rows={2}
+                        className="w-full bg-slate-900/80 border border-slate-700 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Password */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-300">Create Account Password (Optional)</label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <input
+                        type="password"
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        placeholder="Choose a password or 4-digit PIN"
+                        className="w-full bg-slate-900/80 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Submit Registration */}
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="lg"
+                    className="w-full font-bold shadow-xl !bg-emerald-600 hover:!bg-emerald-500 !text-white transition-all mt-2"
+                    rightIcon={<ArrowRight className="w-4 h-4" />}
+                  >
+                    Create Account &amp; Enter Customer Portal
+                  </Button>
+                </form>
               ) : (
+                /* REGULAR LOGIN FORM */
                 <form onSubmit={handleLoginSubmit} className="space-y-4">
+                  {/* Mode switcher for Customer */}
+                  {activeTab === 'CUSTOMER' && (
+                    <div className="flex rounded-xl bg-slate-900/90 p-1 border border-slate-700 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setCustomerMode('LOGIN')}
+                        className="flex-1 py-2 rounded-lg font-bold bg-blue-600 text-white shadow transition-all"
+                      >
+                        Existing Customer Sign In
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCustomerMode('REGISTER')}
+                        className="flex-1 py-2 rounded-lg font-medium text-slate-400 hover:text-white transition-all"
+                      >
+                        ✍️ New Customer? Register
+                      </button>
+                    </div>
+                  )}
+
                   {/* Email / Username Input */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
@@ -326,10 +518,10 @@ export const CentralLogin: React.FC = () => {
                         onChange={(e) => handleEmailChange(e.target.value)}
                         placeholder={
                           activeTab === 'CUSTOMER'
-                            ? 'e.g. customer@grsports.com'
+                            ? 'Enter your email address'
                             : activeTab === 'EMPLOYEE'
-                            ? 'e.g. employee@grsports.com'
-                            : 'e.g. admin@grsports.com'
+                            ? 'Enter employee email (e.g. rajesh.k@grsports.in)'
+                            : 'Enter admin email (e.g. admin@grsports.com)'
                         }
                         required
                         className="w-full bg-slate-900/80 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -366,7 +558,7 @@ export const CentralLogin: React.FC = () => {
                     <div className="space-y-1.5">
                       <div className="flex justify-between items-center text-xs font-bold text-slate-300">
                         <span>6-Digit Verification Code</span>
-                        <span className="text-[11px] text-emerald-400 font-normal">Demo OTP: 849201</span>
+                        <span className="text-[11px] text-emerald-400 font-normal">Enter verification code</span>
                       </div>
                       <div className="relative">
                         <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -375,7 +567,7 @@ export const CentralLogin: React.FC = () => {
                           maxLength={6}
                           value={otp}
                           onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                          placeholder="849201"
+                          placeholder="Enter 6-digit OTP (e.g. 849201)"
                           required
                           className="w-full bg-slate-900/80 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white font-mono tracking-widest placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                         />
@@ -387,7 +579,7 @@ export const CentralLogin: React.FC = () => {
                       <div className="flex justify-between items-center text-xs font-bold text-slate-300">
                         <span>{activeTab === 'ADMIN' ? 'Admin Master Passkey' : 'Security Password'}</span>
                         <span className="text-[11px] text-slate-500 font-mono">
-                          {activeTab === 'ADMIN' ? 'demo: admin2026' : activeTab === 'EMPLOYEE' ? 'demo: ops2026' : 'demo: player2026'}
+                          {activeTab === 'ADMIN' ? 'Admin PIN' : activeTab === 'EMPLOYEE' ? 'Staff PIN' : 'Password'}
                         </span>
                       </div>
                       <div className="relative">
@@ -396,7 +588,7 @@ export const CentralLogin: React.FC = () => {
                           type={showPassword ? 'text' : 'password'}
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
-                          placeholder="••••••••"
+                          placeholder="Enter your security password"
                           required
                           className="w-full bg-slate-900/80 border border-slate-700 rounded-xl pl-10 pr-10 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                         />
