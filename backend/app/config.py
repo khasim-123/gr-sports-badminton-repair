@@ -8,7 +8,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     
     # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./badminton.db")
+    DATABASE_URL: str = os.getenv(
+        "DATABASE_URL",
+        "postgresql+psycopg2://postgres:Khasim%40123@localhost:5432/badminton_db"
+    )
     
     # Master Shop Location (Indiranagar, Bengaluru)
     DEFAULT_SHOP_NAME: str = "GR Sports Master Hub, 80 Feet Road, Indiranagar, Bengaluru"
@@ -32,3 +35,4 @@ class Settings(BaseSettings):
         case_sensitive = True
 
 settings = Settings()
+
