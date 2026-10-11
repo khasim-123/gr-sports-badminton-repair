@@ -1239,12 +1239,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error('Failed to create employee via API:', err);
     });
 
-    logAudit('Admin', 'ADMIN', `Added ${empData.userRole === 'ADMIN' ? 'admin' : 'employee'}: ${empData.name}`, 'SYSTEM', `Email: ${empData.email}`);
-    addToast('success', `${empData.userRole === 'ADMIN' ? 'Admin' : 'Employee'} Added`, `${empData.name} (${empData.email}) created successfully.`);
+    logAudit('Admin', 'ADMIN', `Added ${empData.userRole === 'ADMIN' ? 'admin' : 'employee'}: ${empData.name}`, 'SYSTEM', `Email: ${empData.email} | Credentials Email Dispatched`);
+    addToast('success', `${empData.userRole === 'ADMIN' ? 'Admin' : 'Employee'} Created`, `${empData.name} created! Login credentials dispatched to ${empData.email}.`);
     addNotification({
       type: 'system',
-      title: 'New Team Member Added',
-      message: `${empData.name} has been added as ${empData.userRole === 'ADMIN' ? 'Admin' : 'Employee'}.`,
+      title: `New ${empData.userRole === 'ADMIN' ? 'Admin' : 'Employee'} Added`,
+      message: `${empData.name} (${empData.email}) added as ${empData.role}. Login credentials dispatched to their email address.`,
       targetRoles: ['ADMIN'],
     });
   };

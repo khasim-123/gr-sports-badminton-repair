@@ -1667,20 +1667,25 @@ export const AdminPortal: React.FC = () => {
                   )}
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Portal Password (Optional)
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span>Temporary Access Password</span>
+                      <span className="text-[10px] text-emerald-600 font-semibold">Auto-emailed to employee</span>
                     </label>
                     <input
-                      type="password"
+                      type="text"
                       value={teamPassword}
                       onChange={(e) => setTeamPassword(e.target.value)}
-                      placeholder="Default: grsports2026"
+                      placeholder="Leave blank to auto-generate (Emp@2026)"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500 outline-none font-medium"
                     />
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-2">
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                  <span className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-blue-600" />
+                    Official login credentials &amp; portal link will be emailed to the user upon creation.
+                  </span>
                   <Button
                     type="submit"
                     variant="primary"
@@ -1688,7 +1693,7 @@ export const AdminPortal: React.FC = () => {
                     className={teamUserRole === 'ADMIN' ? 'bg-purple-600 hover:bg-purple-700' : ''}
                     leftIcon={<Plus className="w-4 h-4" />}
                   >
-                    {teamUserRole === 'ADMIN' ? 'Register Administrator Account' : 'Register Employee Account'}
+                    {teamUserRole === 'ADMIN' ? 'Create Admin & Send Credentials' : 'Create Employee & Send Credentials'}
                   </Button>
                 </div>
               </form>

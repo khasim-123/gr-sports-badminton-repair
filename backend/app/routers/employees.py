@@ -60,20 +60,50 @@ def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db)):
     db.refresh(new_emp)
 
     role_label = "Admin" if payload.userRole == "ADMIN" else "Employee"
+    temp_password = payload.password.strip() if (payload.password and payload.password.strip()) else "Emp@2026"
+    new_emp.password = temp_password
+    db.commit()
+
+    portal_url = "https://badminton-service-platform.onrender.com"
+    email_subject = f"Welcome to GR Sports - Your {role_label} Account Credentials"
+    email_body = f"""Hello {new_emp.name},
+
+Welcome to the GR Sports Team! Your official {role_label} account has been created by the Administrator.
+
+Here are your account credentials to access the platform:
+--------------------------------------------------
+Official Portal: {portal_url}
+Registered Email: {new_emp.email}
+Initial Password / PIN: {temp_password}
+Role / Designation: {new_emp.role} ({role_label})
+--------------------------------------------------
+
+Instructions:
+1. Navigate to the portal link above.
+2. Sign in using your registered email and temporary password under the '{'Master Admin' if payload.userRole == 'ADMIN' else 'Operations Staff'}' tab.
+3. For your security, please update your password after your first login.
+
+Best regards,
+GR Sports Operations & Management Team
+"""
+
+    from app.services.notification_service import send_email_via_smtp
+    smtp_sent = send_email_via_smtp(new_emp.email, email_subject, email_body)
+
     log_audit(
         db=db,
         user="Admin",
         role="ADMIN",
-        action=f"Created {role_label}: {payload.name}",
+        action=f"Created {role_label} & Dispatched Credentials Email: {payload.name}",
         request_id="SYSTEM",
-        details=f"Email: {payload.email} | Phone: {payload.phone}"
+        details=f"Email: {payload.email} | Phone: {payload.phone} | SMTP Delivered: {smtp_sent}"
     )
 
     create_notification(
         db=db,
         type_="system",
-        title=f"New {role_label} Added",
-        message=f"{payload.name} has been added to the team as {payload.role} ({role_label}).",
+        title=f"New {role_label} Created",
+        message=f"{payload.name} ({new_emp.email}) added as {payload.role}. Login credentials {'delivered via SMTP' if smtp_sent else 'simulated'} to {new_emp.email}.",
         request_id="SYSTEM",
         target_roles=["ADMIN"]
     )
