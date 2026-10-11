@@ -24,3 +24,12 @@ yarn-error.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Python & SQLite
+__pycache__/
+*.py[cod]
+*$py.class
+*.db
+*.sqlite3
+.venv/
+env/
