@@ -30,8 +30,6 @@ services:
   - type: web
     name: badminton-service-platform
     env: static
-    region: oregon
-    plan: free
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
     routes:
