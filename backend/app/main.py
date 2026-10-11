@@ -69,7 +69,7 @@ def health_check():
     return {
         "status": "healthy",
         "platform": "GR Sports Badminton Service Platform",
-        "database": "SQLite / SQLAlchemy connected"
+        "database": f"{engine.name.upper()} / SQLAlchemy connected"
     }
 
 @app.get("/api/stats")
