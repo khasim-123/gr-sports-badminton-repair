@@ -144,7 +144,15 @@ export const CentralLogin: React.FC = () => {
       setIsSendingOtp(false);
       setOtpSent(true);
       setOtp('');
-      addToast('success', 'Verification Code Sent', res.message || `Verification code sent to ${email}`);
+      if (res.smtpSent === false) {
+        addToast(
+          'warning',
+          'Sandbox Email Notice',
+          `Resend free tier only delivers to registered owner (dmeeravali191@gmail.com). Sandbox OTP: ${res.otp || 'Available in console'}`
+        );
+      } else {
+        addToast('success', 'Verification Code Sent', res.message || `Verification code sent to ${email}`);
+      }
     } catch (err: any) {
       setIsSendingOtp(false);
       setErrorMessage(err.message || 'Failed to dispatch verification email.');

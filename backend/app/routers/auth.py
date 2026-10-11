@@ -130,8 +130,7 @@ def request_otp(payload: OtpRequest, db: Session = Depends(get_db)):
     identifier = payload.identifier.strip()
     generated_otp = str(random.randint(100000, 999999))
 
-    # Simulate email
-    render_and_simulate_email(
+    email_res = render_and_simulate_email(
         db=db,
         template_id="TPL-01",
         recipient_email=identifier,
@@ -144,7 +143,8 @@ def request_otp(payload: OtpRequest, db: Session = Depends(get_db)):
     return {
         "success": True,
         "message": f"Verification code sent to {identifier}",
-        "otp": generated_otp  # returned for testing/development convenience
+        "otp": generated_otp,  # returned for testing/development convenience
+        "smtpSent": email_res.get("smtpSent", False)
     }
 
 @router.post("/logout")
