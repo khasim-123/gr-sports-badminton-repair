@@ -48,7 +48,7 @@ export const App: React.FC = () => {
 
   return (
     <DeviceFrame>
-      <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900 font-sans selection:bg-blue-600 selection:text-white">
+      <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900 font-sans selection:bg-blue-600 selection:text-white overflow-x-hidden max-w-[100vw]">
         {/* Context-Aware Navigation Bar */}
         <Navbar />
 

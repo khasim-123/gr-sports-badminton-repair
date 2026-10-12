@@ -3,10 +3,24 @@
 @tailwind utilities;
 
 @layer base {
+  html,
+  body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
   body {
     @apply antialiased bg-slate-50 text-slate-900;
     font-family: 'Inter', 'Manrope', system-ui, -apple-system, sans-serif;
   }
+}
+
+/* Custom scrollbar utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Custom subtle animations */

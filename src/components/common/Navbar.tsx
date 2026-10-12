@@ -100,8 +100,8 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs">
-      <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs w-full overflow-x-clip">
+      <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Left: Brand / Logo */}
         <div className="flex items-center gap-3 shrink-0">
           <button
@@ -114,7 +114,7 @@ export const Navbar: React.FC = () => {
         </div>
 
         {/* Center: Context-Aware Navigation (Full width, zero scrollbars) */}
-        <div className="hidden md:flex items-center gap-1.5 text-xs font-semibold">
+        <div className="hidden md:flex items-center gap-1 text-xs font-semibold min-w-0 overflow-x-auto no-scrollbar py-1">
           {!isLoggedIn ? (
             /* Unauthenticated Public Navigation (NO duplicate portals button) */
             <>
@@ -226,10 +226,10 @@ export const Navbar: React.FC = () => {
                 <>
                   {[
                     { id: 'dashboard', label: 'Dashboard', count: null },
-                    { id: 'my_requests', label: 'All Requests (Summary)', count: requests.length },
+                    { id: 'my_requests', label: 'All Requests', count: requests.length },
                     { id: 'pickups', label: 'Pickups', count: employeePickupCount },
-                    { id: 'getting', label: 'Getting Jobs', count: employeeGettingCount },
-                    { id: 'repair', label: 'Repair & Inspect', count: employeeRepairCount },
+                    { id: 'getting', label: 'Stringing', count: employeeGettingCount },
+                    { id: 'repair', label: 'Repairs', count: employeeRepairCount },
                     { id: 'deliveries', label: 'Deliveries', count: employeeDeliveryCount },
                     { id: 'payments', label: 'Payments', count: employeePaymentCount },
                   ].map((tab) => (
@@ -239,7 +239,7 @@ export const Navbar: React.FC = () => {
                         setActiveView('employee_portal');
                         setEmployeeSubView(tab.id);
                       }}
-                      className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                      className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1 whitespace-nowrap shrink-0 ${
                         activeView === 'employee_portal' && employeeSubView === tab.id
                           ? 'bg-emerald-600 text-white font-bold shadow-2xs'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
