@@ -353,105 +353,8 @@ export const Navbar: React.FC = () => {
 
         {/* Right: Actions, Identity & Controls */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Notification Bell Dropdown (User Requirement: Notification System) */}
-          <div className="relative">
-            <button
-              onClick={() => setNotificationsOpen(!notificationsOpen)}
-              className="p-2 rounded-xl text-slate-600 hover:text-blue-600 hover:bg-slate-100 transition-colors border border-slate-200 relative"
-              title="Notifications"
-            >
-              <Bell className="w-4 h-4" />
-              {roleUnreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
-                  {roleUnreadCount}
-                </span>
-              )}
-            </button>
-
-            {/* Notification Dropdown Popover */}
-            {notificationsOpen && (
-              <div
-                className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 z-50 space-y-3 animate-in fade-in zoom-in-95"
-              >
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-blue-600" />
-                    <h4 className="text-xs font-bold text-slate-900">Notifications</h4>
-                    {roleUnreadCount > 0 && (
-                      <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.2 rounded-full">
-                        {roleUnreadCount} new
-                      </span>
-                    )}
-                  </div>
-                  {roleNotifications.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => markAllNotificationsRead()}
-                      className="text-[11px] text-blue-600 hover:underline font-semibold"
-                    >
-                      Mark all as read
-                    </button>
-                  )}
-                </div>
-
-                {roleNotifications.length === 0 ? (
-                  <p className="text-xs text-slate-500 py-6 text-center">
-                    No new notifications right now.
-                  </p>
-                ) : (
-                  <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
-                    {roleNotifications.map((notif) => (
-                      <div
-                        key={notif.id}
-                        onClick={() => {
-                          markNotificationRead(notif.id);
-                          if (notif.requestId) {
-                            openRequestDetail(notif.requestId);
-                            setNotificationsOpen(false);
-                          }
-                        }}
-                        className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${
-                          !notif.isRead
-                            ? 'bg-blue-50/70 border-blue-200'
-                            : 'bg-slate-50/50 border-slate-100 hover:bg-slate-100'
-                        }`}
-                      >
-                        <div className="flex justify-between items-start gap-2">
-                          <p className={`font-bold ${!notif.isRead ? 'text-blue-900' : 'text-slate-800'}`}>
-                            {notif.title}
-                          </p>
-                          <span className="text-[10px] text-slate-400 shrink-0 font-mono">
-                            {notif.timestamp}
-                          </span>
-                        </div>
-                        <p className="text-slate-600 mt-1 text-[11px] leading-relaxed">
-                          {notif.message}
-                        </p>
-                        {notif.requestId && (
-                          <span className="inline-block mt-1 text-[10px] font-mono font-bold text-blue-700 bg-white px-1.5 py-0.2 rounded border border-blue-200">
-                            View {notif.requestId} →
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Court QR Poster Button */}
-          <button
-            onClick={() => setQrModalOpen(true)}
-            className="p-2 rounded-xl text-slate-600 hover:text-blue-600 hover:bg-slate-100 transition-colors border border-slate-200"
-            title="Scan Physical Court Poster QR"
-          >
-            <QrCode className="w-4 h-4" />
-          </button>
-
-          {/* Conditional Auth Actions */}
           {!isLoggedIn ? (
-            /* Unauthenticated View: Single Non-Redundant Action Button */
+            /* Unauthenticated Public View: Clean, Zero Confusing Bells/Icons */
             <div className="flex items-center gap-2">
               {activeView === 'login' ? (
                 /* When already on Central Login: show Back to Home */
@@ -466,7 +369,7 @@ export const Navbar: React.FC = () => {
                   <span>Back to Home</span>
                 </button>
               ) : (
-                /* On Public Landing Page: single prominent Sign In button (Customer Login Popup Only) */
+                /* On Public Landing Page: single prominent Sign In button */
                 <button
                   onClick={() => openAuthModal('CUSTOMER')}
                   className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-blue-500/20 transition-all hover:scale-102"
@@ -488,8 +391,104 @@ export const Navbar: React.FC = () => {
               )}
             </div>
           ) : (
-            /* Authenticated View: User Identity Pill + Logout Button (NO home icon kicking out of portal!) */
+            /* Authenticated Portal View: Role-Specific Notification Bell + QR + User Identity + Logout */
             <div className="flex items-center gap-2">
+              {/* Notification Bell Dropdown (Authenticated Users Only) */}
+              <div className="relative">
+                <button
+                  onClick={() => setNotificationsOpen(!notificationsOpen)}
+                  className="p-2 rounded-xl text-slate-600 hover:text-blue-600 hover:bg-slate-100 transition-colors border border-slate-200 relative"
+                  title="Notifications"
+                >
+                  <Bell className="w-4 h-4" />
+                  {roleUnreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
+                      {roleUnreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Notification Dropdown Popover */}
+                {notificationsOpen && (
+                  <div
+                    className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 z-50 space-y-3 animate-in fade-in zoom-in-95"
+                  >
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <Bell className="w-4 h-4 text-blue-600" />
+                        <h4 className="text-xs font-bold text-slate-900">Notifications</h4>
+                        {roleUnreadCount > 0 && (
+                          <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.2 rounded-full">
+                            {roleUnreadCount} new
+                          </span>
+                        )}
+                      </div>
+                      {roleNotifications.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => markAllNotificationsRead()}
+                          className="text-[11px] text-blue-600 hover:underline font-semibold"
+                        >
+                          Mark all as read
+                        </button>
+                      )}
+                    </div>
+
+                    {roleNotifications.length === 0 ? (
+                      <p className="text-xs text-slate-500 py-6 text-center">
+                        No new notifications right now.
+                      </p>
+                    ) : (
+                      <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+                        {roleNotifications.map((notif) => (
+                          <div
+                            key={notif.id}
+                            onClick={() => {
+                              markNotificationRead(notif.id);
+                              if (notif.requestId) {
+                                openRequestDetail(notif.requestId);
+                                setNotificationsOpen(false);
+                              }
+                            }}
+                            className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${
+                              !notif.isRead
+                                ? 'bg-blue-50/70 border-blue-200'
+                                : 'bg-slate-50/50 border-slate-100 hover:bg-slate-100'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start gap-2">
+                              <p className={`font-bold ${!notif.isRead ? 'text-blue-900' : 'text-slate-800'}`}>
+                                {notif.title}
+                              </p>
+                              <span className="text-[10px] text-slate-400 shrink-0 font-mono">
+                                {notif.timestamp}
+                              </span>
+                            </div>
+                            <p className="text-slate-600 mt-1 text-[11px] leading-relaxed">
+                              {notif.message}
+                            </p>
+                            {notif.requestId && (
+                              <span className="inline-block mt-1 text-[10px] font-mono font-bold text-blue-700 bg-white px-1.5 py-0.2 rounded border border-blue-200">
+                                View {notif.requestId} →
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Court QR Poster Button */}
+              <button
+                onClick={() => setQrModalOpen(true)}
+                className="p-2 rounded-xl text-slate-600 hover:text-blue-600 hover:bg-slate-100 transition-colors border border-slate-200"
+                title="Scan Physical Court Poster QR"
+              >
+                <QrCode className="w-4 h-4" />
+              </button>
+
               {/* User Profile Pill */}
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-xs">
                 <div className={`w-2 h-2 rounded-full ${
