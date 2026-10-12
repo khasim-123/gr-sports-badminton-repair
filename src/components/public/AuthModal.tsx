@@ -16,7 +16,8 @@ import {
   Lock,
   Zap,
   Eye,
-  EyeOff
+  EyeOff,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '../common/Button';
 import { apiClient } from '../../services/apiClient';
@@ -30,11 +31,16 @@ export const AuthModal: React.FC = () => {
     setAuthModalRole,
     loginWithEmailOtp,
     loginAsRole,
-    addToast
+    addToast,
+    pendingWizardLaunch,
+    wizardPrefill,
   } = useApp();
 
   // Customer State
   const [step, setStep] = useState<'EMAIL' | 'OTP' | 'PROFILE'>('EMAIL');
+  const [customerAuthMode, setCustomerAuthMode] = useState<'OTP' | 'PASSWORD'>('OTP');
+  const [customerPassword, setCustomerPassword] = useState('');
+  const [showCustomerPassword, setShowCustomerPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
@@ -113,6 +119,33 @@ export const AuthModal: React.FC = () => {
     } catch (err: any) {
       setIsLoading(false);
       setErrorMsg(err.message || 'Verification failed. Please check the code sent to your email.');
+    }
+  };
+
+  const handleCustomerPasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !email.includes('@')) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
+    }
+    if (!customerPassword) {
+      setErrorMsg('Please enter your account password.');
+      return;
+    }
+    setIsLoading(true);
+    setErrorMsg(null);
+    try {
+      const session = await authService.login({
+        email: email.trim(),
+        password: customerPassword.trim(),
+        role: 'CUSTOMER',
+      });
+      setIsLoading(false);
+      setAuthModalOpen(false);
+      loginAsRole('CUSTOMER', session.email, session.name, session.mobile, session.title);
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMsg(err.message || 'Authentication failed. Please check your credentials.');
     }
   };
 
@@ -291,41 +324,158 @@ export const AuthModal: React.FC = () => {
             <>
               {step === 'EMAIL' && (
                 <div className="space-y-4">
-                  <form onSubmit={handleSendOtp} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                        Email Address
-                      </label>
-                      <div className="relative">
-                        <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="email"
-                          value={email}
-                          onChange={(e) => {
-                            setEmail(e.target.value);
-                            setErrorMsg(null);
-                          }}
-                          placeholder="Enter your email address"
-                          required
-                          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        />
+                  {/* Booking in Progress Banner */}
+                  {pendingWizardLaunch && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-900 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+                        <div>
+                          <p className="font-bold">Doorstep Booking in Progress</p>
+                          {wizardPrefill?.batBrand && (
+                            <p className="text-[11px] text-blue-700">
+                              {wizardPrefill.batBrand} {wizardPrefill.batModel} {wizardPrefill.stringType ? `• ${wizardPrefill.stringType} @ ${wizardPrefill.stringTension} lbs` : ''}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-[11px] text-slate-500 mt-1.5">
-                        Passwordless authentication. We will email a secure 6-digit verification code.
-                      </p>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full shrink-0">
+                        ₹0 Advance
+                      </span>
                     </div>
+                  )}
 
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      size="lg"
-                      variant="primary"
-                      isLoading={isLoading}
-                      rightIcon={<ArrowRight className="w-4 h-4" />}
+                  {/* Auth Mode Toggle */}
+                  <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setCustomerAuthMode('OTP')}
+                      className={`flex-1 py-1.5 rounded-lg transition-all ${
+                        customerAuthMode === 'OTP' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
                     >
-                      Send Verification OTP
-                    </Button>
-                  </form>
+                      Email OTP Code
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCustomerAuthMode('PASSWORD')}
+                      className={`flex-1 py-1.5 rounded-lg transition-all ${
+                        customerAuthMode === 'PASSWORD' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Account Password
+                    </button>
+                  </div>
+
+                  {customerAuthMode === 'OTP' ? (
+                    <form onSubmit={handleSendOtp} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                          Email Address
+                        </label>
+                        <div className="relative">
+                          <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => {
+                              setEmail(e.target.value);
+                              setErrorMsg(null);
+                            }}
+                            placeholder="Enter your email address"
+                            required
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          />
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-1.5">
+                          Passwordless authentication. We will email a secure 6-digit verification code.
+                        </p>
+                      </div>
+
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        size="lg"
+                        variant="primary"
+                        isLoading={isLoading}
+                        rightIcon={<ArrowRight className="w-4 h-4" />}
+                      >
+                        Send Verification OTP
+                      </Button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleCustomerPasswordLogin} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                          Email Address
+                        </label>
+                        <div className="relative">
+                          <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => {
+                              setEmail(e.target.value);
+                              setErrorMsg(null);
+                            }}
+                            placeholder="Enter your email address"
+                            required
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                          Password
+                        </label>
+                        <div className="relative">
+                          <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            type={showCustomerPassword ? 'text' : 'password'}
+                            value={customerPassword}
+                            onChange={(e) => {
+                              setCustomerPassword(e.target.value);
+                              setErrorMsg(null);
+                            }}
+                            placeholder="Enter your password (e.g. player2026)"
+                            required
+                            className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowCustomerPassword(!showCustomerPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                          >
+                            {showCustomerPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        size="lg"
+                        variant="primary"
+                        isLoading={isLoading}
+                        rightIcon={<ArrowRight className="w-4 h-4" />}
+                      >
+                        Authenticate &amp; Continue
+                      </Button>
+                    </form>
+                  )}
+
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthModalOpen(false);
+                        loginAsRole('CUSTOMER', 'customer@grsports.com', 'Vikram Malhotra', '+91 99887 76655', 'Tournament Player');
+                      }}
+                      className="text-blue-600 hover:underline font-semibold"
+                    >
+                      Quick Demo Player (Vikram M.) →
+                    </button>
+                  </div>
                 </div>
               )}
 

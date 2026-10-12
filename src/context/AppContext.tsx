@@ -459,13 +459,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (!isLoggedIn || currentRole !== 'CUSTOMER') {
       setPendingWizardLaunch(true);
-      setLoginRoleTab('CUSTOMER');
-      setActiveView('login');
-      addToast(
-        'info',
-        'Sign In Required',
-        `Please sign in or register to book your doorstep ${type === 'GETTING' ? 'stringing' : 'repair'} service.`
-      );
+      openAuthModal('CUSTOMER');
       return;
     }
 
