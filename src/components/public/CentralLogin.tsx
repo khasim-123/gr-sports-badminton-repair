@@ -274,8 +274,8 @@ export const CentralLogin: React.FC = () => {
             >
               <Wrench className="w-4 h-4 shrink-0" />
               <div className="text-center sm:text-left">
-                <span className="block leading-tight">Operations Staff</span>
-                <span className="text-[10px] opacity-75 hidden sm:block font-normal">Pickups &amp; Workshop</span>
+                <span className="block leading-tight">Employee</span>
+                <span className="text-[10px] opacity-75 hidden sm:block font-normal">Service &amp; Delivery</span>
               </div>
             </button>
 
@@ -499,7 +499,7 @@ export const CentralLogin: React.FC = () => {
                           activeTab === 'CUSTOMER'
                             ? 'Enter your email address'
                             : activeTab === 'EMPLOYEE'
-                            ? 'Enter employee email (e.g. rajesh.k@grsports.in)'
+                            ? 'Enter employee email (e.g. employee@grsports.com)'
                             : 'Enter admin email (e.g. admin@grsports.com)'
                         }
                         required
@@ -650,7 +650,7 @@ export const CentralLogin: React.FC = () => {
                 </span>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                   {activeTab === 'CUSTOMER' && <><User className="w-4 h-4 text-blue-400" /> Customer Persona</>}
-                  {activeTab === 'EMPLOYEE' && <><Wrench className="w-4 h-4 text-emerald-400" /> Staff &amp; Stringer Persona</>}
+                  {activeTab === 'EMPLOYEE' && <><Wrench className="w-4 h-4 text-emerald-400" /> Employee Persona</>}
                   {activeTab === 'ADMIN' && <><Shield className="w-4 h-4 text-purple-400" /> System Admin Persona</>}
                 </h3>
               </div>
