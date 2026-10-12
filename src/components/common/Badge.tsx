@@ -73,7 +73,7 @@ export const StatusBadge: React.FC<BadgeProps> = ({
         break;
       case 'Repair Estimate':
       case 'Awaiting Customer Approval':
-        colorClasses = 'bg-orange-50 text-orange-800 border-orange-300 animate-pulse';
+        colorClasses = 'bg-orange-50 text-orange-800 border-orange-300';
         dotColor = 'bg-orange-500';
         break;
       case 'Repair Approved':

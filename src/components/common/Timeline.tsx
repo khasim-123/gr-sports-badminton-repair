@@ -164,7 +164,13 @@ export const Timeline: React.FC<TimelineProps> = ({ request, compact = false }) 
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-slate-900">{event.label}</span>
-                    <StatusBadge status={event.status} size="sm" dot={false} />
+                    {event.status === 'Awaiting Customer Approval' && !isLatest ? (
+                      <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                        Estimate Generated
+                      </span>
+                    ) : (
+                      <StatusBadge status={event.status} size="sm" dot={false} />
+                    )}
                   </div>
                   <span className="text-[11px] text-slate-500 font-medium">{event.timestamp}</span>
                 </div>
