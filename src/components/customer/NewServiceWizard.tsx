@@ -42,6 +42,7 @@ export const NewServiceWizard: React.FC = () => {
     userEmail,
     userMobile,
     wizardServiceType,
+    wizardPrefill,
   } = useApp();
 
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -56,15 +57,28 @@ export const NewServiceWizard: React.FC = () => {
     }
   }, [wizardServiceType]);
 
+  React.useEffect(() => {
+    if (wizardPrefill) {
+      if (wizardPrefill.serviceType) setServiceType(wizardPrefill.serviceType);
+      if (wizardPrefill.batBrand) setBatBrand(wizardPrefill.batBrand);
+      if (wizardPrefill.batModel) setBatModel(wizardPrefill.batModel);
+      if (wizardPrefill.stringType) setStringPreference(wizardPrefill.stringType);
+      if (wizardPrefill.stringTension) setStringTension(wizardPrefill.stringTension);
+      if (wizardPrefill.repairIssue) setRepairIssue(wizardPrefill.repairIssue as RepairIssue);
+    }
+  }, [wizardPrefill]);
+
   // Bat Details
-  const [batBrand, setBatBrand] = useState<string>('');
-  const [batModel, setBatModel] = useState<string>('');
+  const [batBrand, setBatBrand] = useState<string>(wizardPrefill?.batBrand || '');
+  const [batModel, setBatModel] = useState<string>(wizardPrefill?.batModel || '');
   const [batType, setBatType] = useState<BatType>('Head Heavy (Power / Smash)');
   const [gettingType, setGettingType] = useState<GettingType>('Basic Getting');
-  const [stringTension, setStringTension] = useState<number>(26);
-  const [stringPreference, setStringPreference] = useState<string>('Yonex BG65');
+  const [stringTension, setStringTension] = useState<number>(wizardPrefill?.stringTension || 26);
+  const [stringPreference, setStringPreference] = useState<string>(wizardPrefill?.stringType || 'Yonex BG65');
   const [stringColour, setStringColour] = useState<string>('White');
-  const [repairIssue, setRepairIssue] = useState<RepairIssue>('Frame Damage');
+  const [repairIssue, setRepairIssue] = useState<RepairIssue>(
+    (wizardPrefill?.repairIssue as RepairIssue) || 'Frame Damage'
+  );
   const [repairDescription, setRepairDescription] = useState<string>('');
   const [batPhotos, setBatPhotos] = useState<string[]>([]);
   const [additionalNotes, setAdditionalNotes] = useState<string>('');

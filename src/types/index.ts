@@ -244,3 +244,13 @@ export interface EmailTemplate {
   category: 'Customer' | 'Employee' | 'Admin';
   variables: string[];
 }
+
+export interface WizardPrefill {
+  serviceType?: ServiceType;
+  batBrand?: string;
+  batModel?: string;
+  stringType?: string;
+  stringTension?: number;
+  repairIssue?: string;
+}
+

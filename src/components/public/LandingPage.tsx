@@ -67,7 +67,13 @@ export const LandingPage: React.FC = () => {
   };
 
   const handleHeroBookingSubmit = () => {
-    openWizardWithService(heroService);
+    openWizardWithService(heroService, {
+      batBrand: heroBrand,
+      batModel: heroModel,
+      stringType: heroString,
+      stringTension: heroTension,
+      repairIssue: heroRepairIssue,
+    });
   };
 
   const handleTrackSearch = (idToSearch?: string) => {

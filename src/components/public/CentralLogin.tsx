@@ -29,7 +29,16 @@ import { apiClient } from '../../services/apiClient';
 import { authService } from '../../services/authService';
 
 export const CentralLogin: React.FC = () => {
-  const { loginAsRole, setActiveView, addToast, loginRoleTab, setLoginRoleTab, distanceConfig } = useApp();
+  const {
+    loginAsRole,
+    setActiveView,
+    addToast,
+    loginRoleTab,
+    setLoginRoleTab,
+    distanceConfig,
+    pendingWizardLaunch,
+    wizardPrefill,
+  } = useApp();
 
   const [activeTab, setActiveTab] = useState<UserRole>(loginRoleTab || 'CUSTOMER');
   const [email, setEmail] = useState('');
@@ -242,6 +251,33 @@ export const CentralLogin: React.FC = () => {
             Log in with your credentials to automatically access your designated portal — Player Services, Operations &amp; Workshop, or Master Administration.
           </p>
         </div>
+
+        {/* Booking in Progress Notification Banner */}
+        {pendingWizardLaunch && (
+          <div className="bg-gradient-to-r from-blue-900/90 via-slate-900/90 to-blue-950/90 border-2 border-blue-500/50 rounded-2xl p-4 shadow-xl flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-blue-300 shrink-0">
+                <Sparkles className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 block">
+                  DOORSTEP BOOKING IN PROGRESS
+                </span>
+                <p className="text-xs font-bold text-white">
+                  Sign in or create your player account to confirm your {wizardPrefill?.serviceType === 'REPAIR' ? 'Racquet Repair' : 'Bat Getting'} booking.
+                </p>
+                {wizardPrefill?.batBrand && (
+                  <p className="text-[11px] text-blue-300 mt-0.5">
+                    Selected: {wizardPrefill.batBrand} {wizardPrefill.batModel} {wizardPrefill.stringType ? `• ${wizardPrefill.stringType} @ ${wizardPrefill.stringTension} lbs` : ''}
+                  </p>
+                )}
+              </div>
+            </div>
+            <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg shrink-0 hidden sm:inline-block">
+              Zero Advance Required
+            </span>
+          </div>
+        )}
 
         {/* Central Login Card */}
         <div className="bg-slate-800/80 backdrop-blur-xl border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden">

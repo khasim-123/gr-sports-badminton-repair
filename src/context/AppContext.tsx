@@ -16,6 +16,7 @@ import {
   AppNotification,
   Review,
   Employee,
+  WizardPrefill,
 } from '../types';
 import {
   initialRequests,
@@ -92,7 +93,11 @@ interface AppContextType {
   openLoginWithRole: (role: UserRole) => void;
   wizardServiceType: ServiceType;
   setWizardServiceType: (type: ServiceType) => void;
-  openWizardWithService: (type: ServiceType) => void;
+  pendingWizardLaunch: boolean;
+  setPendingWizardLaunch: (pending: boolean) => void;
+  wizardPrefill: WizardPrefill | null;
+  setWizardPrefill: (prefill: WizardPrefill | null) => void;
+  openWizardWithService: (type: ServiceType, prefill?: Partial<WizardPrefill>) => void;
   addNewAddress: (address: Omit<Address, 'id'>) => void;
   deleteAddress: (id: string) => void;
   setDefaultAddress: (id: string) => void;
@@ -201,6 +206,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [userTitle, setUserTitle] = useState<string>(storedSession?.title || '');
   const [loginRoleTab, setLoginRoleTab] = useState<UserRole>('CUSTOMER');
   const [wizardServiceType, setWizardServiceType] = useState<ServiceType>('GETTING');
+  const [pendingWizardLaunch, setPendingWizardLaunch] = useState<boolean>(false);
+  const [wizardPrefill, setWizardPrefill] = useState<WizardPrefill | null>(null);
 
   // Core Data
   const [requests, setRequests] = useState<ServiceRequest[]>(() => {
@@ -347,8 +354,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setUserName(finalName);
       setUserMobile(finalMobile);
       setUserTitle(finalTitle);
+      const targetSubView = pendingWizardLaunch ? 'wizard' : 'dashboard';
       setActiveView('customer_portal');
-      setCustomerSubView('dashboard');
+      setCustomerSubView(targetSubView);
+      if (pendingWizardLaunch) {
+        setPendingWizardLaunch(false);
+      }
       authService.setStoredSession({
         isLoggedIn: true,
         role: 'CUSTOMER',
@@ -357,7 +368,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         mobile: finalMobile,
         title: finalTitle,
         activeView: 'customer_portal',
-        customerSubView: 'dashboard',
+        customerSubView: targetSubView,
       });
       addToast('success', 'Customer Access Granted', `Welcome back, ${finalName}!`);
       logAudit(finalName, 'CUSTOMER', 'Customer Login', 'AUTH', `Email: ${finalEmail}`);
@@ -423,6 +434,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUserName('');
     setUserMobile('');
     setUserTitle('');
+    setPendingWizardLaunch(false);
+    setWizardPrefill(null);
     addToast('info', 'Logged Out', 'You have been safely signed out. Returning to home page.');
   };
 
@@ -436,11 +449,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAuthModalOpen(true);
   };
 
-  const openWizardWithService = (type: ServiceType) => {
+  const openWizardWithService = (type: ServiceType, prefill?: Partial<WizardPrefill>) => {
     setWizardServiceType(type);
-    if (!isLoggedIn) {
-      loginAsRole('CUSTOMER', 'customer@grsports.com', 'Vikram Malhotra', '+91 99887 76655', 'Tournament Player');
+    if (prefill) {
+      setWizardPrefill({ serviceType: type, ...prefill });
+    } else {
+      setWizardPrefill({ serviceType: type });
     }
+
+    if (!isLoggedIn || currentRole !== 'CUSTOMER') {
+      setPendingWizardLaunch(true);
+      setLoginRoleTab('CUSTOMER');
+      setActiveView('login');
+      addToast(
+        'info',
+        'Sign In Required',
+        `Please sign in or register to book your doorstep ${type === 'GETTING' ? 'stringing' : 'repair'} service.`
+      );
+      return;
+    }
+
     setActiveView('customer_portal');
     setCustomerSubView('wizard');
   };
@@ -1342,6 +1370,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         openLoginWithRole,
         wizardServiceType,
         setWizardServiceType,
+        pendingWizardLaunch,
+        setPendingWizardLaunch,
+        wizardPrefill,
+        setWizardPrefill,
         openWizardWithService,
         addNewAddress,
         deleteAddress,
