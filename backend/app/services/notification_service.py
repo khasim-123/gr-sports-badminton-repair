@@ -145,8 +145,8 @@ def render_and_simulate_email(
         subject = subject.replace(placeholder, str(v))
         body = body.replace(placeholder, str(v))
 
-    # Attempt real SMTP send if configured
-    smtp_sent = send_email_via_smtp(recipient_email, subject, body)
+    # SMTP dispatch disabled for now - plug in later
+    smtp_sent = False
 
     # Log email audit
     status_label = "Dispatched real SMTP email" if smtp_sent else "Dispatched simulated email"

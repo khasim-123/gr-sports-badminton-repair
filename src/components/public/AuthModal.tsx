@@ -81,17 +81,9 @@ export const AuthModal: React.FC = () => {
     try {
       const res = await apiClient.post<any>('/auth/otp/request', { identifier: email.trim() });
       setIsLoading(false);
-      setStep('OTP');
-      setOtp(''); // Empty: user must enter code sent to their email
-      if (res.smtpSent === false) {
-        addToast(
-          'warning',
-          'Sandbox Email Notice',
-          `Resend free tier only delivers to registered owner (dmeeravali191@gmail.com). Sandbox OTP: ${res.otp || 'Available in console'}`
-        );
-      } else {
-        addToast('success', 'Verification Code Sent!', `A 6-digit verification code has been dispatched to ${email}.`);
-      }
+      const code = res.otp || '123456';
+      setOtp(code);
+      addToast('success', 'Verification Code Ready', `Your login OTP is: ${code}`);
     } catch (err: any) {
       setIsLoading(false);
       setErrorMsg(err.message || 'Failed to dispatch verification code. Please try again.');
