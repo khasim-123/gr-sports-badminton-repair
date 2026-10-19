@@ -19,18 +19,18 @@ export const TopAnnouncementBar: React.FC = () => {
   ];
 
   return (
-    <div className="w-full bg-yellow-400 text-yellow-900 py-1.5 px-4 flex items-center justify-between text-[11px] font-semibold leading-none overflow-x-hidden relative">
+    <div className="w-full bg-yellow-400 text-yellow-900 py-3 px-6 flex items-center justify-between text-sm font-bold leading-none overflow-x-hidden relative">
       {/* Left: Brand tag + clickable category links */}
       <div className="flex items-center gap-0 shrink-0">
-        <span className="font-black text-yellow-900 tracking-wide mr-2">GR SPORTS</span>
-        <span className="text-yellow-800 opacity-40 mr-2">|</span>
+        <span className="font-black text-yellow-900 tracking-widest text-base mr-3">GR SPORTS</span>
+        <span className="text-yellow-800 opacity-40 mr-3 text-lg">|</span>
         <div className="hidden sm:flex items-center gap-1">
           {navItems.map((item, i) => (
             <React.Fragment key={item.label}>
-              {i > 0 && <span className="opacity-30 mx-1">·</span>}
+              {i > 0 && <span className="opacity-30 mx-1.5 text-base">·</span>}
               <button
                 onClick={() => scrollToSection(item.id)}
-                className="px-2 py-0.5 rounded-md hover:bg-yellow-500/60 active:bg-yellow-600/40 transition-colors text-yellow-900 font-semibold"
+                className="px-3 py-1 rounded-lg hover:bg-yellow-500/60 active:bg-yellow-600/40 transition-colors text-yellow-900 font-bold text-sm"
               >
                 {item.label}
               </button>
@@ -39,9 +39,9 @@ export const TopAnnouncementBar: React.FC = () => {
         </div>
       </div>
 
-      {/* Center: Promo message (absolutely centred within the bar) */}
-      <div className="hidden sm:flex items-center gap-1.5 text-yellow-900 font-bold absolute left-1/2 -translate-x-1/2 pointer-events-none">
-        <Truck className="w-3.5 h-3.5 shrink-0" />
+      {/* Center: Promo message */}
+      <div className="hidden md:flex items-center gap-2 text-yellow-900 font-bold text-sm absolute left-1/2 -translate-x-1/2 pointer-events-none whitespace-nowrap">
+        <Truck className="w-4 h-4 shrink-0" />
         <span>Free Pickup within 10 KM — Zero Advance Payment</span>
       </div>
 
@@ -49,13 +49,13 @@ export const TopAnnouncementBar: React.FC = () => {
       {!isLoggedIn && (
         <button
           onClick={() => openAuthModal('CUSTOMER')}
-          className="flex items-center gap-1.5 text-yellow-900 hover:text-yellow-950 transition-colors shrink-0 font-bold"
+          className="flex items-center gap-2 text-yellow-900 hover:text-yellow-950 transition-colors shrink-0 font-bold text-sm"
         >
-          <User className="w-3.5 h-3.5 shrink-0" />
+          <User className="w-4 h-4 shrink-0" />
           <span>Login / Register</span>
         </button>
       )}
-      {isLoggedIn && <div className="w-32" />}
+      {isLoggedIn && <div className="w-36" />}
     </div>
   );
 };
