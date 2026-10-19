@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { Button } from '../common/Button';
 import { MapSimulation } from '../common/MapSimulation';
 import { StatusBadge } from '../common/Badge';
+import { HeroBannerCarousel } from './HeroBannerCarousel';
 import {
   Wrench,
   Truck,
@@ -136,9 +137,12 @@ export const LandingPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-16 sm:space-y-24 pb-16">
+    <div className="space-y-12 sm:space-y-16 pb-16">
+      {/* 0. FULL-WIDTH HERO BANNER CAROUSEL (BadmintonOutlet.in Style with Yonex Rackets & T-Shirts) */}
+      <HeroBannerCarousel />
+
       {/* 1. CUSTOMER HERO SECTION WITH LIVE INSTANT BOOKING LAUNCHER (LIGHT THEME) */}
-      <section className="relative overflow-hidden pt-8 sm:pt-16 pb-16 bg-gradient-to-b from-blue-50/60 via-slate-50 to-white text-slate-900 border-b border-slate-200/60">
+      <section id="quick-booking" className="relative overflow-hidden pt-4 sm:pt-8 pb-16 bg-gradient-to-b from-blue-50/60 via-slate-50 to-white text-slate-900 border-b border-slate-200/60">
         {/* Soft atmospheric gradient accents */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[450px] bg-blue-400/10 blur-3xl pointer-events-none" />
         <div className="absolute top-20 right-10 w-80 h-80 bg-emerald-400/10 blur-3xl pointer-events-none" />
