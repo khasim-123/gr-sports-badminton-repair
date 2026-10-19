@@ -11,6 +11,9 @@ import {
   X,
   Bell,
   Check,
+  Search,
+  ShoppingCart,
+  User,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -41,6 +44,7 @@ export const Navbar: React.FC = () => {
 
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState('');
 
   // Role-filtered notifications
   const roleNotifications = notifications.filter(
@@ -113,43 +117,9 @@ export const Navbar: React.FC = () => {
           </button>
         </div>
 
-        {/* Center: Context-Aware Navigation (Full width, zero scrollbars) */}
+        {/* Center: Context-Aware Navigation (Hidden for public as requested; portal tabs visible when logged in) */}
         <div className="hidden md:flex items-center gap-1 text-xs font-semibold min-w-0 overflow-x-auto no-scrollbar py-1">
-          {!isLoggedIn ? (
-            /* Unauthenticated Public Navigation (NO duplicate portals button) */
-            <>
-              <button
-                onClick={() => scrollToLandingSection('services')}
-                className="px-3 py-1.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              >
-                Services
-              </button>
-              <button
-                onClick={() => scrollToLandingSection('how-it-works')}
-                className="px-3 py-1.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              >
-                How It Works
-              </button>
-              <button
-                onClick={() => scrollToLandingSection('distance-map')}
-                className="px-3 py-1.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              >
-                {distanceConfig.freeRadiusKm} KM Free Radius
-              </button>
-              <button
-                onClick={() => scrollToLandingSection('pricing-sla')}
-                className="px-3 py-1.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              >
-                Pricing &amp; SLA
-              </button>
-              <button
-                onClick={() => scrollToLandingSection('faq')}
-                className="px-3 py-1.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              >
-                FAQ
-              </button>
-            </>
-          ) : (
+          {!isLoggedIn ? null : (
             /* Authenticated Portal Sub-Navigation (Strictly Isolated by Role) */
             <>
               {currentRole === 'CUSTOMER' && (
@@ -351,42 +321,75 @@ export const Navbar: React.FC = () => {
           )}
         </div>
 
-        {/* Right: Actions, Identity & Controls */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Right: Search, Cart, User Login & Controls */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Search Box matching Reference Design */}
+          <div className="relative flex items-center">
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  scrollToLandingSection('services');
+                }
+              }}
+              className="w-32 xs:w-44 sm:w-56 md:w-64 pl-3 pr-8 py-1.5 text-xs sm:text-sm rounded-md border border-slate-300 focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 bg-white placeholder-slate-400 text-slate-800 transition-all"
+            />
+            <button
+              type="button"
+              onClick={() => scrollToLandingSection('services')}
+              className="absolute right-2.5 text-slate-400 hover:text-slate-700 transition-colors"
+              title="Search"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Cart Icon with Yellow Count Badge */}
+          <button
+            type="button"
+            onClick={() => {
+              if (!isLoggedIn) {
+                openAuthModal('CUSTOMER');
+              } else {
+                setActiveView('customer_portal');
+                setCustomerSubView('requests');
+              }
+            }}
+            className="relative p-1.5 sm:p-2 rounded-lg text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+            title="Shopping Cart / Requests"
+          >
+            <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
+            <span className="absolute -top-1 -right-1 bg-yellow-400 text-slate-900 text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center border border-white shadow-xs">
+              {isLoggedIn ? requests.length : 0}
+            </span>
+          </button>
+
           {!isLoggedIn ? (
-            /* Unauthenticated Public View: Clean, Zero Confusing Bells/Icons */
-            <div className="flex items-center gap-2">
+            /* Unauthenticated: User Login Icon */
+            <div className="flex items-center gap-1.5">
               {activeView === 'login' ? (
-                /* When already on Central Login: show Back to Home */
                 <button
                   onClick={() => {
                     setActiveView('landing');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="px-3.5 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition-colors"
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-800 font-semibold text-xs flex items-center gap-1 transition-colors"
+                  title="Back to Home"
                 >
                   <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Back to Home</span>
+                  <span className="hidden sm:inline">Home</span>
                 </button>
               ) : (
-                /* On Public Landing Page: single prominent Sign In button */
                 <button
+                  type="button"
                   onClick={() => openAuthModal('CUSTOMER')}
-                  className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-blue-500/20 transition-all hover:scale-102"
+                  className="p-1.5 sm:p-2 rounded-lg text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                  title="Login / Register"
                 >
-                  <LogIn className="w-3.5 h-3.5" />
-                  <span>Sign In</span>
-                </button>
-              )}
-
-              {/* Mobile Drawer Toggle (Unauthenticated) */}
-              {activeView !== 'login' && (
-                <button
-                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="md:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors border border-slate-200"
-                  title="Toggle Menu"
-                >
-                  {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+                  <User className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               )}
             </div>
