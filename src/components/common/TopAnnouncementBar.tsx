@@ -1,9 +1,9 @@
 import React from 'react';
-import { Truck, User } from 'lucide-react';
+import { Truck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const TopAnnouncementBar: React.FC = () => {
-  const { openAuthModal, isLoggedIn, setActiveView } = useApp();
+  const { setActiveView } = useApp();
 
   const scrollToSection = (sectionId: string) => {
     setActiveView('landing');
@@ -39,23 +39,11 @@ export const TopAnnouncementBar: React.FC = () => {
         </div>
       </div>
 
-      {/* Center: Promo message */}
-      <div className="hidden md:flex items-center gap-2 text-yellow-900 font-bold text-sm absolute left-1/2 -translate-x-1/2 pointer-events-none whitespace-nowrap">
+      {/* Right / Center: Promo message */}
+      <div className="flex items-center gap-2 text-yellow-900 font-bold text-sm whitespace-nowrap">
         <Truck className="w-4 h-4 shrink-0" />
         <span>Free Pickup within 10 KM — Zero Advance Payment</span>
       </div>
-
-      {/* Right: Login / Register */}
-      {!isLoggedIn && (
-        <button
-          onClick={() => openAuthModal('CUSTOMER')}
-          className="flex items-center gap-2 text-yellow-900 hover:text-yellow-950 transition-colors shrink-0 font-bold text-sm"
-        >
-          <User className="w-4 h-4 shrink-0" />
-          <span>Login / Register</span>
-        </button>
-      )}
-      {isLoggedIn && <div className="w-36" />}
     </div>
   );
 };

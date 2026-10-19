@@ -386,10 +386,11 @@ export const Navbar: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => openAuthModal('CUSTOMER')}
-                  className="p-1.5 sm:p-2 rounded-lg text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 text-slate-800 hover:bg-slate-100 transition-colors font-semibold text-xs sm:text-sm"
                   title="Login / Register"
                 >
-                  <User className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <User className="w-4 h-4 text-slate-700" />
+                  <span className="whitespace-nowrap">Login / Register</span>
                 </button>
               )}
             </div>
