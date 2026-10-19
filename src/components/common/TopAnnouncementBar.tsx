@@ -7,18 +7,16 @@ export const TopAnnouncementBar: React.FC = () => {
 
   return (
     <div className="w-full bg-yellow-400 text-yellow-900 py-1.5 px-4 flex items-center justify-between text-[11px] font-semibold leading-none overflow-x-hidden relative">
-      {/* Left: Brand tag + service category links */}
+      {/* Left: Brand tag + t-shirt icons */}
       <div className="flex items-center gap-0 shrink-0">
         <span className="font-black text-yellow-900 tracking-wide mr-2">GR SPORTS</span>
         <span className="text-yellow-800 opacity-40 mr-2">|</span>
-        <div className="hidden sm:flex items-center gap-3 text-yellow-800">
-          <span className="hover:text-yellow-900 cursor-default transition-colors">Badminton</span>
-          <span className="opacity-40">·</span>
-          <span className="hover:text-yellow-900 cursor-default transition-colors">Stringing</span>
-          <span className="opacity-40">·</span>
-          <span className="hover:text-yellow-900 cursor-default transition-colors">Repair</span>
-          <span className="opacity-40">·</span>
-          <span className="hover:text-yellow-900 cursor-default transition-colors">Doorstep Delivery</span>
+        <div className="hidden sm:flex items-center gap-2 text-yellow-900">
+          <span className="text-base" title="GR Sports T-Shirt">👕</span>
+          <span className="text-base" title="GR Sports T-Shirt">👕</span>
+          <span className="text-base" title="GR Sports T-Shirt">👕</span>
+          <span className="text-base" title="GR Sports T-Shirt">👕</span>
+          <span className="text-base" title="GR Sports T-Shirt">👕</span>
         </div>
       </div>
 
