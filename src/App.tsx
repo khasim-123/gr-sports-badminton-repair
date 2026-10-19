@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from './context/AppContext';
 import { Navbar } from './components/common/Navbar';
+import { TopAnnouncementBar } from './components/common/TopAnnouncementBar';
 import { DeviceFrame } from './components/common/DeviceFrame';
 import { ToastContainer } from './components/common/ToastContainer';
 import { AuthModal } from './components/public/AuthModal';
@@ -49,8 +50,13 @@ export const App: React.FC = () => {
   return (
     <DeviceFrame>
       <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900 font-sans selection:bg-blue-600 selection:text-white overflow-x-hidden max-w-[100vw]">
-        {/* Context-Aware Navigation Bar */}
-        <Navbar />
+        {/* Sticky Header: Announcement Bar + Main Navbar as one unit */}
+        <div className="sticky top-0 z-40">
+          {activeView !== 'admin_portal' && activeView !== 'employee_portal' && (
+            <TopAnnouncementBar />
+          )}
+          <Navbar />
+        </div>
 
         {/* View Router */}
         <main className="flex-1">

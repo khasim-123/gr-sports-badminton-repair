@@ -100,7 +100,7 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs w-full overflow-x-clip">
+    <header className="bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs w-full overflow-x-clip">
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Left: Brand / Logo */}
         <div className="flex items-center gap-3 shrink-0">
