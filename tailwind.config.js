@@ -7,6 +7,12 @@ export default {
   theme: {
     extend: {
       colors: {
+        sportsBlue: '#002B49',
+        brandYellow: '#FCD116',
+        actionGreen: '#00A859',
+        flameRed: '#E53E3E',
+        badmintonNavy: '#0F172A',
+        courtGray: '#F1F5F9',
         brand: {
           50: '#eff6ff',
           100: '#dbeafe',
@@ -43,6 +49,21 @@ export default {
       },
       backdropBlur: {
         'xs': '2px',
+      },
+      animation: {
+        marquee: 'marquee 25s linear infinite',
+        pulseSlow: 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        fadeIn: 'fadeIn 0.25s ease-out forwards'
+      },
+      keyframes: {
+        marquee: {
+          '0%': { transform: 'translateX(0%)' },
+          '100%': { transform: 'translateX(-50%)' }
+        },
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(6px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' }
+        }
       }
     },
   },

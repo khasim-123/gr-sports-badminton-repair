@@ -47,16 +47,23 @@ export const App: React.FC = () => {
     return <LandingPage />;
   };
 
+  const isStandaloneLanding = activeView === 'landing';
+
   return (
     <DeviceFrame>
       <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900 font-sans selection:bg-blue-600 selection:text-white overflow-x-hidden max-w-[100vw]">
-        {/* Sticky Header: Announcement Bar + Main Navbar as one unit */}
-        <div className="sticky top-0 z-40">
-          {activeView !== 'admin_portal' && activeView !== 'employee_portal' && (
+        {/* Sticky Header: Announcement Bar + Main Navbar (Only shown on non-landing views, as the landing page has its own complete header and navigation) */}
+        {!isStandaloneLanding && activeView !== 'admin_portal' && activeView !== 'employee_portal' && (
+          <div className="sticky top-0 z-40">
             <TopAnnouncementBar />
-          )}
-          <Navbar />
-        </div>
+            <Navbar />
+          </div>
+        )}
+        {!isStandaloneLanding && (activeView === 'admin_portal' || activeView === 'employee_portal') && (
+          <div className="sticky top-0 z-40">
+            <Navbar />
+          </div>
+        )}
 
         {/* View Router */}
         <main className="flex-1">
@@ -68,8 +75,8 @@ export const App: React.FC = () => {
           {activeView === 'phase2' && <Phase2Placeholder />}
         </main>
 
-        {/* Global Footer (Public Landing, Login & Customer Portal) */}
-        {activeView !== 'admin_portal' && activeView !== 'employee_portal' && <Footer />}
+        {/* Global Footer (Only on Customer Portal & Login - Landing has its own full comprehensive footer) */}
+        {!isStandaloneLanding && activeView !== 'admin_portal' && activeView !== 'employee_portal' && <Footer />}
 
         {/* Global Modals & Notifications */}
         <AuthModal />
