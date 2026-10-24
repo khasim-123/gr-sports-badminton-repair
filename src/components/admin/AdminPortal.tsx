@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { StatusBadge } from '../common/Badge';
 import { Button } from '../common/Button';
@@ -8,6 +8,7 @@ import {
   DistancePricingConfig,
   GettingServiceTier,
   RepairCategoryTier,
+  Employee,
 } from '../../types';
 import {
   LayoutDashboard,
@@ -17,29 +18,267 @@ import {
   DollarSign,
   Clock,
   BarChart3,
-  Mail,
-  Shield,
   Settings,
   Search,
-  Filter,
   Download,
   Printer,
   UserCheck,
   AlertTriangle,
   CheckCircle2,
-  XCircle,
   Eye,
-  PlusCircle,
-  ExternalLink,
   ChevronRight,
-  TrendingUp,
   MapPin,
-  Calendar,
   Edit3,
   Plus,
   RotateCcw,
   X,
+  LayoutTemplate,
+  KeyRound,
+  Phone,
+  Save,
+  Trash2,
+  Users,
 } from 'lucide-react';
+import { WebsiteContentPanel } from './content/WebsiteContentPanel';
+import { ShopSettingsForm } from './ShopSettingsForm';
+import { CustomersPanel } from './CustomersPanel';
+import { NewBookingDialog, NewBookingPrefill } from './NewBookingDialog';
+import { requestService } from '../../services/requestService';
+import { MobileInput } from '../common/MobileInput';
+import { formatMobile, mobileTelHref, normalizeMobile, INVALID_MOBILE_MESSAGE } from '../../utils/phone';
+import {
+  formatINR,
+  formatDate,
+  formatDateTime,
+  parseDate,
+  calendarDaysBetween,
+  pluralDays,
+  csvRow,
+  downloadCsv,
+} from '../../utils/format';
+import { VisitorReports } from './reports/VisitorReports';
+import { employeeService } from '../../services/employeeService';
+import type { PaymentMethod } from '../../types';
+
+// ---------------------------------------------------------------------------
+// Request stages (used by the dashboard work queue and the requests filter)
+// ---------------------------------------------------------------------------
+const STAGES: { id: string; label: string; statuses: RequestStatus[]; dot: string }[] = [
+  { id: 'new', label: 'New – accept & assign', statuses: ['Submitted', 'Accepted'], dot: 'bg-blue-500' },
+  { id: 'pickup', label: 'Waiting for pickup', statuses: ['Employee Assigned', 'Pickup Scheduled'], dot: 'bg-indigo-500' },
+  {
+    id: 'workshop',
+    label: 'In the workshop',
+    statuses: ['Bat Picked Up', 'Inspection', 'Repair Estimate', 'Repair Approved', 'Repair in Progress', 'Getting in Progress'],
+    dot: 'bg-amber-500',
+  },
+  { id: 'approval', label: 'Waiting for customer approval', statuses: ['Awaiting Customer Approval'], dot: 'bg-orange-500' },
+  {
+    id: 'delivery',
+    label: 'Ready / out for delivery',
+    statuses: ['Getting Completed', 'Repair Completed', 'Repair Declined', 'Out for Delivery', 'Delivered', 'Payment Pending'],
+    dot: 'bg-teal-500',
+  },
+  { id: 'done', label: 'Completed', statuses: ['Payment Collected', 'Completed', 'Completed Without Repair'], dot: 'bg-emerald-500' },
+  { id: 'cancelled', label: 'Cancelled', statuses: ['Cancelled'], dot: 'bg-slate-400' },
+];
+
+const ALL_STATUSES: RequestStatus[] = [
+  'Submitted',
+  'Accepted',
+  'Employee Assigned',
+  'Pickup Scheduled',
+  'Bat Picked Up',
+  'Inspection',
+  'Repair Estimate',
+  'Awaiting Customer Approval',
+  'Repair Approved',
+  'Repair in Progress',
+  'Getting in Progress',
+  'Getting Completed',
+  'Repair Completed',
+  'Out for Delivery',
+  'Delivered',
+  'Payment Pending',
+  'Payment Collected',
+  'Completed',
+  'Repair Declined',
+  'Completed Without Repair',
+  'Cancelled',
+];
+
+const CLOSED_STATUSES = new Set<RequestStatus>(['Payment Collected', 'Completed', 'Completed Without Repair', 'Cancelled']);
+const NOT_PICKED_UP = new Set<RequestStatus>(['Submitted', 'Accepted', 'Employee Assigned', 'Pickup Scheduled']);
+/** Repair is back with the customer (or will not happen) — the turnaround clock stops. */
+const SLA_STOPPED = new Set<RequestStatus>([
+  'Delivered',
+  'Payment Pending',
+  'Payment Collected',
+  'Completed',
+  'Completed Without Repair',
+  'Repair Declined',
+  'Cancelled',
+]);
+
+const isOpenRequest = (r: ServiceRequest) => !CLOSED_STATUSES.has(r.status);
+const DEFAULT_SLA_DAYS = 7;
+
+type SlaState = 'not_started' | 'on_track' | 'due_soon' | 'overdue';
+interface SlaItem {
+  request: ServiceRequest;
+  slaDays: number;
+  start: Date | null;
+  due: Date | null;
+  daysLeft: number | null;
+  dayNumber: number | null;
+  state: SlaState;
+}
+
+const SLA_ORDER: Record<SlaState, number> = { overdue: 0, due_soon: 1, on_track: 2, not_started: 3 };
+
+const slaLabel = (item: SlaItem): string => {
+  if (item.state === 'not_started' || item.daysLeft === null) return 'Starts at pickup';
+  if (item.daysLeft < 0) return `${pluralDays(-item.daysLeft)} overdue`;
+  if (item.daysLeft === 0) return 'Due today';
+  return `${pluralDays(item.daysLeft)} left`;
+};
+
+const SLA_STATE_LABEL: Record<SlaState, string> = {
+  overdue: 'Overdue',
+  due_soon: 'Due soon',
+  on_track: 'On track',
+  not_started: 'Not picked up',
+};
+
+const SLA_STATE_CLASS: Record<SlaState, string> = {
+  overdue: 'bg-rose-100 text-rose-800 border border-rose-200',
+  due_soon: 'bg-amber-100 text-amber-800 border border-amber-200',
+  on_track: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+  not_started: 'bg-slate-100 text-slate-600 border border-slate-200',
+};
+
+/** Distance form (strings so fields can be cleared while typing). */
+interface DistForm {
+  shopLocationName: string;
+  shopLat: string;
+  shopLng: string;
+  freeRadiusKm: string;
+  perKmRateBeyondFree: string;
+  maxServiceDistanceKm: string;
+  pricingMethod: 'PER_KM' | 'SLAB';
+  /** Paid slabs only (the first, free slab always runs 0 → free radius at ₹0). */
+  slabs: { maxKm: string; price: string }[];
+}
+
+const toDistForm = (c: DistancePricingConfig): DistForm => ({
+  shopLocationName: c.shopLocationName || '',
+  shopLat: String(c.shopLat ?? ''),
+  shopLng: String(c.shopLng ?? ''),
+  freeRadiusKm: String(c.freeRadiusKm ?? ''),
+  perKmRateBeyondFree: String(c.perKmRateBeyondFree ?? ''),
+  maxServiceDistanceKm: String(c.maxServiceDistanceKm ?? ''),
+  pricingMethod: c.pricingMethod === 'SLAB' ? 'SLAB' : 'PER_KM',
+  slabs: (c.slabs || []).slice(1).map((s) => ({ maxKm: String(s.maxKm), price: String(s.price) })),
+});
+
+const num = (s: string) => (s.trim() === '' ? NaN : Number(s));
+
+/** Validates the form; returns the config to save or an error message. */
+const fromDistForm = (f: DistForm): { config?: DistancePricingConfig; error?: string } => {
+  const free = num(f.freeRadiusKm);
+  const rate = num(f.perKmRateBeyondFree);
+  const max = num(f.maxServiceDistanceKm);
+  const lat = num(f.shopLat);
+  const lng = num(f.shopLng);
+  if (!f.shopLocationName.trim()) return { error: 'Enter the workshop address.' };
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90) return { error: 'Latitude must be a number between -90 and 90.' };
+  if (!Number.isFinite(lng) || lng < -180 || lng > 180) return { error: 'Longitude must be a number between -180 and 180.' };
+  if (!Number.isFinite(free) || free <= 0 || free > 100) return { error: 'Free radius must be between 0 and 100 KM.' };
+  if (!Number.isFinite(rate) || rate < 0) return { error: 'Rate per KM must be 0 or more.' };
+  if (!Number.isFinite(max) || max <= free) return { error: 'Max serviceable radius must be larger than the free radius.' };
+  const slabs: DistancePricingConfig['slabs'] = [{ minKm: 0, maxKm: free, price: 0 }];
+  let prevMax = free;
+  for (let i = 0; i < f.slabs.length; i++) {
+    const sMax = num(f.slabs[i].maxKm);
+    const sPrice = num(f.slabs[i].price);
+    if (!Number.isFinite(sMax) || sMax <= prevMax) {
+      return { error: `Slab ${i + 2}: "up to" KM must be more than ${prevMax} KM.` };
+    }
+    if (!Number.isFinite(sPrice) || sPrice < 0) return { error: `Slab ${i + 2}: enter a price of ₹0 or more.` };
+    slabs.push({ minKm: +(prevMax + 0.1).toFixed(1), maxKm: sMax, price: sPrice });
+    prevMax = sMax;
+  }
+  if (f.pricingMethod === 'SLAB' && slabs.length < 2) return { error: 'Add at least one paid slab, or use per-KM pricing.' };
+  return {
+    config: {
+      shopLocationName: f.shopLocationName.trim(),
+      shopLat: lat,
+      shopLng: lng,
+      freeRadiusKm: free,
+      perKmRateBeyondFree: rate,
+      pricingMethod: f.pricingMethod,
+      maxServiceDistanceKm: max,
+      slabs,
+    },
+  };
+};
+
+/** Same rule the server applies (backend pricing_service.calculate_delivery_charge). */
+const previewCharge = (km: number, c: DistancePricingConfig) => {
+  if (km <= c.freeRadiusKm) return { charge: 0, chargeableKm: 0, viaSlab: false };
+  const chargeableKm = +(km - c.freeRadiusKm).toFixed(1);
+  if (c.pricingMethod === 'SLAB' && c.slabs.length) {
+    const slab = c.slabs.find((s) => s.minKm <= km && km <= s.maxKm);
+    if (slab) return { charge: slab.price, chargeableKm, viaSlab: true };
+  }
+  return { charge: Math.round(chargeableKm * c.perKmRateBeyondFree), chargeableKm, viaSlab: false };
+};
+
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]!.toUpperCase())
+    .join('') || '?';
+
+/** Server log text: show mobiles as "+91 98765 43210" and amounts as "₹1,49,990". */
+const prettyLogText = (text: string) =>
+  text
+    .replace(/\+91\d{10}\b/g, (m) => formatMobile(m))
+    .replace(/₹\s?(\d+(?:\.\d+)?)/g, (_, n) => formatINR(Number(n)));
+
+const serviceLabel = (r: ServiceRequest) => (r.serviceType === 'GETTING' ? 'Stringing' : 'Repair');
+
+/** Amount cell text: unquoted repairs have no amount yet. */
+const amountText = (r: ServiceRequest) =>
+  r.totalAmount > 0 ? formatINR(r.totalAmount) : r.serviceType === 'REPAIR' ? 'Quote pending' : formatINR(0);
+
+const paymentText = (r: ServiceRequest) => {
+  if (r.paymentStatus === 'Paid') return 'Paid';
+  if (r.status === 'Cancelled') return 'Not due';
+  if (r.paymentStatus === 'Not Applicable') return 'Not applicable';
+  return 'Unpaid';
+};
+
+const DISTANCE_SOURCE_TEXT: Record<string, string> = {
+  location: "from the customer's phone location",
+  customer: 'entered by the customer',
+  staff: 'corrected by staff',
+};
+
+interface ConfirmState {
+  title: string;
+  message: React.ReactNode;
+  confirmLabel: string;
+  danger?: boolean;
+  onConfirm: () => Promise<unknown> | void;
+}
+
+const inputCls =
+  'w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 bg-white';
+const labelCls = 'block text-xs font-bold text-slate-700 mb-1';
+const cardCls = 'bg-white rounded-3xl border border-slate-200 shadow-xs';
 
 export const AdminPortal: React.FC = () => {
   const {
@@ -48,11 +287,8 @@ export const AdminPortal: React.FC = () => {
     setAdminSubView,
     distanceConfig,
     updateDistanceConfig,
-    emailTemplates,
-    updateEmailTemplate,
     assignEmployee,
     updateRequestStatus,
-    openRequestDetail,
     gettingServices,
     repairCategories,
     updateGettingService,
@@ -64,12 +300,31 @@ export const AdminPortal: React.FC = () => {
     employees,
     addEmployee,
     removeEmployee,
+    recordManualPayment,
+    auditLogs,
+    userName,
+    userMobile,
+    selectedRequestId,
+    setSelectedRequestId,
+    isDataLoading,
+    refreshData,
   } = useApp();
+
+  // New booking (phone / walk-in) dialog + customers list refresh
+  const [newBooking, setNewBooking] = useState<NewBookingPrefill | null>(null);
+  const [customersRefresh, setCustomersRefresh] = useState(0);
+
+  // Correct distance (request detail)
+  const [distanceFix, setDistanceFix] = useState<{ km: string; reason: string } | null>(null);
+  const [distanceFixSaving, setDistanceFixSaving] = useState(false);
+  const [distanceFixError, setDistanceFixError] = useState<string | null>(null);
 
   // Team & Admin Management Form State
   const [teamName, setTeamName] = useState('');
-  const [teamEmail, setTeamEmail] = useState('');
+  /** 10 local digits; the +91 prefix is shown by MobileInput. */
   const [teamPhone, setTeamPhone] = useState('');
+  const [teamPhoneError, setTeamPhoneError] = useState<string | null>(null);
+  const [isCreatingMember, setIsCreatingMember] = useState(false);
   const [teamRole, setTeamRole] = useState<'Technician' | 'Pickup & Delivery Agent' | 'Master Stringer'>('Technician');
   const [teamUserRole, setTeamUserRole] = useState<'EMPLOYEE' | 'ADMIN'>('EMPLOYEE');
   const [teamPassword, setTeamPassword] = useState('');
@@ -79,20 +334,46 @@ export const AdminPortal: React.FC = () => {
   const [serviceFilter, setServiceFilter] = useState('ALL');
   const [paymentFilter, setPaymentFilter] = useState('ALL');
 
-  // Detail Modal for Admin
-  const [detailModalRequest, setDetailModalRequest] = useState<ServiceRequest | null>(null);
-
-  // Assign Employee Modal
+  // Request detail / assign / confirm dialogs
+  const [detailRequestId, setDetailRequestId] = useState<string | null>(null);
   const [assignModalReqId, setAssignModalReqId] = useState<string | null>(null);
-  const [selectedEmpId, setSelectedEmpId] = useState<string>('EMP-01');
+  const [selectedEmpId, setSelectedEmpId] = useState<string>('');
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [statusDraft, setStatusDraft] = useState<RequestStatus | ''>('');
+  const [statusNote, setStatusNote] = useState('');
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
 
-  // Distance Calculator Simulator
-  const [calcDistInput, setCalcDistInput] = useState<number>(22.4);
+  // Record a payment from the request detail (admin collected it at the counter, or a staff
+  // member handed it over without recording it on their phone).
+  const [paymentForm, setPaymentForm] = useState<{ amount: string; method: PaymentMethod; notes: string } | null>(null);
+  const [paymentSaving, setPaymentSaving] = useState(false);
 
-  // Email Template Previewer Modal
-  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
-  const [tplSubject, setTplSubject] = useState('');
-  const [tplBody, setTplBody] = useState('');
+  const resetStaffPassword = async (empId: string, empName: string) => {
+    try {
+      const res = await employeeService.resetPassword(empId);
+      addToast(
+        'success',
+        `New password for ${empName}`,
+        `Temporary password: ${res.temporaryPassword} — hand it over in person. Their old password no longer works.`,
+        { durationMs: 0 }
+      );
+    } catch (err: any) {
+      addToast('error', 'Password not reset', err?.message || 'Please try again.');
+    }
+  };
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  // Distance & free radius form
+  const [distForm, setDistForm] = useState<DistForm>(() => toDistForm(distanceConfig));
+  const [isSavingDist, setIsSavingDist] = useState(false);
+  const [calcDistInput, setCalcDistInput] = useState<number>(15);
+
+  // Payments filter
+  const [payFilter, setPayFilter] = useState<'ALL' | 'UNPAID' | 'PAID'>('ALL');
+
+  // Activity log (reports)
+  const [showSignIns, setShowSignIns] = useState(false);
+  const [activityLimit, setActivityLimit] = useState(25);
 
   // Getting Service Modal state
   const [editingGettingItem, setEditingGettingItem] = useState<GettingServiceTier | null>(null);
@@ -113,115 +394,377 @@ export const AdminPortal: React.FC = () => {
   // Add Service Modals
   const [addGettingModalOpen, setAddGettingModalOpen] = useState(false);
   const [addRepairModalOpen, setAddRepairModalOpen] = useState(false);
+  const [isSavingTier, setIsSavingTier] = useState(false);
 
-  // Financial calculations
-  const totalRevenue = requests.reduce((acc, r) => acc + (r.paymentStatus === 'Paid' ? r.totalAmount : 0), 0);
-  const pendingCollection = requests.reduce((acc, r) => acc + (r.paymentStatus === 'Pending' ? r.totalAmount : 0), 0);
+  const navRef = useRef<HTMLElement | null>(null);
+  // On desktop only the main area scrolls (the sidebar and top bar stay put).
+  const mainRef = useRef<HTMLElement | null>(null);
+  const actor = userName || 'Admin';
+
+  // ---------------------------------------------------------------------------
+  // Derived data (everything below is computed from server data)
+  // ---------------------------------------------------------------------------
+  const activeEmployees = employees.filter((e) => e.isActive !== false);
+  const openRequests = requests.filter(isOpenRequest);
+  const paidRequests = requests.filter((r) => r.paymentStatus === 'Paid');
+  const unpaidRequests = requests.filter(
+    (r) => r.paymentStatus === 'Pending' && r.status !== 'Cancelled' && r.totalAmount > 0
+  );
+  const totalCollected = paidRequests.reduce((acc, r) => acc + (r.paymentRecord?.amount ?? r.totalAmount ?? 0), 0);
+  const pendingCollection = unpaidRequests.reduce((acc, r) => acc + (r.totalAmount || 0), 0);
   const gettingCount = requests.filter((r) => r.serviceType === 'GETTING').length;
   const repairCount = requests.filter((r) => r.serviceType === 'REPAIR').length;
+  const pct = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
+  const withinFreeRadius = requests.filter(
+    (r) => typeof r.distanceKm === 'number' && r.distanceKm <= distanceConfig.freeRadiusKm
+  ).length;
 
-  // Filter requests table
-  const filteredRequests = requests.filter((req) => {
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchId = req.id.toLowerCase().includes(q);
-      const matchCust = req.customerName.toLowerCase().includes(q);
-      const matchBat = (req.batBrand + ' ' + req.batModel).toLowerCase().includes(q);
-      if (!matchId && !matchCust && !matchBat) return false;
-    }
-    if (statusFilter !== 'ALL' && req.status !== statusFilter) return false;
-    if (serviceFilter !== 'ALL' && req.serviceType !== serviceFilter) return false;
-    if (paymentFilter !== 'ALL' && req.paymentStatus !== paymentFilter) return false;
-    return true;
-  });
+  const openJobsFor = (empId: string) =>
+    requests.filter((r) => r.assignedEmployeeId === empId && isOpenRequest(r)).length;
 
-  // Repair SLA monitoring dataset (Figma Item 55)
-  const repairSlaItems = requests
-    .filter((r) => r.serviceType === 'REPAIR' && r.status !== 'Completed' && r.status !== 'Cancelled')
-    .map((r) => {
-      const pickup = r.pickupDate ? new Date(r.pickupDate) : new Date(r.createdAt);
-      const now = new Date();
-      const currentDay = Math.max(1, Math.ceil((now.getTime() - pickup.getTime()) / (1000 * 60 * 60 * 24)));
-      const daysRemaining = Math.max(0, 7 - currentDay);
-      let slaStatus: 'Normal' | 'Approaching Deadline' | 'Delayed' = 'Normal';
-      if (currentDay >= 7) slaStatus = 'Delayed';
-      else if (currentDay >= 5) slaStatus = 'Approaching Deadline';
+  const stageCounts = STAGES.map((s) => ({
+    ...s,
+    count: requests.filter((r) => s.statuses.includes(r.status)).length,
+  }));
 
-      return {
-        request: r,
-        currentDay,
-        daysRemaining,
-        slaStatus,
-      };
-    });
-
-  // CSV Export handler
-  const handleExportCSV = () => {
-    const headers = ['Request ID', 'Customer', 'Service', 'Brand', 'Status', 'Amount', 'Payment', 'Distance (KM)'];
-    const rows = filteredRequests.map((r) => [
-      r.id,
-      r.customerName,
-      r.serviceType,
-      `${r.batBrand} ${r.batModel}`,
-      r.status,
-      r.totalAmount,
-      r.paymentStatus,
-      r.distanceKm,
-    ]);
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `gr_sports_requests_export_${Date.now()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // Repair SLA (turnaround counted from pickup until the bat is delivered back)
+  const slaDaysFor = (r: ServiceRequest): number => {
+    const issue = (r.repairIssue || '').toLowerCase();
+    if (!issue) return DEFAULT_SLA_DAYS;
+    const exact = repairCategories.find((c) => c.name.toLowerCase().startsWith(issue));
+    const firstWord = issue.split(/\s+/)[0];
+    const loose = exact || repairCategories.find((c) => c.name.toLowerCase().split(/[\s/&()]+/).includes(firstWord));
+    return loose && loose.slaDays > 0 ? loose.slaDays : DEFAULT_SLA_DAYS;
   };
 
+  const today = new Date();
+  const repairSlaItems: SlaItem[] = requests
+    .filter((r) => r.serviceType === 'REPAIR' && !SLA_STOPPED.has(r.status))
+    .map((r) => {
+      const slaDays = slaDaysFor(r);
+      const pickedUp = !NOT_PICKED_UP.has(r.status);
+      const start = pickedUp ? parseDate(r.pickupCondition?.collectedAt) || parseDate(r.pickupDate) || parseDate(r.createdAt) : null;
+      let due: Date | null = null;
+      if (start) {
+        due = parseDate(r.targetDate);
+        if (!due) {
+          due = new Date(start);
+          due.setDate(due.getDate() + slaDays);
+        }
+      }
+      const daysLeft = due ? calendarDaysBetween(today, due) : null;
+      const dayNumber = start ? calendarDaysBetween(start, today) + 1 : null;
+      let state: SlaState = 'not_started';
+      if (daysLeft !== null) state = daysLeft < 0 ? 'overdue' : daysLeft <= 2 ? 'due_soon' : 'on_track';
+      return { request: r, slaDays, start, due, daysLeft, dayNumber, state };
+    })
+    .sort((a, b) => SLA_ORDER[a.state] - SLA_ORDER[b.state] || (a.daysLeft ?? 0) - (b.daysLeft ?? 0));
+  const slaOverdue = repairSlaItems.filter((s) => s.state === 'overdue').length;
+  const slaDueSoon = repairSlaItems.filter((s) => s.state === 'due_soon').length;
+  const slaNotStarted = repairSlaItems.filter((s) => s.state === 'not_started').length;
+
+  // Requests table filter
+  const filteredRequests = requests.filter((req) => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      const digits = q.replace(/\D/g, '');
+      const matches =
+        req.id.toLowerCase().includes(q) ||
+        req.customerName.toLowerCase().includes(q) ||
+        `${req.batBrand} ${req.batModel}`.toLowerCase().includes(q) ||
+        (req.assignedEmployeeName || '').toLowerCase().includes(q) ||
+        (digits.length >= 3 && (req.customerMobile || '').replace(/\D/g, '').includes(digits));
+      if (!matches) return false;
+    }
+    if (statusFilter.startsWith('stage:')) {
+      const stage = STAGES.find((s) => s.id === statusFilter.slice(6));
+      if (stage && !stage.statuses.includes(req.status)) return false;
+    } else if (statusFilter === 'OPEN') {
+      if (!isOpenRequest(req)) return false;
+    } else if (statusFilter !== 'ALL' && req.status !== statusFilter) return false;
+    if (serviceFilter !== 'ALL' && req.serviceType !== serviceFilter) return false;
+    if (paymentFilter === 'Paid' && req.paymentStatus !== 'Paid') return false;
+    if (paymentFilter === 'Pending' && (req.paymentStatus === 'Paid' || req.status === 'Cancelled')) return false;
+    return true;
+  });
+  const filtersActive = !!searchQuery.trim() || statusFilter !== 'ALL' || serviceFilter !== 'ALL' || paymentFilter !== 'ALL';
+
+  const detailRequest = detailRequestId ? requests.find((r) => r.id === detailRequestId) || null : null;
+  const assignRequest = assignModalReqId ? requests.find((r) => r.id === assignModalReqId) || null : null;
+
+  // Distance form helpers
+  const distParsed = fromDistForm(distForm);
+  const distDirty = JSON.stringify(distForm) !== JSON.stringify(toDistForm(distanceConfig));
+  const previewConfig = distParsed.config || distanceConfig;
+  const sliderMax = Math.max(previewConfig.maxServiceDistanceKm || 35, previewConfig.freeRadiusKm + 1);
+  const preview = previewCharge(calcDistInput, previewConfig);
+
+  // ---------------------------------------------------------------------------
+  // Effects
+  // ---------------------------------------------------------------------------
+  // Keep the distance form in step with the server config while it has no unsaved edits.
+  const distDirtyRef = useRef(distDirty);
+  distDirtyRef.current = distDirty;
+  useEffect(() => {
+    if (!distDirtyRef.current) setDistForm(toDistForm(distanceConfig));
+  }, [distanceConfig]);
+
+  // A notification click (openRequestDetail) selects a request: open it here.
+  useEffect(() => {
+    if (selectedRequestId && requests.some((r) => r.id === selectedRequestId)) {
+      setDetailRequestId(selectedRequestId);
+      setSelectedRequestId(null);
+    }
+  }, [selectedRequestId, requests, setSelectedRequestId]);
+
+  // Mobile: keep the active section visible in the horizontal section scroller.
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav || window.innerWidth >= 1024) return;
+    const active = nav.querySelector<HTMLElement>('[data-active="true"]');
+    if (active) nav.scrollLeft = active.offsetLeft - nav.clientWidth / 2 + active.clientWidth / 2;
+  }, [adminSubView]);
+
+  // Reset the status form whenever another request is opened.
+  useEffect(() => {
+    setStatusDraft('');
+    setStatusNote('');
+    setDistanceFix(null);
+    setDistanceFixError(null);
+  }, [detailRequestId]);
+
+  // Escape closes the top-most dialog.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (confirmState) setConfirmState(null);
+      else if (assignModalReqId) setAssignModalReqId(null);
+      else if (detailRequestId) setDetailRequestId(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [confirmState, assignModalReqId, detailRequestId]);
+
+  // ---------------------------------------------------------------------------
+  // Actions
+  // ---------------------------------------------------------------------------
+  const goTo = (view: string) => {
+    setAdminSubView(view);
+    mainRef.current?.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0 });
+  };
+
+  const openStage = (stageId: string) => {
+    setSearchQuery('');
+    setServiceFilter('ALL');
+    setPaymentFilter('ALL');
+    setStatusFilter(`stage:${stageId}`);
+    goTo('requests');
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('ALL');
+    setServiceFilter('ALL');
+    setPaymentFilter('ALL');
+  };
+
+  const stamp = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const exportRequestsCsv = (list: ServiceRequest[]) => {
+    if (list.length === 0) {
+      addToast('info', 'Nothing to export', 'There are no service requests to export.');
+      return;
+    }
+    const lines = [
+      csvRow([
+        'Request ID',
+        'Created',
+        'Customer',
+        'Mobile',
+        'Service',
+        'Racket',
+        'Status',
+        'Assigned staff',
+        'Distance (KM)',
+        'Pickup & delivery charge (INR)',
+        'Total amount (INR)',
+        'Payment',
+      ]),
+      ...list.map((r) =>
+        csvRow([
+          r.id,
+          formatDateTime(r.createdAt, ''),
+          r.customerName,
+          formatMobile(r.customerMobile),
+          serviceLabel(r),
+          `${r.batBrand} ${r.batModel}`.trim(),
+          r.status,
+          r.assignedEmployeeName || '',
+          r.distanceKm,
+          r.pickupDeliveryCharge || 0,
+          r.totalAmount || 0,
+          paymentText(r),
+        ])
+      ),
+    ];
+    downloadCsv(`gr-sports-service-requests-${stamp()}.csv`, lines);
+  };
+
+  const exportPaymentsCsv = () => {
+    if (requests.length === 0) {
+      addToast('info', 'Nothing to export', 'There are no service requests yet.');
+      return;
+    }
+    const lines = [
+      csvRow([
+        'Request ID',
+        'Customer',
+        'Mobile',
+        'Status',
+        'Amount due (INR)',
+        'Payment',
+        'Method',
+        'Amount collected (INR)',
+        'Collected by',
+        'Collected at',
+        'Notes',
+      ]),
+      ...requests.map((r) =>
+        csvRow([
+          r.id,
+          r.customerName,
+          formatMobile(r.customerMobile),
+          r.status,
+          r.totalAmount || 0,
+          paymentText(r),
+          r.paymentRecord?.method || '',
+          r.paymentRecord?.amount ?? '',
+          r.paymentRecord?.collectedBy || '',
+          r.paymentRecord ? formatDateTime(r.paymentRecord.collectedAt, '') : '',
+          r.paymentRecord?.transactionNotes || '',
+        ])
+      ),
+    ];
+    downloadCsv(`gr-sports-payments-${stamp()}.csv`, lines);
+  };
+
+  const openAssign = (req: ServiceRequest) => {
+    setSelectedEmpId(req.assignedEmployeeId || '');
+    setAssignModalReqId(req.id);
+  };
+
+  const runConfirm = async () => {
+    if (!confirmState || isConfirming) return;
+    setIsConfirming(true);
+    try {
+      await confirmState.onConfirm();
+    } finally {
+      setIsConfirming(false);
+      setConfirmState(null);
+    }
+  };
+
+  const saveDistance = async () => {
+    if (!distParsed.config) {
+      addToast('warning', 'Check the delivery settings', distParsed.error || 'Some values are invalid.');
+      return;
+    }
+    setIsSavingDist(true);
+    const ok = await updateDistanceConfig(distParsed.config);
+    setIsSavingDist(false);
+    if (ok) setDistForm(toDistForm(distParsed.config));
+  };
+
+  const setDist = (patch: Partial<DistForm>) => setDistForm((f) => ({ ...f, ...patch }));
+
+  const navItems: { id: string; label: string; icon: React.ElementType; badge?: number; badgeTitle?: string; alert?: boolean }[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'requests', label: 'Service Requests', icon: FileSpreadsheet, badge: openRequests.length, badgeTitle: 'Open requests' },
+    { id: 'customers', label: 'Customers', icon: Users },
+    {
+      id: 'sla_monitor',
+      label: 'Repair SLA Monitor',
+      icon: Clock,
+      badge: slaOverdue + slaDueSoon || undefined,
+      badgeTitle: 'Repairs overdue or due within 2 days',
+      alert: slaOverdue > 0,
+    },
+    { id: 'payments', label: 'Payments', icon: DollarSign, badge: unpaidRequests.length || undefined, badgeTitle: 'Unpaid requests' },
+    { id: 'distance', label: 'Delivery & Free Radius', icon: Compass },
+    { id: 'getting_config', label: 'Stringing Packages', icon: Wrench },
+    { id: 'repair_config', label: 'Repair Categories', icon: Wrench },
+    { id: 'reports', label: 'Reports & Activity', icon: BarChart3 },
+    { id: 'website_content', label: 'Website Content', icon: LayoutTemplate },
+    { id: 'team', label: 'Staff & Admins', icon: UserCheck, badge: activeEmployees.length, badgeTitle: 'Active staff accounts' },
+    { id: 'settings', label: 'Shop Settings', icon: Settings },
+  ];
+
+  const pageHeader = (title: string, subtitle: React.ReactNode, actions?: React.ReactNode) => (
+    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+      <div className="min-w-0">
+        <h2 className="text-xl sm:text-2xl font-black text-slate-900">{title}</h2>
+        <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{subtitle}</p>
+      </div>
+      {actions && <div className="flex flex-wrap gap-2 shrink-0 print:hidden">{actions}</div>}
+    </div>
+  );
+
+  const emptyRow = (cols: number, text: string) => (
+    <tr>
+      <td colSpan={cols} className="py-10 px-4 text-center text-sm text-slate-500">
+        {text}
+      </td>
+    </tr>
+  );
+
+  const thCls = 'py-3 px-4 whitespace-nowrap';
+  const tdCls = 'py-3 px-4 align-top';
+
+  const visibleActivity = auditLogs.filter((l) => showSignIns || !/login|sign[- ]?in|logout/i.test(l.action));
+
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 border-t border-slate-200">
-      {/* Desktop Enterprise Sidebar - Sticky & Fixed on scroll */}
-      <aside className="w-full lg:w-64 bg-slate-900 text-slate-300 p-4 border-r border-slate-800 shrink-0 lg:sticky lg:top-16 lg:self-start select-none z-20 space-y-4">
-        <div>
-          <div className="px-3 py-2 mb-3 border-b border-slate-800">
-            <h3 className="text-base font-bold text-white tracking-tight">GR Sports Hub</h3>
-            <p className="text-[11px] text-slate-400">Admin Control Center</p>
+    <div className="flex flex-col lg:flex-row lg:h-full lg:min-h-0 bg-slate-50 border-t border-slate-200 print:block print:h-auto">
+      {/* Sidebar: fixed full-height column on desktop (scrolls on its own only if the menu is taller than the
+          screen); horizontal scroller on mobile */}
+      <aside className="w-full lg:w-64 lg:h-full lg:overflow-y-auto sidebar-scroll bg-slate-900 text-slate-300 border-r border-slate-800 shrink-0 select-none z-20 print:hidden">
+        <div className="p-3 lg:p-3 flex flex-col gap-2">
+          <div className="px-3 py-1 lg:py-2 lg:mb-1 lg:border-b border-slate-800">
+            <h3 className="text-base font-bold text-white tracking-tight">GR Sports Admin</h3>
+            <p className="text-[11px] text-slate-400 hidden lg:block">Shop management</p>
           </div>
 
-          <nav className="flex lg:flex-col overflow-x-auto lg:overflow-visible gap-1.5 lg:gap-0 lg:space-y-1 pb-1 lg:pb-0">
-            {[
-              { id: 'dashboard', label: 'Dashboard & KPI', icon: LayoutDashboard },
-              { id: 'requests', label: 'Service Requests', icon: FileSpreadsheet, badge: requests.length },
-              { id: 'sla_monitor', label: 'Repair SLA (7-Day)', icon: Clock, badge: repairSlaItems.length },
-              { id: 'payments', label: 'Payments & Collections', icon: DollarSign },
-              { id: 'distance', label: 'Distance & Free Radius', icon: Compass },
-              { id: 'getting_config', label: 'Getting Pricing', icon: Wrench },
-              { id: 'repair_config', label: 'Repair Categories', icon: Wrench },
-              { id: 'reports', label: 'Reports & Export', icon: BarChart3 },
-              { id: 'templates', label: 'Email Templates', icon: Mail },
-              { id: 'team', label: 'Manage Staff & Admins', icon: UserCheck, badge: employees.length },
-              { id: 'settings', label: 'Shop Settings', icon: Settings },
-            ].map((item) => {
+          <nav
+            ref={navRef}
+            aria-label="Admin sections"
+            className="flex lg:flex-col overflow-x-auto lg:overflow-visible gap-1.5 lg:gap-0.5 pb-1 lg:pb-0 no-scrollbar scroll-smooth"
+          >
+            {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = adminSubView === item.id;
               return (
                 <button
                   key={item.id}
-                  onClick={() => setAdminSubView(item.id)}
-                  className={`flex items-center justify-between px-3 py-2 lg:py-2.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap shrink-0 lg:w-full ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-sm font-bold'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  type="button"
+                  data-active={isActive}
+                  aria-current={isActive ? 'page' : undefined}
+                  onClick={() => goTo(item.id)}
+                  className={`flex items-center justify-between gap-2 px-3 min-h-[40px] lg:min-h-[36px] rounded-xl text-xs font-semibold transition-all whitespace-nowrap shrink-0 lg:w-full ${
+                    isActive ? 'bg-blue-600 text-white shadow-sm font-bold' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5">
+                  <span className="flex items-center gap-2.5">
                     <Icon className="w-4 h-4" />
                     <span>{item.label}</span>
-                  </div>
+                  </span>
                   {item.badge !== undefined && (
                     <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                        isActive ? 'bg-blue-800 text-white' : 'bg-slate-800 text-slate-300'
+                      title={item.badgeTitle}
+                      className={`text-[10px] min-w-[20px] text-center px-1.5 py-0.5 rounded-full font-bold ${
+                        item.alert ? 'bg-rose-600 text-white' : isActive ? 'bg-blue-800 text-white' : 'bg-slate-800 text-slate-300'
                       }`}
                     >
                       {item.badge}
@@ -231,444 +774,449 @@ export const AdminPortal: React.FC = () => {
               );
             })}
           </nav>
-        </div>
 
-        {/* Fixed bottom footer in sidebar */}
-        <div className="pt-3 border-t border-slate-800/80 text-[11px] text-slate-500 px-2 hidden lg:block">
-          <p className="font-semibold text-slate-400">Hub: Indiranagar Master</p>
-          <p className="text-[10px] text-emerald-400 font-mono mt-0.5">● Free Radius: {distanceConfig.freeRadiusKm} KM</p>
         </div>
       </aside>
 
-      {/* Main Administrative Work Area - Single Page Scroll */}
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 min-w-0">
-        {/* SUBVIEW: DASHBOARD (Figma Item 46) */}
+      {/* Main work area */}
+      <main
+        ref={mainRef}
+        className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 min-w-0 lg:h-full lg:overflow-y-auto print:h-auto print:overflow-visible"
+      >
+        {isDataLoading && (
+          <p className="text-xs text-slate-500 flex items-center gap-2 print:hidden" role="status">
+            <span className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            Loading the latest data…
+          </p>
+        )}
+
+        {/* ------------------------------------------------------------------ */}
+        {/* DASHBOARD                                                          */}
+        {/* ------------------------------------------------------------------ */}
         {adminSubView === 'dashboard' && (
           <div className="space-y-6 animate-in fade-in">
-            {/* Header */}
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900">Operations & Financial Overview</h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Real-time status of badminton bat getting, composite repairs, and doorstep collections.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={handleExportCSV} variant="outline" size="sm" leftIcon={<Download className="w-4 h-4" />}>
+            {pageHeader(
+              'Dashboard',
+              'Live figures from your service requests, payments and repair deadlines.',
+              <>
+                <Button
+                  onClick={() => exportRequestsCsv(requests)}
+                  variant="outline"
+                  size="sm"
+                  className="min-h-[40px]"
+                  leftIcon={<Download className="w-4 h-4" />}
+                >
                   Export CSV
                 </Button>
-                <Button onClick={() => setAdminSubView('requests')} variant="primary" size="sm">
-                  View All Requests
+                <Button onClick={() => goTo('requests')} variant="primary" size="sm" className="min-h-[40px]">
+                  View all requests
                 </Button>
-              </div>
-            </div>
+              </>
+            )}
 
-            {/* KPI Cards: Operational & Financial */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
-                <p className="text-xs font-semibold text-slate-500">Total Requests</p>
+            {/* KPI cards */}
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
+                <p className="text-xs font-semibold text-slate-500">Total requests</p>
                 <p className="text-2xl font-black text-slate-900 mt-1">{requests.length}</p>
-                <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-2">
-                  <span>Getting: <b>{gettingCount}</b></span>
-                  <span>•</span>
-                  <span>Repair: <b>{repairCount}</b></span>
-                </div>
-              </div>
-
-              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
-                <p className="text-xs font-semibold text-slate-500">Total Collected</p>
-                <p className="text-2xl font-black text-emerald-600 mt-1">₹{totalRevenue}</p>
-                <p className="text-[11px] text-emerald-700 mt-2">Doorstep cash & UPI reconciled</p>
-              </div>
-
-              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
-                <p className="text-xs font-semibold text-slate-500">Pending Collection</p>
-                <p className="text-2xl font-black text-amber-600 mt-1">₹{pendingCollection}</p>
-                <p className="text-[11px] text-slate-500 mt-2">Will collect on bat delivery</p>
-              </div>
-
-              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
-                <p className="text-xs font-semibold text-slate-500">7-Day Repair SLA Alerts</p>
-                <p className="text-2xl font-black text-rose-600 mt-1">
-                  {repairSlaItems.filter((s) => s.slaStatus !== 'Normal').length}
+                <p className="text-[11px] text-slate-500 mt-2">
+                  {openRequests.length} open · Stringing {gettingCount} · Repair {repairCount}
                 </p>
-                <p className="text-[11px] text-slate-500 mt-2">Nearing or delayed</p>
               </div>
+
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
+                <p className="text-xs font-semibold text-slate-500">Collected</p>
+                <p className="text-2xl font-black text-emerald-600 mt-1">{formatINR(totalCollected)}</p>
+                <p className="text-[11px] text-slate-500 mt-2">
+                  From {paidRequests.length} paid {paidRequests.length === 1 ? 'request' : 'requests'}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => goTo('payments')}
+                className="text-left bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-amber-300 transition-colors"
+              >
+                <p className="text-xs font-semibold text-slate-500">To be collected</p>
+                <p className="text-2xl font-black text-amber-600 mt-1">{formatINR(pendingCollection)}</p>
+                <p className="text-[11px] text-slate-500 mt-2">
+                  {unpaidRequests.length} unpaid {unpaidRequests.length === 1 ? 'request' : 'requests'} (collected on delivery)
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => goTo('sla_monitor')}
+                className="text-left bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-rose-300 transition-colors"
+              >
+                <p className="text-xs font-semibold text-slate-500">Repair deadlines</p>
+                <p className={`text-2xl font-black mt-1 ${slaOverdue > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                  {slaOverdue} overdue
+                </p>
+                <p className="text-[11px] text-slate-500 mt-2">
+                  {slaDueSoon} due within 2 days · {repairSlaItems.length} active repairs
+                </p>
+              </button>
             </div>
 
-            {/* Charts & Analytical Breakdown (Figma Item 46) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Getting vs Repair Split */}
-              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-                <h3 className="text-sm font-bold text-slate-900">Service Breakdown (Getting vs Repair)</h3>
-                <div className="space-y-3 pt-2">
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold mb-1">
-                      <span>Bat Getting / Stringing</span>
-                      <span className="text-blue-700">{gettingCount} ({Math.round((gettingCount / requests.length) * 100 || 0)}%)</span>
-                    </div>
-                    <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className="bg-blue-600 h-full rounded-full"
-                        style={{ width: `${(gettingCount / requests.length) * 100 || 50}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold mb-1">
-                      <span>Bat Structural Repair</span>
-                      <span className="text-amber-700">{repairCount} ({Math.round((repairCount / requests.length) * 100 || 0)}%)</span>
-                    </div>
-                    <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className="bg-amber-500 h-full rounded-full"
-                        style={{ width: `${(repairCount / requests.length) * 100 || 50}%` }}
-                      />
-                    </div>
-                  </div>
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+              {/* Work queue by stage */}
+              <div className={`${cardCls} p-5 sm:p-6 space-y-3 xl:col-span-2`}>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Work queue by stage</h3>
+                  <p className="text-[11px] text-slate-500">Tap a stage to see those requests.</p>
                 </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-600">
-                  <p><b>Free Radius Utilization:</b> 84% of orders lie within the complimentary {distanceConfig.freeRadiusKm} KM boundary.</p>
-                </div>
-              </div>
-
-              {/* Operations SLA Summary */}
-              <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-sm font-bold text-slate-900">Repair 7-Day SLA Live Monitor</h3>
-                  <button
-                    onClick={() => setAdminSubView('sla_monitor')}
-                    className="text-xs text-blue-600 font-bold hover:underline"
-                  >
-                    Open SLA Dashboard
-                  </button>
-                </div>
-
                 <div className="divide-y divide-slate-100">
-                  {repairSlaItems.slice(0, 3).map((item) => (
-                    <div key={item.request.id} className="py-3 flex items-center justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs font-bold text-blue-900">{item.request.id}</span>
-                          <span className="text-xs font-bold text-slate-900">
-                            {item.request.batBrand} {item.request.batModel}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-500">
-                          Customer: {item.request.customerName} • Issue: {item.request.repairIssue}
-                        </p>
-                      </div>
-
-                      <div className="text-right">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            item.slaStatus === 'Delayed'
-                              ? 'bg-rose-100 text-rose-800'
-                              : item.slaStatus === 'Approaching Deadline'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-emerald-100 text-emerald-800'
-                          }`}
-                        >
-                          Day {item.currentDay} of 7 ({item.slaStatus})
-                        </span>
-                        <p className="text-[11px] text-slate-600 mt-0.5">{item.daysRemaining} days left</p>
-                      </div>
-                    </div>
+                  {stageCounts.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => openStage(s.id)}
+                      className="w-full min-h-[44px] flex items-center justify-between gap-3 py-2 text-left hover:bg-slate-50 rounded-lg px-2 -mx-2"
+                    >
+                      <span className="flex items-center gap-2.5 text-sm text-slate-700">
+                        <span className={`w-2.5 h-2.5 rounded-full ${s.dot}`} />
+                        {s.label}
+                      </span>
+                      <span className="flex items-center gap-1 text-sm font-bold text-slate-900">
+                        {s.count}
+                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                      </span>
+                    </button>
                   ))}
                 </div>
               </div>
+
+              {/* Repair deadlines */}
+              <div className={`${cardCls} p-5 sm:p-6 space-y-3 xl:col-span-3`}>
+                <div className="flex justify-between items-center gap-3">
+                  <h3 className="text-sm font-bold text-slate-900">Repair deadlines</h3>
+                  <button
+                    type="button"
+                    onClick={() => goTo('sla_monitor')}
+                    className="text-xs text-blue-600 font-bold hover:underline min-h-[40px] px-2"
+                  >
+                    Open SLA monitor
+                  </button>
+                </div>
+
+                {repairSlaItems.length === 0 ? (
+                  <p className="text-sm text-slate-500 py-6 text-center">No repairs in progress.</p>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {repairSlaItems.slice(0, 5).map((item) => (
+                      <button
+                        key={item.request.id}
+                        type="button"
+                        onClick={() => setDetailRequestId(item.request.id)}
+                        className="w-full py-3 flex items-center justify-between gap-3 text-left hover:bg-slate-50 rounded-lg px-2 -mx-2"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-x-2">
+                            <span className="font-mono text-xs font-bold text-blue-900">{item.request.id}</span>
+                            <span className="text-xs font-bold text-slate-900">
+                              {item.request.batBrand} {item.request.batModel}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 truncate">
+                            {item.request.customerName}
+                            {item.request.repairIssue ? ` · ${item.request.repairIssue}` : ''}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold ${SLA_STATE_CLASS[item.state]}`}>
+                            {slaLabel(item)}
+                          </span>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            {item.due ? `Due ${formatDate(item.due)}` : 'Not picked up yet'}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Executive Workshop Hub & Service Station Telemetry */}
-            <div className="space-y-4 pt-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Workshop Facilities & Fleet Telemetry</h3>
-                  <p className="text-xs text-slate-500">Live operational status across equipment, composite lab, and logistics</p>
-                </div>
-                <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full flex items-center gap-1.5 w-fit">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  All 3 Stations Fully Operational
-                </span>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Service mix & free radius */}
+              <div className={`${cardCls} p-5 sm:p-6 space-y-4`}>
+                <h3 className="text-sm font-bold text-slate-900">Service mix</h3>
+                {[
+                  { label: 'Stringing (getting)', count: gettingCount, bar: 'bg-blue-600', text: 'text-blue-700' },
+                  { label: 'Repairs', count: repairCount, bar: 'bg-amber-500', text: 'text-amber-700' },
+                ].map((row) => (
+                  <div key={row.label}>
+                    <div className="flex justify-between text-xs font-semibold mb-1">
+                      <span>{row.label}</span>
+                      <span className={row.text}>
+                        {row.count} ({pct(row.count, requests.length)}%)
+                      </span>
+                    </div>
+                    <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`${row.bar} h-full rounded-full`} style={{ width: `${pct(row.count, requests.length)}%` }} />
+                    </div>
+                  </div>
+                ))}
+
+                {requests.length > 0 && (
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-600">
+                    <b>Free radius:</b> {withinFreeRadius} of {requests.length} requests (
+                    {pct(withinFreeRadius, requests.length)}%) are within the current {distanceConfig.freeRadiusKm} KM free
+                    pickup & delivery radius.
+                  </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {/* Station 1: Stringing Line */}
-                <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:border-blue-400 transition-all flex flex-col group">
-                  <div className="relative h-44 overflow-hidden">
-                    <img
-                      src="/images/stringing-machine.jpg"
-                      alt="Electronic Constant-Pull Station"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/30 to-transparent" />
-                    <div className="absolute top-3 left-3">
-                      <span className="text-[10px] font-black uppercase tracking-wider bg-blue-600/90 text-white px-2.5 py-1 rounded-full shadow-xs">
-                        STATION 01 • GETTING
-                      </span>
-                    </div>
-                    <div className="absolute bottom-3 left-3 right-3 text-white">
-                      <h4 className="font-extrabold text-sm text-white">Electronic Constant-Pull</h4>
-                      <p className="text-[11px] text-slate-300">Yonex / Li-Ning Certified Calibrator</p>
-                    </div>
-                  </div>
-                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                        <span className="text-[10px] text-slate-500 block">Queue Volume</span>
-                        <span className="font-bold text-slate-900">{gettingCount} Bat Orders</span>
-                      </div>
-                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                        <span className="text-[10px] text-slate-500 block">Tension Range</span>
-                        <span className="font-bold text-blue-700">18 – 35 LBS</span>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-slate-600 line-clamp-2">
-                      Precision load-cell motor eliminating tension drop; dual-action swivel clamps.
-                    </p>
-                    <button
-                      onClick={() => setAdminSubView('getting_config')}
-                      className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      Configure Stringing Rates <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Station 2: Carbon Composite Repair Lab */}
-                <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:border-amber-400 transition-all flex flex-col group">
-                  <div className="relative h-44 overflow-hidden">
-                    <img
-                      src="/images/racket-repair.jpg"
-                      alt="Carbon Composite Repair Lab"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/30 to-transparent" />
-                    <div className="absolute top-3 left-3">
-                      <span className="text-[10px] font-black uppercase tracking-wider bg-amber-600/90 text-white px-2.5 py-1 rounded-full shadow-xs">
-                        LAB 02 • COMPOSITE REPAIR
-                      </span>
-                    </div>
-                    <div className="absolute bottom-3 left-3 right-3 text-white">
-                      <h4 className="font-extrabold text-sm text-white">Carbon Splice & Resin Bonding</h4>
-                      <p className="text-[11px] text-slate-300">Toray T800 Aerospace Matrix</p>
-                    </div>
-                  </div>
-                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                        <span className="text-[10px] text-slate-500 block">Active Restorations</span>
-                        <span className="font-bold text-slate-900">{repairCount} Rackets</span>
-                      </div>
-                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                        <span className="text-[10px] text-slate-500 block">SLA Commitment</span>
-                        <span className="font-bold text-amber-700">Strict 7 Days</span>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-slate-600 line-clamp-2">
-                      High-strength carbon sleeving infused with aviation epoxy; stress-tested to tournament tension.
-                    </p>
-                    <button
-                      onClick={() => setAdminSubView('sla_monitor')}
-                      className="w-full py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      Launch 7-Day SLA Monitor <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Station 3: Concierge Logistics & Doorstep Fleets */}
-                <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:border-emerald-400 transition-all flex flex-col group">
-                  <div className="relative h-44 overflow-hidden">
-                    <img
-                      src="/images/doorstep-delivery.jpg"
-                      alt="Doorstep Logistics Concierge"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/30 to-transparent" />
-                    <div className="absolute top-3 left-3">
-                      <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-600/90 text-white px-2.5 py-1 rounded-full shadow-xs">
-                        FLEET 03 • LOGISTICS
-                      </span>
-                    </div>
-                    <div className="absolute bottom-3 left-3 right-3 text-white">
-                      <h4 className="font-extrabold text-sm text-white">Doorstep White-Glove Fleet</h4>
-                      <p className="text-[11px] text-slate-300">Free 15 KM Delivery Zone</p>
-                    </div>
-                  </div>
-                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                        <span className="text-[10px] text-slate-500 block">Complimentary</span>
-                        <span className="font-bold text-emerald-700">{distanceConfig.freeRadiusKm} KM Radius</span>
-                      </div>
-                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                        <span className="text-[10px] text-slate-500 block">Beyond Radius</span>
-                        <span className="font-bold text-slate-900">₹{distanceConfig.perKmRateBeyondFree}/KM</span>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-slate-600 line-clamp-2">
-                      Zero advance payment policy; digital verification and doorstep collection via Cash or UPI.
-                    </p>
-                    <button
-                      onClick={() => setAdminSubView('distance')}
-                      className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      Update Delivery Zones <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
+              {/* Shortcuts to configuration */}
+              <div className={`${cardCls} p-5 sm:p-6 space-y-3`}>
+                <h3 className="text-sm font-bold text-slate-900">Pricing & delivery settings</h3>
+                {[
+                  {
+                    view: 'getting_config',
+                    title: 'Stringing packages',
+                    detail: gettingServices.length
+                      ? `${gettingServices.length} packages · ${formatINR(Math.min(...gettingServices.map((g) => g.price)))} – ${formatINR(
+                          Math.max(...gettingServices.map((g) => g.price))
+                        )}`
+                      : 'No packages yet',
+                  },
+                  {
+                    view: 'repair_config',
+                    title: 'Repair categories',
+                    detail: `${repairCategories.length} categories with base prices and SLA days`,
+                  },
+                  {
+                    view: 'distance',
+                    title: 'Delivery & free radius',
+                    detail: `Free within ${distanceConfig.freeRadiusKm} KM · ${
+                      distanceConfig.pricingMethod === 'SLAB'
+                        ? 'distance slabs beyond'
+                        : `${formatINR(distanceConfig.perKmRateBeyondFree)}/KM beyond`
+                    }`,
+                  },
+                  { view: 'sla_monitor', title: 'Repair SLA monitor', detail: `${repairSlaItems.length} active repairs` },
+                ].map((s) => (
+                  <button
+                    key={s.view}
+                    type="button"
+                    onClick={() => goTo(s.view)}
+                    className="w-full min-h-[48px] flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 text-left transition-colors"
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-sm font-bold text-slate-900">{s.title}</span>
+                      <span className="block text-[11px] text-slate-500 truncate">{s.detail}</span>
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                  </button>
+                ))}
               </div>
             </div>
           </div>
         )}
 
-        {/* SUBVIEW: SERVICE REQUESTS TABLE (Figma Item 47 & 48) */}
+        {/* ------------------------------------------------------------------ */}
+        {/* SERVICE REQUESTS                                                   */}
+        {/* ------------------------------------------------------------------ */}
         {adminSubView === 'requests' && (
           <div className="space-y-4 animate-in fade-in">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900">All Service Requests</h2>
-                <p className="text-xs text-slate-500">Filter, inspect, assign employees, and update stages.</p>
-              </div>
-              <Button onClick={handleExportCSV} variant="outline" size="sm" leftIcon={<Download className="w-4 h-4" />}>
-                Export CSV
-              </Button>
-            </div>
+            {pageHeader(
+              'Service Requests',
+              'Search and filter requests, open a request to see everything about it, assign staff or change its status.',
+              <>
+                <Button
+                  onClick={() => setNewBooking({})}
+                  size="sm"
+                  className="min-h-[40px]"
+                  leftIcon={<Plus className="w-4 h-4" />}
+                >
+                  New booking
+                </Button>
+                <Button
+                  onClick={() => exportRequestsCsv(filteredRequests)}
+                  variant="outline"
+                  size="sm"
+                  className="min-h-[40px]"
+                  leftIcon={<Download className="w-4 h-4" />}
+                >
+                  Export {filtersActive ? `${filteredRequests.length} shown` : 'all'} (CSV)
+                </Button>
+              </>
+            )}
 
             {/* Filter Bar */}
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-wrap gap-3 items-center justify-between">
-              <div className="relative min-w-[200px] flex-1">
+            <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+              <div className="relative">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
-                  type="text"
+                  type="search"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search ID, customer, racket..."
-                  className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs outline-none"
+                  placeholder="Search ID, name, mobile, racket, staff"
+                  aria-label="Search requests"
+                  className={`${inputCls} pl-10`}
                 />
               </div>
 
-              <div className="flex flex-wrap gap-2 text-xs">
-                <select
-                  value={serviceFilter}
-                  onChange={(e) => setServiceFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold outline-none"
-                >
-                  <option value="ALL">All Services</option>
-                  <option value="GETTING">Bat Getting</option>
-                  <option value="REPAIR">Bat Repair</option>
-                </select>
-
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold outline-none"
+                  aria-label="Filter by status"
+                  className={inputCls}
                 >
-                  <option value="ALL">All Statuses</option>
-                  <option value="Submitted">Submitted</option>
-                  <option value="Accepted">Accepted</option>
-                  <option value="Employee Assigned">Employee Assigned</option>
-                  <option value="Bat Picked Up">Bat Picked Up</option>
-                  <option value="Awaiting Customer Approval">Awaiting Approval</option>
-                  <option value="Repair Approved">Repair Approved</option>
-                  <option value="Completed">Completed</option>
+                  <option value="ALL">All statuses</option>
+                  <option value="OPEN">Open (not completed or cancelled)</option>
+                  <optgroup label="Stage">
+                    {STAGES.map((s) => (
+                      <option key={s.id} value={`stage:${s.id}`}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Exact status">
+                    {ALL_STATUSES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+
+                <select
+                  value={serviceFilter}
+                  onChange={(e) => setServiceFilter(e.target.value)}
+                  aria-label="Filter by service"
+                  className={inputCls}
+                >
+                  <option value="ALL">All services</option>
+                  <option value="GETTING">Stringing (getting)</option>
+                  <option value="REPAIR">Repair</option>
                 </select>
 
                 <select
                   value={paymentFilter}
                   onChange={(e) => setPaymentFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold outline-none"
+                  aria-label="Filter by payment"
+                  className={inputCls}
                 >
-                  <option value="ALL">All Payments</option>
+                  <option value="ALL">All payments</option>
+                  <option value="Pending">Unpaid</option>
                   <option value="Paid">Paid</option>
-                  <option value="Pending">Payment Pending</option>
                 </select>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                <span>
+                  Showing {filteredRequests.length} of {requests.length} requests
+                </span>
+                {filtersActive && (
+                  <button type="button" onClick={clearFilters} className="font-bold text-blue-600 hover:underline min-h-[40px] px-2">
+                    Clear filters
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Requests Data Table */}
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+            {/* Requests table (scrolls inside its card on small screens) */}
+            <div className={`${cardCls} overflow-hidden`}>
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
+                <table className="w-full min-w-[880px] text-left border-collapse text-xs [&_td]:px-3 [&_th]:px-3">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
-                      <th className="py-3.5 px-4">Request ID</th>
-                      <th className="py-3.5 px-4">Customer</th>
-                      <th className="py-3.5 px-4">Service & Bat</th>
-                      <th className="py-3.5 px-4">Assigned Staff</th>
-                      <th className="py-3.5 px-4">Distance</th>
-                      <th className="py-3.5 px-4">Amount</th>
-                      <th className="py-3.5 px-4">Status</th>
-                      <th className="py-3.5 px-4 text-right">Actions</th>
+                      <th className={thCls}>Request</th>
+                      <th className={thCls}>Customer</th>
+                      <th className={thCls}>Service & racket</th>
+                      <th className={thCls}>Assigned staff</th>
+                      <th className={thCls}>Distance</th>
+                      <th className={thCls}>Amount</th>
+                      <th className={thCls}>Status</th>
+                      <th className={`${thCls} text-right sticky right-0 bg-slate-50 shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.15)]`}>Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
+                    {filteredRequests.length === 0 &&
+                      emptyRow(8, requests.length === 0 ? 'No service requests yet.' : 'No requests match these filters.')}
                     {filteredRequests.map((req) => (
                       <tr key={req.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-3.5 px-4 font-mono font-bold text-blue-900">
-                          {req.id}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <p className="font-bold text-slate-900">{req.customerName}</p>
-                          <p className="text-[11px] text-slate-500">{req.customerMobile}</p>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span
-                            className={`font-semibold ${
-                              req.serviceType === 'GETTING' ? 'text-blue-700' : 'text-amber-700'
-                            }`}
+                        <td className={tdCls}>
+                          <button
+                            type="button"
+                            onClick={() => setDetailRequestId(req.id)}
+                            className="font-mono font-bold text-blue-700 hover:underline whitespace-nowrap"
                           >
-                            {req.serviceType === 'GETTING' ? 'Getting' : 'Repair'}
-                          </span>
-                          <p className="text-slate-600">{req.batBrand} {req.batModel}</p>
+                            {req.id}
+                          </button>
+                          <p className="text-[11px] text-slate-500 whitespace-nowrap">{formatDate(req.createdAt)}</p>
                         </td>
-                        <td className="py-3.5 px-4">
-                          {req.assignedEmployeeName ? (
-                            <span className="font-medium text-slate-800">{req.assignedEmployeeName}</span>
+                        <td className={tdCls}>
+                          <p className="font-bold text-slate-900">{req.customerName}</p>
+                          {mobileTelHref(req.customerMobile) ? (
+                            <a href={mobileTelHref(req.customerMobile)} className="text-[11px] text-blue-700 hover:underline whitespace-nowrap">
+                              {formatMobile(req.customerMobile)}
+                            </a>
                           ) : (
-                            <button
-                              onClick={() => {
-                                setAssignModalReqId(req.id);
-                              }}
-                              className="text-blue-600 font-bold hover:underline"
-                            >
-                              + Assign Staff
-                            </button>
+                            <p className="text-[11px] text-slate-500">{formatMobile(req.customerMobile)}</p>
                           )}
                         </td>
-                        <td className="py-3.5 px-4">
-                          <span className={req.isFreeDelivery ? 'text-emerald-700 font-semibold' : 'text-slate-700'}>
-                            {req.distanceKm} KM ({req.isFreeDelivery ? 'Free' : `+₹${req.pickupDeliveryCharge}`})
+                        <td className={tdCls}>
+                          <span className={`font-semibold ${req.serviceType === 'GETTING' ? 'text-blue-700' : 'text-amber-700'}`}>
+                            {serviceLabel(req)}
                           </span>
+                          <p className="text-slate-600">
+                            {req.batBrand} {req.batModel}
+                          </p>
                         </td>
-                        <td className="py-3.5 px-4 font-bold text-slate-900">
-                          {req.totalAmount > 0 ? `₹${req.totalAmount}` : 'Quote on Inspect'}
+                        <td className={tdCls}>
+                          {req.assignedEmployeeName ? (
+                            <span className="font-medium text-slate-800">{req.assignedEmployeeName}</span>
+                          ) : isOpenRequest(req) ? (
+                            <button
+                              type="button"
+                              onClick={() => openAssign(req)}
+                              className="min-h-[40px] px-2.5 rounded-lg bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 whitespace-nowrap"
+                            >
+                              + Assign staff
+                            </button>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
                         </td>
-                        <td className="py-3.5 px-4">
+                        <td className={`${tdCls} whitespace-nowrap`}>
+                          <span className={req.isFreeDelivery ? 'text-emerald-700 font-semibold' : 'text-slate-700'}>
+                            {req.distanceKm} KM
+                          </span>
+                          <p className="text-[11px] text-slate-500">
+                            {req.isFreeDelivery ? 'Free delivery' : `+${formatINR(req.pickupDeliveryCharge)}`}
+                          </p>
+                        </td>
+                        <td className={`${tdCls} whitespace-nowrap`}>
+                          <p className="font-bold text-slate-900">{amountText(req)}</p>
+                          <p className={`text-[11px] ${req.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-slate-500'}`}>
+                            {paymentText(req)}
+                          </p>
+                        </td>
+                        <td className={tdCls}>
                           <StatusBadge status={req.status} size="sm" />
                         </td>
-                        <td className="py-3.5 px-4 text-right">
+                        <td className={`${tdCls} text-right sticky right-0 bg-white shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.15)]`}>
                           <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => setDetailModalRequest(req)}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                              title="View Details"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
                             {req.status === 'Submitted' && (
                               <button
-                                onClick={() =>
-                                  updateRequestStatus(req.id, 'Accepted', 'Admin', 'Accepted for logistics')
-                                }
-                                className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg font-bold hover:bg-emerald-100 transition-colors"
+                                type="button"
+                                onClick={() => updateRequestStatus(req.id, 'Accepted', actor, 'Accepted by admin')}
+                                className="min-h-[40px] px-3 bg-emerald-50 text-emerald-700 rounded-lg font-bold hover:bg-emerald-100 transition-colors"
                               >
                                 Accept
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => setDetailRequestId(req.id)}
+                              className="min-h-[40px] px-3 inline-flex items-center gap-1 rounded-lg border border-slate-200 text-slate-700 font-bold hover:text-blue-700 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                            >
+                              <Eye className="w-3.5 h-3.5" /> Open
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -680,485 +1228,494 @@ export const AdminPortal: React.FC = () => {
           </div>
         )}
 
-        {/* SUBVIEW: REPAIR SLA 7-DAY MONITOR (Figma Item 55 & 76) */}
+        {/* ------------------------------------------------------------------ */}
+        {/* REPAIR SLA MONITOR                                                 */}
+        {/* ------------------------------------------------------------------ */}
         {adminSubView === 'sla_monitor' && (
           <div className="space-y-6 animate-in fade-in">
-            {/* Visual SLA Guarantee Banner */}
-            <div className="relative overflow-hidden rounded-3xl bg-slate-900 text-white p-6 border border-slate-800 shadow-xl">
-              <div className="absolute inset-0 z-0">
-                <img
-                  src="/images/racket-repair.jpg"
-                  alt="Carbon Composite Repair Lab"
-                  className="w-full h-full object-cover opacity-25"
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-900/90 to-transparent" />
-              </div>
-              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-500/20 px-2.5 py-0.5 rounded-full border border-amber-400/30">
-                    SLA ENGINE • 7-DAY STRUCTURAL COMMITMENT
-                  </span>
-                  <h2 className="text-2xl font-black mt-1">Repair SLA 7-Day Monitoring Control</h2>
-                  <p className="text-xs text-slate-300 mt-0.5 max-w-xl">
-                    Every composite carbon splice is guaranteed within 7 calendar days from doorstep pickup intake. Live telemetry tracks curing progress and delivery dispatch.
-                  </p>
+            {pageHeader(
+              'Repair SLA Monitor',
+              <>
+                Turnaround is counted in calendar days from the day the racket is picked up until it is delivered back. The SLA
+                days for each repair come from <b>Repair Categories</b> (default {DEFAULT_SLA_DAYS} days).
+              </>
+            )}
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              {[
+                { label: 'Active repairs', value: repairSlaItems.length, cls: 'text-slate-900' },
+                { label: 'Overdue', value: slaOverdue, cls: slaOverdue ? 'text-rose-600' : 'text-slate-900' },
+                { label: 'Due within 2 days', value: slaDueSoon, cls: slaDueSoon ? 'text-amber-600' : 'text-slate-900' },
+                { label: 'Not picked up yet', value: slaNotStarted, cls: 'text-slate-900' },
+              ].map((c) => (
+                <div key={c.label} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+                  <p className="text-xs font-semibold text-slate-500">{c.label}</p>
+                  <p className={`text-2xl font-black mt-1 ${c.cls}`}>{c.value}</p>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="bg-slate-800/80 border border-slate-700/80 px-4 py-2.5 rounded-2xl text-center">
-                    <p className="text-[10px] text-slate-400 uppercase font-semibold">Active Restorations</p>
-                    <p className="text-2xl font-black text-amber-400">{repairSlaItems.length}</p>
-                  </div>
-                  <div className="bg-emerald-950/60 border border-emerald-800/80 px-4 py-2.5 rounded-2xl text-center">
-                    <p className="text-[10px] text-emerald-400 uppercase font-semibold">On-Time SLA Rate</p>
-                    <p className="text-2xl font-black text-emerald-400">98.4%</p>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
 
-            <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
-                    <th className="py-3.5 px-4">Request ID</th>
-                    <th className="py-3.5 px-4">Customer</th>
-                    <th className="py-3.5 px-4">Pickup Date</th>
-                    <th className="py-3.5 px-4">Target Date</th>
-                    <th className="py-3.5 px-4">Current Turnaround</th>
-                    <th className="py-3.5 px-4">Days Remaining</th>
-                    <th className="py-3.5 px-4">Status</th>
-                    <th className="py-3.5 px-4 text-right">SLA Severity</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {repairSlaItems.map((item) => (
-                    <tr key={item.request.id} className="hover:bg-slate-50/70">
-                      <td className="py-3.5 px-4 font-mono font-bold text-blue-900">
-                        {item.request.id}
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        {item.request.customerName}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-600">
-                        {item.request.pickupDate
-                          ? new Date(item.request.pickupDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
-                          : 'Pending Pickup'}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-600">
-                        {item.request.targetDate
-                          ? new Date(item.request.targetDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
-                          : 'Within 7 Days'}
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        Day {item.currentDay} of 7
-                      </td>
-                      <td className="py-3.5 px-4 font-bold">
-                        <span className={item.daysRemaining <= 1 ? 'text-rose-600 font-black' : 'text-slate-700'}>
-                          {item.daysRemaining} Days
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <StatusBadge status={item.request.status} size="sm" />
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <span
-                          className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
-                            item.slaStatus === 'Delayed'
-                              ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                              : item.slaStatus === 'Approaching Deadline'
-                              ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                              : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                          }`}
-                        >
-                          {item.slaStatus}
-                        </span>
-                      </td>
+            <div className={`${cardCls} overflow-hidden`}>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[780px] text-left border-collapse text-xs [&_td]:px-3 [&_th]:px-3">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                      <th className={thCls}>Request</th>
+                      <th className={thCls}>Customer</th>
+                      <th className={thCls}>Issue</th>
+                      <th className={thCls}>Picked up</th>
+                      <th className={thCls}>Due</th>
+                      <th className={thCls}>Time left</th>
+                      <th className={thCls}>Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {repairSlaItems.length === 0 && emptyRow(7, 'No repairs in progress.')}
+                    {repairSlaItems.map((item) => (
+                      <tr key={item.request.id} className="hover:bg-slate-50/70">
+                        <td className={tdCls}>
+                          <button
+                            type="button"
+                            onClick={() => setDetailRequestId(item.request.id)}
+                            className="block -my-2 py-2 font-mono font-bold text-blue-700 hover:underline whitespace-nowrap text-left"
+                          >
+                            {item.request.id}
+                          </button>
+                        </td>
+                        <td className={`${tdCls} font-bold text-slate-900`}>{item.request.customerName}</td>
+                        <td className={`${tdCls} text-slate-700`}>{item.request.repairIssue || '—'}</td>
+                        <td className={`${tdCls} text-slate-600 whitespace-nowrap`}>
+                          {item.start ? formatDate(item.start) : 'Not yet'}
+                          {item.dayNumber !== null && <p className="text-[11px] text-slate-500">Day {item.dayNumber} since pickup</p>}
+                        </td>
+                        <td className={`${tdCls} text-slate-600 whitespace-nowrap`}>
+                          {item.due ? formatDate(item.due) : '—'}
+                          <p className="text-[11px] text-slate-500">SLA {pluralDays(item.slaDays)}</p>
+                        </td>
+                        <td className={`${tdCls} whitespace-nowrap`}>
+                          <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold ${SLA_STATE_CLASS[item.state]}`}>
+                            {slaLabel(item)}
+                          </span>
+                        </td>
+                        <td className={tdCls}>
+                          <StatusBadge status={item.request.status} size="sm" />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
 
-        {/* SHARED PRICING SUB-NAVIGATION BAR FOR DISTANCE, GETTING, & REPAIR */}
+        {/* SHARED PRICING SUB-NAVIGATION (distance / stringing / repair) */}
         {(adminSubView === 'distance' || adminSubView === 'getting_config' || adminSubView === 'repair_config') && (
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white rounded-2xl border border-slate-200 shadow-2xs mb-2">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setAdminSubView('distance')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  adminSubView === 'distance'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <Compass className="w-3.5 h-3.5" />
-                Distance & Free Radius ({distanceConfig.freeRadiusKm} KM)
-              </button>
-              <button
-                type="button"
-                onClick={() => setAdminSubView('getting_config')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  adminSubView === 'getting_config'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <Wrench className="w-3.5 h-3.5" />
-                Bat Getting Packages ({gettingServices.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setAdminSubView('repair_config')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  adminSubView === 'repair_config'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <Wrench className="w-3.5 h-3.5 text-amber-500" />
-                Repair Base Charges & SLA ({repairCategories.length})
-              </button>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 p-2 bg-white rounded-2xl border border-slate-200 shadow-2xs">
+            <div className="hidden md:flex overflow-x-auto no-scrollbar gap-1.5">
+              {[
+                { id: 'distance', label: `Delivery & free radius (${distanceConfig.freeRadiusKm} KM)`, icon: Compass },
+                { id: 'getting_config', label: `Stringing packages (${gettingServices.length})`, icon: Wrench },
+                { id: 'repair_config', label: `Repair categories (${repairCategories.length})`, icon: Wrench },
+              ].map((t) => {
+                const Icon = t.icon;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => goTo(t.id)}
+                    className={`min-h-[40px] px-3.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                      adminSubView === t.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {t.label}
+                  </button>
+                );
+              })}
             </div>
 
             <Button
-              onClick={resetPricingToDefaults}
+              onClick={() =>
+                setConfirmState({
+                  title: 'Reset pricing to defaults?',
+                  message: (
+                    <>
+                      This restores the original delivery rules (free within 10 KM, {formatINR(15)}/KM beyond, workshop
+                      location) and the original prices and details of the standard stringing packages and repair categories.
+                      Packages or categories you added yourself are not changed. Customers see the new prices immediately.
+                    </>
+                  ),
+                  confirmLabel: 'Reset pricing',
+                  danger: true,
+                  onConfirm: () => resetPricingToDefaults(),
+                })
+              }
               variant="outline"
               size="sm"
-              className="text-xs text-rose-700 hover:bg-rose-50 border-rose-200"
+              className="min-h-[40px] text-xs text-rose-700 hover:bg-rose-50 border-rose-200 shrink-0"
               leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
             >
-              Reset Pricing to Defaults
+              Reset pricing to defaults
             </Button>
           </div>
         )}
 
-        {/* SUBVIEW: DISTANCE CHARGES & FREE RADIUS RULES (Figma Item 52) */}
+        {/* ------------------------------------------------------------------ */}
+        {/* DELIVERY & FREE RADIUS                                             */}
+        {/* ------------------------------------------------------------------ */}
         {adminSubView === 'distance' && (
           <div className="space-y-6 animate-in fade-in">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900">
-                  Free Radius & Distance Pricing Configuration
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Currently active free delivery threshold: <b>{distanceConfig.freeRadiusKm} KM</b>. Pickups beyond {distanceConfig.freeRadiusKm} KM are charged at ₹{distanceConfig.perKmRateBeyondFree}/KM.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
-                  {distanceConfig.freeRadiusKm} KM Free Zone Active
-                </span>
-              </div>
-            </div>
+            {pageHeader(
+              'Delivery & Free Radius',
+              <>
+                Live now: free pickup & delivery within <b>{distanceConfig.freeRadiusKm} KM</b>; beyond that{' '}
+                {distanceConfig.pricingMethod === 'SLAB' ? (
+                  'distance slabs apply'
+                ) : (
+                  <>
+                    <b>{formatINR(distanceConfig.perKmRateBeyondFree)}/KM</b> for the extra distance
+                  </>
+                )}
+                .
+              </>
+            )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Configuration Form */}
-              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-5">
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              {/* Configuration form (saved only when you press Save) */}
+              <form
+                className={`${cardCls} p-5 sm:p-6 space-y-5`}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  saveDistance();
+                }}
+              >
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <Compass className="w-4 h-4 text-blue-600" />
-                  Workshop Origin & Free Radius Control
+                  Workshop location & delivery charges
                 </h3>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Central Workshop Hub</label>
+                  <label htmlFor="dist-shop" className={labelCls}>
+                    Workshop address
+                  </label>
                   <input
+                    id="dist-shop"
                     type="text"
-                    value={distanceConfig.shopLocationName}
-                    onChange={(e) =>
-                      updateDistanceConfig({ ...distanceConfig, shopLocationName: e.target.value })
-                    }
-                    className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-medium outline-none"
+                    value={distForm.shopLocationName}
+                    onChange={(e) => setDist({ shopLocationName: e.target.value })}
+                    className={inputCls}
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Latitude</label>
+                    <label htmlFor="dist-lat" className={labelCls}>
+                      Latitude
+                    </label>
                     <input
+                      id="dist-lat"
                       type="number"
+                      inputMode="decimal"
                       step="0.0001"
-                      value={distanceConfig.shopLat}
-                      onChange={(e) =>
-                        updateDistanceConfig({ ...distanceConfig, shopLat: parseFloat(e.target.value) || 0 })
-                      }
-                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
+                      value={distForm.shopLat}
+                      onChange={(e) => setDist({ shopLat: e.target.value })}
+                      className={inputCls}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Longitude</label>
+                    <label htmlFor="dist-lng" className={labelCls}>
+                      Longitude
+                    </label>
                     <input
+                      id="dist-lng"
                       type="number"
+                      inputMode="decimal"
                       step="0.0001"
-                      value={distanceConfig.shopLng}
-                      onChange={(e) =>
-                        updateDistanceConfig({ ...distanceConfig, shopLng: parseFloat(e.target.value) || 0 })
-                      }
-                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
+                      value={distForm.shopLng}
+                      onChange={(e) => setDist({ shopLng: e.target.value })}
+                      className={inputCls}
                     />
                   </div>
                 </div>
+                <p className="text-[11px] text-slate-500 -mt-3">Customer distances are measured from this point.</p>
 
-                {/* Free Delivery Radius Control */}
                 <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <label className="block text-xs font-black text-emerald-950 uppercase tracking-wide">
-                        Free Pickup & Delivery Radius
-                      </label>
-                      <p className="text-[11px] text-emerald-800">
-                        Orders within this radius have ₹0 delivery fee. Set to 13 KM or any custom value.
-                      </p>
-                    </div>
-                    <span className="text-xl font-black text-emerald-700 font-mono">
-                      {distanceConfig.freeRadiusKm} KM
-                    </span>
+                  <div>
+                    <label htmlFor="dist-free" className="block text-xs font-black text-emerald-950">
+                      Free pickup & delivery radius (KM)
+                    </label>
+                    <p className="text-[11px] text-emerald-800">Customers within this distance pay ₹0 for pickup & delivery.</p>
                   </div>
-
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <input
+                      id="dist-free"
                       type="number"
-                      min={1}
-                      max={40}
+                      inputMode="decimal"
+                      min={0.5}
+                      max={100}
                       step={0.5}
-                      value={distanceConfig.freeRadiusKm}
+                      value={distForm.freeRadiusKm}
                       onFocus={(e) => e.target.select()}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === '') return;
-                        const parsed = parseFloat(val);
-                        if (!isNaN(parsed)) {
-                          updateDistanceConfig({
-                            ...distanceConfig,
-                            freeRadiusKm: Math.max(0, parsed),
-                          });
-                        }
-                      }}
-                      className="w-28 p-2.5 rounded-xl border border-emerald-300 bg-white text-base font-black text-emerald-700 outline-none focus:ring-2 focus:ring-emerald-500"
+                      onChange={(e) => setDist({ freeRadiusKm: e.target.value })}
+                      className="w-28 min-h-[40px] px-3 rounded-xl border border-emerald-300 bg-white text-base font-black text-emerald-700 outline-none focus:ring-2 focus:ring-emerald-500"
                     />
-                    <div className="flex flex-wrap gap-1.5 flex-1">
-                      {[10, 12, 13, 15, 20].map((km) => (
-                        <button
-                          key={km}
-                          type="button"
-                          onClick={() => updateDistanceConfig({ ...distanceConfig, freeRadiusKm: km })}
-                          className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all ${
-                            distanceConfig.freeRadiusKm === km
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                              : 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-100 hover:text-emerald-900'
-                          }`}
-                        >
-                          {km} KM {km === 13 && '(Requested)'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Rate beyond {distanceConfig.freeRadiusKm} KM (₹/KM)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={distanceConfig.perKmRateBeyondFree}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === '') return;
-                        const parsed = parseFloat(val);
-                        if (!isNaN(parsed)) {
-                          updateDistanceConfig({
-                            ...distanceConfig,
-                            perKmRateBeyondFree: Math.max(0, parsed),
-                          });
-                        }
-                      }}
-                      className="w-full p-2.5 rounded-xl border border-slate-300 text-sm font-bold text-slate-900 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Max Serviceable Radius (KM)
-                    </label>
-                    <input
-                      type="number"
-                      value={distanceConfig.maxServiceDistanceKm || 35}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === '') return;
-                        const parsed = parseFloat(val);
-                        if (!isNaN(parsed)) {
-                          updateDistanceConfig({
-                            ...distanceConfig,
-                            maxServiceDistanceKm: parsed,
-                          });
-                        }
-                      }}
-                      className="w-full p-2.5 rounded-xl border border-slate-300 text-sm font-bold text-slate-900 outline-none"
-                    />
+                    {[5, 8, 10, 12, 15].map((km) => (
+                      <button
+                        key={km}
+                        type="button"
+                        onClick={() => setDist({ freeRadiusKm: String(km) })}
+                        className={`min-h-[40px] text-xs font-bold px-3 rounded-xl border transition-all ${
+                          num(distForm.freeRadiusKm) === km
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-100 hover:text-emerald-900'
+                        }`}
+                      >
+                        {km} KM
+                      </button>
+                    ))}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Calculation Method</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => updateDistanceConfig({ ...distanceConfig, pricingMethod: 'PER_KM' })}
-                      className={`p-2.5 rounded-xl text-xs font-bold border ${
-                        distanceConfig.pricingMethod === 'PER_KM'
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      Linear Per KM
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updateDistanceConfig({ ...distanceConfig, pricingMethod: 'SLAB' })}
-                      className={`p-2.5 rounded-xl text-xs font-bold border ${
-                        distanceConfig.pricingMethod === 'SLAB'
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      Distance Slabs
-                    </button>
+                  <span className={labelCls}>Charge beyond the free radius</span>
+                  <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Charge method">
+                    {[
+                      { id: 'PER_KM' as const, label: 'Per KM rate' },
+                      { id: 'SLAB' as const, label: 'Distance slabs' },
+                    ].map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={distForm.pricingMethod === m.id}
+                        onClick={() => setDist({ pricingMethod: m.id })}
+                        className={`min-h-[40px] rounded-xl text-xs font-bold border ${
+                          distForm.pricingMethod === m.id
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                {/* Slabs breakdown if SLAB mode */}
-                {distanceConfig.pricingMethod === 'SLAB' && (
-                  <div className="space-y-2 pt-2 border-t border-slate-200">
-                    <span className="text-xs font-bold text-slate-700">Configured Slabs for {distanceConfig.freeRadiusKm} KM Threshold</span>
-                    <div className="space-y-1.5">
-                      {distanceConfig.slabs.map((slab, sIdx) => (
-                        <div key={sIdx} className="flex items-center justify-between p-2 bg-slate-50 rounded-xl border border-slate-200 text-xs">
-                          <span className="font-semibold text-slate-700">
-                            {slab.minKm} – {slab.maxKm} KM
-                          </span>
-                          <span className="font-bold text-blue-700">
-                            {slab.price === 0 ? '₹0 (Free Zone)' : `₹${slab.price}`}
-                          </span>
-                        </div>
-                      ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="dist-rate" className={labelCls}>
+                      Rate per extra KM (₹)
+                    </label>
+                    <input
+                      id="dist-rate"
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      value={distForm.perKmRateBeyondFree}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setDist({ perKmRateBeyondFree: e.target.value })}
+                      className={inputCls}
+                    />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      {distForm.pricingMethod === 'SLAB'
+                        ? 'Used only for distances not covered by a slab.'
+                        : 'Charged for each KM beyond the free radius.'}
+                    </p>
+                  </div>
+                  <div>
+                    <label htmlFor="dist-max" className={labelCls}>
+                      Max service radius (KM)
+                    </label>
+                    <input
+                      id="dist-max"
+                      type="number"
+                      inputMode="decimal"
+                      min={1}
+                      value={distForm.maxServiceDistanceKm}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setDist({ maxServiceDistanceKm: e.target.value })}
+                      className={inputCls}
+                    />
+                    <p className="text-[11px] text-slate-500 mt-1">For reference — bookings beyond it are not blocked.</p>
+                  </div>
+                </div>
+
+                {distForm.pricingMethod === 'SLAB' && (
+                  <div className="space-y-2 pt-3 border-t border-slate-200">
+                    <p className="text-xs font-bold text-slate-700">Distance slabs (flat charge per slab)</p>
+                    <div className="flex items-center justify-between p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-xs">
+                      <span className="font-semibold text-emerald-900">0 – {distForm.freeRadiusKm || '?'} KM</span>
+                      <span className="font-bold text-emerald-700">Free</span>
                     </div>
+                    {distForm.slabs.map((slab, i) => {
+                      const prev = i === 0 ? num(distForm.freeRadiusKm) : num(distForm.slabs[i - 1].maxKm);
+                      return (
+                        <div key={i} className="flex flex-wrap items-end gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                          <span className="font-semibold text-slate-600 min-w-[80px] pb-2.5">
+                            From {Number.isFinite(prev) ? +(prev + 0.1).toFixed(1) : '?'} KM
+                          </span>
+                          <label className="flex-1 min-w-[90px]">
+                            <span className="block text-[11px] text-slate-500 mb-0.5">Up to (KM)</span>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              value={slab.maxKm}
+                              onChange={(e) =>
+                                setDist({ slabs: distForm.slabs.map((s, j) => (j === i ? { ...s, maxKm: e.target.value } : s)) })
+                              }
+                              className={inputCls}
+                            />
+                          </label>
+                          <label className="flex-1 min-w-[90px]">
+                            <span className="block text-[11px] text-slate-500 mb-0.5">Charge (₹)</span>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              value={slab.price}
+                              onChange={(e) =>
+                                setDist({ slabs: distForm.slabs.map((s, j) => (j === i ? { ...s, price: e.target.value } : s)) })
+                              }
+                              className={inputCls}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            aria-label={`Remove slab ${i + 2}`}
+                            onClick={() => setDist({ slabs: distForm.slabs.filter((_, j) => j !== i) })}
+                            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-rose-600 hover:bg-rose-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="min-h-[40px]"
+                      leftIcon={<Plus className="w-4 h-4" />}
+                      onClick={() => {
+                        const last = distForm.slabs.length
+                          ? num(distForm.slabs[distForm.slabs.length - 1].maxKm)
+                          : num(distForm.freeRadiusKm);
+                        setDist({
+                          slabs: [...distForm.slabs, { maxKm: Number.isFinite(last) ? String(last + 5) : '', price: '' }],
+                        });
+                      }}
+                    >
+                      Add slab
+                    </Button>
                   </div>
                 )}
-              </div>
 
-              {/* Live Distance Calculator (Figma Item 52) */}
-              <div className="bg-slate-900 text-white p-6 rounded-3xl border border-slate-800 shadow-lg space-y-4 flex flex-col justify-between">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-bold text-emerald-400 uppercase tracking-wider">
-                      Live Distance Charge Tester
-                    </h3>
-                    <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md font-mono">
-                      Hub: {distanceConfig.shopLocationName.split(',')[0]}
+                {distParsed.error && distDirty && (
+                  <p className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-2.5 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0" /> {distParsed.error}
+                  </p>
+                )}
+
+                <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 pt-3 border-t border-slate-100">
+                  {distDirty && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="md"
+                      className="min-h-[40px]"
+                      onClick={() => setDistForm(toDistForm(distanceConfig))}
+                    >
+                      Discard changes
+                    </Button>
+                  )}
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="md"
+                    className="min-h-[40px]"
+                    isLoading={isSavingDist}
+                    disabled={!distDirty || !!distParsed.error}
+                    leftIcon={<Save className="w-4 h-4" />}
+                  >
+                    {distDirty ? 'Save delivery settings' : 'Saved'}
+                  </Button>
+                </div>
+              </form>
+
+              {/* Charge preview */}
+              <div className="bg-slate-900 text-white p-5 sm:p-6 rounded-3xl border border-slate-800 shadow-lg space-y-4 self-start">
+                <div>
+                  <h3 className="text-sm font-bold text-emerald-400">Delivery charge preview</h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    What a customer at this distance would pay for pickup & delivery
+                    {distDirty ? ' with the values in the form (not saved yet)' : ' with the saved settings'}.
+                  </p>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <label htmlFor="dist-sim">Customer distance</label>
+                    <span className="font-bold text-white text-sm">{calcDistInput} KM</span>
+                  </div>
+                  <input
+                    id="dist-sim"
+                    type="range"
+                    min="0.5"
+                    max={sliderMax}
+                    step="0.5"
+                    value={Math.min(calcDistInput, sliderMax)}
+                    onChange={(e) => setCalcDistInput(parseFloat(e.target.value))}
+                    className="w-full h-10 accent-emerald-500 cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-400">
+                    <span>0 KM</span>
+                    <span className="text-emerald-400 font-bold">{previewConfig.freeRadiusKm} KM free</span>
+                    <span>{sliderMax} KM</span>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-slate-950/80 rounded-2xl border border-slate-800 text-xs space-y-2.5">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-400">Free radius</span>
+                    <span className="font-bold text-emerald-400">{previewConfig.freeRadiusKm} KM</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-400">Beyond the free radius</span>
+                    <span className="font-bold text-amber-400">{preview.chargeableKm} KM</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-400">Worked out with</span>
+                    <span className="font-bold text-slate-200 text-right">
+                      {preview.chargeableKm === 0
+                        ? 'Within free radius'
+                        : preview.viaSlab
+                        ? 'Distance slab'
+                        : `${formatINR(previewConfig.perKmRateBeyondFree)} × ${preview.chargeableKm} KM`}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400">
-                    Simulate customer distances to verify real-time price calculations with the active <b>{distanceConfig.freeRadiusKm} KM</b> free boundary.
-                  </p>
-
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span>Simulate Customer Distance:</span>
-                      <span className="font-bold text-white text-sm">{calcDistInput} KM</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="1"
-                      max="35"
-                      step="0.5"
-                      value={calcDistInput}
-                      onChange={(e) => setCalcDistInput(parseFloat(e.target.value))}
-                      className="w-full accent-emerald-500 cursor-pointer"
-                    />
-                    <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-                      <span>0 KM</span>
-                      <span className="text-emerald-400 font-bold">{distanceConfig.freeRadiusKm} KM (Free Cutoff)</span>
-                      <span>35 KM</span>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-slate-950/80 rounded-2xl border border-slate-800 text-xs space-y-2.5">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Total Simulated Distance:</span>
-                      <span className="font-bold text-white">{calcDistInput} KM</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Free Pickup Radius:</span>
-                      <span className="font-bold text-emerald-400">{distanceConfig.freeRadiusKm} KM (₹0)</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Chargeable Distance:</span>
-                      <span className="font-bold text-amber-400">
-                        {calcDistInput <= distanceConfig.freeRadiusKm
-                          ? '0 KM (Within Free Zone)'
-                          : `${+(calcDistInput - distanceConfig.freeRadiusKm).toFixed(1)} KM beyond free zone`}
-                      </span>
-                    </div>
-                    <div className="pt-2 border-t border-slate-800 flex justify-between text-base font-extrabold">
-                      <span>Customer Delivery Fee:</span>
-                      <span className="text-emerald-400 font-mono text-lg">
-                        {calcDistInput <= distanceConfig.freeRadiusKm
-                          ? '₹0 (100% FREE)'
-                          : `₹${Math.round(
-                              (calcDistInput - distanceConfig.freeRadiusKm) * distanceConfig.perKmRateBeyondFree
-                            )}`}
-                      </span>
-                    </div>
+                  <div className="pt-2 border-t border-slate-800 flex justify-between items-baseline gap-3">
+                    <span className="text-sm font-extrabold">Pickup & delivery charge</span>
+                    <span className="text-emerald-400 font-mono text-lg font-extrabold">
+                      {preview.charge === 0 ? 'Free' : formatINR(preview.charge)}
+                    </span>
                   </div>
                 </div>
-
-                <div className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-xs text-emerald-300 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>
-                    Rule Active: Within <b>{distanceConfig.freeRadiusKm} KM</b> doorstep pickup & delivery is strictly free for all customers.
-                  </span>
-                </div>
+                {calcDistInput > (previewConfig.maxServiceDistanceKm || Infinity) && (
+                  <p className="text-[11px] text-amber-300">This is beyond your max service radius.</p>
+                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* SUBVIEW: GETTING PRICING MANAGEMENT */}
+        {/* ------------------------------------------------------------------ */}
+        {/* STRINGING (GETTING) PACKAGES                                       */}
+        {/* ------------------------------------------------------------------ */}
         {adminSubView === 'getting_config' && (
           <div className="space-y-6 animate-in fade-in">
-            {/* Stringing Line Tech Banner */}
-            <div className="relative overflow-hidden rounded-3xl bg-slate-900 text-white p-5 border border-slate-800 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <img src="/images/stringing-machine.jpg" alt="Stringing Machine" className="w-16 h-16 rounded-2xl object-cover border border-blue-400/40 shrink-0 shadow-sm" />
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 bg-blue-500/20 px-2.5 py-0.5 rounded-full border border-blue-400/30">
-                    CALIBRATED CONSTANT-PULL
-                  </span>
-                  <h3 className="text-base font-bold text-white mt-1">Multi-filament & Tension Matrix Rates</h3>
-                  <p className="text-xs text-slate-300">Yonex BG65, BG80, Aerobite, Nanogy, and Li-Ning tournament string packages</p>
-                </div>
-              </div>
-              <div className="text-right shrink-0">
-                <span className="text-xs text-slate-400">Published Packages</span>
-                <p className="text-xl font-black text-blue-400">{gettingServices.length} Active Tiers</p>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900">Bat Getting (Stringing) Service Configuration</h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Update customer package prices, turnaround SLAs, and inclusions. Changes sync live across booking wizards.
-                </p>
-              </div>
+            {pageHeader(
+              'Stringing Packages',
+              'Prices, turnaround and inclusions shown to customers when they book stringing. Changes apply to new bookings immediately.',
               <Button
                 onClick={() => {
                   setGetFormName('');
@@ -1170,36 +1727,46 @@ export const AdminPortal: React.FC = () => {
                 }}
                 variant="primary"
                 size="sm"
+                className="min-h-[40px]"
                 leftIcon={<Plus className="w-4 h-4" />}
               >
-                Add Getting Package
+                Add package
               </Button>
-            </div>
+            )}
 
+            {gettingServices.length === 0 && (
+              <p className={`${cardCls} p-8 text-center text-sm text-slate-500`}>No stringing packages yet.</p>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {gettingServices.map((item) => (
-                <div key={item.id} className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-3 flex flex-col justify-between">
+                <div key={item.id} className={`${cardCls} p-5 space-y-3 flex flex-col justify-between`}>
                   <div className="space-y-2.5">
-                    <div className="flex justify-between items-start">
-                      <div>
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="min-w-0">
                         <h3 className="font-bold text-base text-slate-900">{item.name}</h3>
-                        <span className="text-[11px] text-slate-500 font-medium">Turnaround: <b>{item.turnaround}</b></span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xl font-black text-blue-700">₹{item.price}</span>
-                        <span className="block text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded mt-0.5">
-                          Active Tier
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          Turnaround: <b>{item.turnaround || '—'}</b>
                         </span>
                       </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-xl font-black text-blue-700">{formatINR(item.price)}</span>
+                        {item.isActive === false && (
+                          <span className="block text-[10px] text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded mt-0.5">
+                            Hidden from customers
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-xs text-slate-600 leading-relaxed">{item.description}</p>
-                    <div className="p-2.5 bg-slate-50 rounded-xl text-xs space-y-1">
-                      {item.features.map((f, i) => (
-                        <p key={i} className="text-slate-700 flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> {f}
-                        </p>
-                      ))}
-                    </div>
+                    {item.description && <p className="text-xs text-slate-600 leading-relaxed">{item.description}</p>}
+                    {item.features.length > 0 && (
+                      <div className="p-2.5 bg-slate-50 rounded-xl text-xs space-y-1">
+                        {item.features.map((f, i) => (
+                          <p key={i} className="text-slate-700 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> {f}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-3 border-t border-slate-100 flex justify-end">
@@ -1214,10 +1781,10 @@ export const AdminPortal: React.FC = () => {
                       }}
                       variant="outline"
                       size="sm"
-                      className="text-xs font-bold"
+                      className="text-xs font-bold min-h-[40px]"
                       leftIcon={<Edit3 className="w-3.5 h-3.5 text-blue-600" />}
                     >
-                      Edit Price & Details
+                      Edit
                     </Button>
                   </div>
                 </div>
@@ -1226,34 +1793,14 @@ export const AdminPortal: React.FC = () => {
           </div>
         )}
 
-        {/* SUBVIEW: REPAIR CATEGORIES & BASE PRICING */}
+        {/* ------------------------------------------------------------------ */}
+        {/* REPAIR CATEGORIES                                                  */}
+        {/* ------------------------------------------------------------------ */}
         {adminSubView === 'repair_config' && (
           <div className="space-y-6 animate-in fade-in">
-            {/* Repair Line Tech Banner */}
-            <div className="relative overflow-hidden rounded-3xl bg-slate-900 text-white p-5 border border-slate-800 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <img src="/images/racket-repair.jpg" alt="Carbon Repair Lab" className="w-16 h-16 rounded-2xl object-cover border border-amber-400/40 shrink-0 shadow-sm" />
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-500/20 px-2.5 py-0.5 rounded-full border border-amber-400/30">
-                    CARBON FIBER RESTORATION
-                  </span>
-                  <h3 className="text-base font-bold text-white mt-1">Aerospace Carbon Splice Baseline Rules</h3>
-                  <p className="text-xs text-slate-300">Toray high-modulus carbon fabric + resin infusion with strict 7-Day SLA turnaround</p>
-                </div>
-              </div>
-              <div className="text-right shrink-0">
-                <span className="text-xs text-slate-400">Repair Categories</span>
-                <p className="text-xl font-black text-amber-400">{repairCategories.length} Types</p>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900">Repair Categories & Base Pricing</h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Default baseline charges and 7-Day SLA targets. Final repair estimates remain inspection-based.
-                </p>
-              </div>
+            {pageHeader(
+              'Repair Categories',
+              'Starting prices and SLA days per repair type. The final repair price is set by the estimate after inspection.',
               <Button
                 onClick={() => {
                   setRepFormName('');
@@ -1265,32 +1812,41 @@ export const AdminPortal: React.FC = () => {
                 }}
                 variant="primary"
                 size="sm"
+                className="min-h-[40px]"
                 leftIcon={<Plus className="w-4 h-4" />}
               >
-                Add Repair Category
+                Add category
               </Button>
-            </div>
+            )}
 
+            {repairCategories.length === 0 && (
+              <p className={`${cardCls} p-8 text-center text-sm text-slate-500`}>No repair categories yet.</p>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {repairCategories.map((cat) => (
-                <div key={cat.id} className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-3 flex flex-col justify-between">
+                <div key={cat.id} className={`${cardCls} p-5 space-y-3 flex flex-col justify-between`}>
                   <div className="space-y-2">
-                    <div className="flex justify-between items-start">
-                      <div>
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="min-w-0">
                         <h3 className="font-bold text-base text-slate-900">{cat.name}</h3>
                         <span className="text-[11px] text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block mt-0.5">
-                          SLA Guarantee: {cat.slaDays} Days Max
+                          SLA: {pluralDays(cat.slaDays)}
                         </span>
                       </div>
-                      <div className="text-right">
-                        <span className="text-xl font-black text-slate-900">₹{cat.basePrice}</span>
-                        <span className="block text-[10px] text-slate-500 font-semibold">Starting Base</span>
+                      <div className="text-right shrink-0">
+                        <span className="text-xl font-black text-slate-900">{formatINR(cat.basePrice)}</span>
+                        <span className="block text-[10px] text-slate-500 font-semibold">Starting price</span>
                       </div>
                     </div>
-                    <p className="text-xs text-slate-600 leading-relaxed">{cat.description}</p>
+                    {cat.description && <p className="text-xs text-slate-600 leading-relaxed">{cat.description}</p>}
                     <div className="text-[11px] text-slate-500">
-                      Typical Turnaround: <b>{cat.turnaround}</b>
+                      Typical turnaround shown to customers: <b>{cat.turnaround || '—'}</b>
                     </div>
+                    {cat.isActive === false && (
+                      <span className="inline-block text-[10px] text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded">
+                        Hidden from customers
+                      </span>
+                    )}
                   </div>
 
                   <div className="pt-3 border-t border-slate-100 flex justify-end">
@@ -1305,10 +1861,10 @@ export const AdminPortal: React.FC = () => {
                       }}
                       variant="outline"
                       size="sm"
-                      className="text-xs font-bold"
+                      className="text-xs font-bold min-h-[40px]"
                       leftIcon={<Edit3 className="w-3.5 h-3.5 text-blue-600" />}
                     >
-                      Edit Base Price & SLA
+                      Edit
                     </Button>
                   </div>
                 </div>
@@ -1317,452 +1873,647 @@ export const AdminPortal: React.FC = () => {
           </div>
         )}
 
-        {/* SUBVIEW: EMAIL TEMPLATES (Figma Item 57) */}
-        {adminSubView === 'templates' && (
-          <div className="space-y-6 animate-in fade-in">
-            <div>
-              <h2 className="text-2xl font-black text-slate-900">Email Notification Templates</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Configure transactional email copy, placeholders, and customer notifications.
-              </p>
-            </div>
+        {/* WEBSITE CONTENT (banners, strings & stock, reviews, documents, availability) */}
+        {adminSubView === 'website_content' && <WebsiteContentPanel />}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {emailTemplates.map((tpl) => (
-                <div key={tpl.id} className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-3">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-bold text-sm text-slate-900">{tpl.name}</h3>
-                    <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                      {tpl.id}
-                    </span>
-                  </div>
-                  <p className="text-xs font-semibold text-slate-700">Subject: {tpl.subject}</p>
-                  <pre className="text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 font-sans whitespace-pre-wrap line-clamp-3">
-                    {tpl.body}
-                  </pre>
-                  <div className="flex flex-wrap gap-1">
-                    {tpl.variables.map((v) => (
-                      <span key={v} className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
-                        {`{${v}}`}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="pt-2 border-t border-slate-100 flex justify-end">
-                    <Button
-                      onClick={() => {
-                        setEditingTemplateId(tpl.id);
-                        setTplSubject(tpl.subject);
-                        setTplBody(tpl.body);
-                      }}
-                      size="sm"
-                      variant="outline"
-                    >
-                      Preview & Edit Template
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* SUBVIEW: PAYMENTS MANAGEMENT (Figma Item 53) */}
+        {/* ------------------------------------------------------------------ */}
+        {/* PAYMENTS                                                           */}
+        {/* ------------------------------------------------------------------ */}
         {adminSubView === 'payments' && (
           <div className="space-y-6 animate-in fade-in">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900">Doorstep Payment Reconciliation</h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Manual cash & UPI recordings collected upon bat doorstep delivery.
+            {pageHeader(
+              'Payments',
+              'Cash and UPI payments are collected in person when the racket is delivered and recorded by staff in the staff app.',
+              <Button
+                onClick={exportPaymentsCsv}
+                variant="outline"
+                size="sm"
+                className="min-h-[40px]"
+                leftIcon={<Download className="w-4 h-4" />}
+              >
+                Export payments (CSV)
+              </Button>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+                <p className="text-xs font-semibold text-slate-500">Collected</p>
+                <p className="text-2xl font-black text-emerald-600 mt-1">{formatINR(totalCollected)}</p>
+                <p className="text-[11px] text-slate-500 mt-1">{paidRequests.length} paid</p>
+              </div>
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+                <p className="text-xs font-semibold text-slate-500">To be collected</p>
+                <p className="text-2xl font-black text-amber-600 mt-1">{formatINR(pendingCollection)}</p>
+                <p className="text-[11px] text-slate-500 mt-1">{unpaidRequests.length} unpaid (excludes cancelled)</p>
+              </div>
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+                <p className="text-xs font-semibold text-slate-500">Collected by method</p>
+                <p className="text-sm font-bold text-slate-900 mt-2">
+                  {(['Cash', 'UPI', 'Other'] as const)
+                    .map((m) => {
+                      const sum = paidRequests
+                        .filter((r) => r.paymentRecord?.method === m)
+                        .reduce((a, r) => a + (r.paymentRecord?.amount || 0), 0);
+                      return sum > 0 ? `${m} ${formatINR(sum)}` : null;
+                    })
+                    .filter(Boolean)
+                    .join(' · ') || '—'}
                 </p>
               </div>
-              <Button onClick={handleExportCSV} variant="outline" size="sm" leftIcon={<Download className="w-4 h-4" />}>
-                Export Payment Register
-              </Button>
             </div>
 
-            <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
-                    <th className="py-3 px-4">Request ID</th>
-                    <th className="py-3 px-4">Customer</th>
-                    <th className="py-3 px-4">Amount</th>
-                    <th className="py-3 px-4">Payment Status</th>
-                    <th className="py-3 px-4">Method</th>
-                    <th className="py-3 px-4">Collected By</th>
-                    <th className="py-3 px-4">Transaction Notes</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {requests.map((r) => (
-                    <tr key={r.id} className="hover:bg-slate-50/70">
-                      <td className="py-3 px-4 font-mono font-bold text-blue-900">{r.id}</td>
-                      <td className="py-3 px-4 font-bold text-slate-900">{r.customerName}</td>
-                      <td className="py-3 px-4 font-black text-slate-900">₹{r.totalAmount}</td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                            r.paymentStatus === 'Paid'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {r.paymentStatus}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-semibold text-slate-700">
-                        {r.paymentRecord?.method || 'Due upon delivery'}
-                      </td>
-                      <td className="py-3 px-4 text-slate-600">
-                        {r.paymentRecord?.collectedBy || '-'}
-                      </td>
-                      <td className="py-3 px-4 text-slate-500">
-                        {r.paymentRecord?.transactionNotes || '-'}
-                      </td>
+            <div className="flex gap-1.5" role="tablist" aria-label="Filter payments">
+              {[
+                { id: 'ALL' as const, label: `All (${requests.length})` },
+                { id: 'UNPAID' as const, label: `Unpaid (${unpaidRequests.length})` },
+                { id: 'PAID' as const, label: `Paid (${paidRequests.length})` },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={payFilter === t.id}
+                  onClick={() => setPayFilter(t.id)}
+                  className={`min-h-[40px] px-3.5 rounded-xl text-xs font-bold border ${
+                    payFilter === t.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            <div className={`${cardCls} overflow-hidden`}>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[880px] text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                      <th className={thCls}>Request</th>
+                      <th className={thCls}>Customer</th>
+                      <th className={thCls}>Amount</th>
+                      <th className={thCls}>Payment</th>
+                      <th className={thCls}>Method</th>
+                      <th className={thCls}>Collected by</th>
+                      <th className={thCls}>Collected on</th>
+                      <th className={thCls}>Notes</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(() => {
+                      const rows =
+                        payFilter === 'PAID' ? paidRequests : payFilter === 'UNPAID' ? unpaidRequests : requests;
+                      if (rows.length === 0) return emptyRow(8, 'No payments to show.');
+                      return rows.map((r) => (
+                        <tr key={r.id} className="hover:bg-slate-50/70">
+                          <td className={tdCls}>
+                            <button
+                              type="button"
+                              onClick={() => setDetailRequestId(r.id)}
+                              className="block -my-2 py-2 font-mono font-bold text-blue-700 hover:underline whitespace-nowrap text-left"
+                            >
+                              {r.id}
+                            </button>
+                            <p className="mt-0.5 text-[11px] text-slate-500 whitespace-nowrap">{r.status}</p>
+                          </td>
+                          <td className={`${tdCls} font-bold text-slate-900`}>{r.customerName}</td>
+                          <td className={`${tdCls} font-black text-slate-900 whitespace-nowrap`}>
+                            {r.paymentRecord ? formatINR(r.paymentRecord.amount) : amountText(r)}
+                          </td>
+                          <td className={tdCls}>
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold whitespace-nowrap ${
+                                r.paymentStatus === 'Paid'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : r.status === 'Cancelled'
+                                  ? 'bg-slate-100 text-slate-600'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}
+                            >
+                              {paymentText(r)}
+                            </span>
+                          </td>
+                          <td className={`${tdCls} font-semibold text-slate-700 whitespace-nowrap`}>
+                            {r.paymentRecord?.method || (r.paymentStatus === 'Paid' ? '—' : 'On delivery')}
+                          </td>
+                          <td className={`${tdCls} text-slate-600`}>{r.paymentRecord?.collectedBy || '—'}</td>
+                          <td className={`${tdCls} text-slate-600 whitespace-nowrap`}>
+                            {r.paymentRecord ? formatDateTime(r.paymentRecord.collectedAt) : '—'}
+                          </td>
+                          <td className={`${tdCls} text-slate-500`}>{r.paymentRecord?.transactionNotes || '—'}</td>
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
 
-        {/* SUBVIEW: REPORTS (Figma Item 54) */}
+        {/* ------------------------------------------------------------------ */}
+        {/* REPORTS & ACTIVITY                                                 */}
+        {/* ------------------------------------------------------------------ */}
         {adminSubView === 'reports' && (
           <div className="space-y-6 animate-in fade-in">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900">Analytics & Operational Reports</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Detailed performance summary and CSV export.</p>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={() => window.print()} variant="outline" size="sm" leftIcon={<Printer className="w-4 h-4" />}>
+            {pageHeader(
+              'Reports & Activity',
+              'Website visitors, customer activity, service request exports and the admin activity log.',
+              <>
+                <Button
+                  onClick={() => window.print()}
+                  variant="outline"
+                  size="sm"
+                  className="min-h-[40px]"
+                  leftIcon={<Printer className="w-4 h-4" />}
+                >
                   Print / Save PDF
                 </Button>
-                <Button onClick={handleExportCSV} variant="primary" size="sm" leftIcon={<Download className="w-4 h-4" />}>
-                  Export All (CSV)
+                <Button
+                  onClick={() => exportRequestsCsv(requests)}
+                  variant="primary"
+                  size="sm"
+                  className="min-h-[40px]"
+                  leftIcon={<Download className="w-4 h-4" />}
+                >
+                  Export service requests (CSV)
+                </Button>
+              </>
+            )}
+
+            <VisitorReports />
+
+            {/* Activity log (audit trail recorded by the server) */}
+            <div className={`${cardCls} overflow-hidden`}>
+              <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Activity log</h3>
+                  <p className="text-xs text-slate-500">
+                    Changes made by staff and admins (prices, assignments, status changes, payments, accounts, downloads).
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 min-h-[40px] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showSignIns}
+                    onChange={(e) => setShowSignIns(e.target.checked)}
+                    className="w-4 h-4 accent-blue-600"
+                  />
+                  Show sign-ins
+                </label>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-y border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                      <th className={thCls}>When</th>
+                      <th className={thCls}>Who</th>
+                      <th className={thCls}>What</th>
+                      <th className={thCls}>Reference</th>
+                      <th className={thCls}>Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {visibleActivity.length === 0 && emptyRow(5, 'No activity recorded yet.')}
+                    {visibleActivity.slice(0, activityLimit).map((log) => (
+                      <tr key={log.id}>
+                        <td className={`${tdCls} whitespace-nowrap text-slate-600`}>{formatDateTime(log.timestamp)}</td>
+                        <td className={tdCls}>
+                          <p className="font-semibold text-slate-900">{log.user}</p>
+                          <p className="text-[10px] text-slate-500">{log.role === 'ADMIN' ? 'Admin' : log.role === 'EMPLOYEE' ? 'Staff' : 'Customer'}</p>
+                        </td>
+                        <td className={`${tdCls} text-slate-800`}>{prettyLogText(log.action)}</td>
+                        <td className={`${tdCls} font-mono text-slate-600 whitespace-nowrap`}>
+                          {requests.some((r) => r.id === log.requestId) ? (
+                            <button
+                              type="button"
+                              onClick={() => setDetailRequestId(log.requestId)}
+                              className="text-blue-700 font-bold hover:underline min-h-[40px]"
+                            >
+                              {log.requestId}
+                            </button>
+                          ) : (
+                            log.requestId || '—'
+                          )}
+                        </td>
+                        <td className={`${tdCls} text-slate-500`}>{log.details ? prettyLogText(log.details) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {visibleActivity.length > activityLimit && (
+                <div className="p-3 border-t border-slate-100 text-center print:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setActivityLimit((n) => n + 50)}
+                    className="min-h-[40px] px-4 text-xs font-bold text-blue-700 hover:underline"
+                  >
+                    Show more ({visibleActivity.length - activityLimit} older)
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------------ */}
+        {/* SHOP SETTINGS                                                      */}
+        {/* ------------------------------------------------------------------ */}
+        {adminSubView === 'customers' && (
+          <CustomersPanel
+            onOpenRequest={(id) => setDetailRequestId(id)}
+            onNewBooking={(prefill) => setNewBooking(prefill || {})}
+            refreshKey={customersRefresh}
+          />
+        )}
+
+        {adminSubView === 'settings' && (
+          <div className="space-y-6 animate-in fade-in max-w-3xl">
+            {pageHeader('Shop Settings', 'Edit the shop details, and find where every other setting is managed.')}
+
+            <ShopSettingsForm />
+
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider pt-2">Other settings</p>
+
+            <div className={`${cardCls} divide-y divide-slate-100`}>
+              <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Workshop location & delivery</p>
+                  <p className="text-sm font-semibold text-slate-900 mt-1">{distanceConfig.shopLocationName}</p>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Free pickup & delivery within {distanceConfig.freeRadiusKm} KM ·{' '}
+                    {distanceConfig.pricingMethod === 'SLAB'
+                      ? 'distance slabs beyond'
+                      : `${formatINR(distanceConfig.perKmRateBeyondFree)}/KM beyond`}
+                  </p>
+                </div>
+                <Button onClick={() => goTo('distance')} variant="outline" size="sm" className="min-h-[40px] shrink-0">
+                  Edit delivery settings
                 </Button>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white p-5 rounded-2xl border border-slate-200">
-                <h4 className="text-xs font-bold text-slate-500 uppercase">Average Getting Turnaround</h4>
-                <p className="text-2xl font-black text-slate-900 mt-1">28.4 Hours</p>
-                <p className="text-xs text-emerald-600 mt-1">Within standard 48h SLA</p>
-              </div>
-
-              <div className="bg-white p-5 rounded-2xl border border-slate-200">
-                <h4 className="text-xs font-bold text-slate-500 uppercase">Average Repair Turnaround</h4>
-                <p className="text-2xl font-black text-slate-900 mt-1">5.2 Days</p>
-                <p className="text-xs text-emerald-600 mt-1">Within 7-day target guarantee</p>
-              </div>
-
-              <div className="bg-white p-5 rounded-2xl border border-slate-200">
-                <h4 className="text-xs font-bold text-slate-500 uppercase">Doorstep Cash/UPI Collection Rate</h4>
-                <p className="text-2xl font-black text-slate-900 mt-1">100%</p>
-                <p className="text-xs text-slate-500 mt-1">Zero bad debt or chargebacks</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* SUBVIEW: SETTINGS (Figma Item 59) */}
-        {adminSubView === 'settings' && (
-          <div className="space-y-6 animate-in fade-in max-w-2xl">
-            <div>
-              <h2 className="text-2xl font-black text-slate-900">Platform Settings</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Business configuration, operating hours, and security parameters.</p>
-            </div>
-
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Company / Brand Name</label>
-                <input
-                  type="text"
-                  defaultValue="GR Sports Badminton Services"
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Support Phone</label>
-                  <input
-                    type="text"
-                    defaultValue="+91 80 4912 3456"
-                    className="w-full p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
-                  />
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Prices</p>
+                  <p className="text-sm text-slate-900 mt-1">
+                    {gettingServices.length} stringing packages · {repairCategories.length} repair categories
+                  </p>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Support Email</label>
-                  <input
-                    type="text"
-                    defaultValue="support@grsports.in"
-                    className="w-full p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
-                  />
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => goTo('getting_config')} variant="outline" size="sm" className="min-h-[40px]">
+                    Stringing packages
+                  </Button>
+                  <Button onClick={() => goTo('repair_config')} variant="outline" size="sm" className="min-h-[40px]">
+                    Repair categories
+                  </Button>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Workshop Operating Hours</label>
-                <input
-                  type="text"
-                  defaultValue="Mon–Sun: 08:00 AM – 09:30 PM (Pickup lines active 24/7)"
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
-                />
+              <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Website content & pickup days</p>
+                  <p className="text-sm text-slate-900 mt-1">Banners, strings & stock, rackets, reviews, documents and pickup availability.</p>
+                </div>
+                <Button onClick={() => goTo('website_content')} variant="outline" size="sm" className="min-h-[40px] shrink-0">
+                  Website content
+                </Button>
               </div>
 
-              <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-950 flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                <span>Phase 1 operating mode: Online payment gateways disabled. In-person post-delivery collection enabled.</span>
+              <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Staff accounts</p>
+                  <p className="text-sm text-slate-900 mt-1">{activeEmployees.length} active staff and admin accounts.</p>
+                </div>
+                <Button onClick={() => goTo('team')} variant="outline" size="sm" className="min-h-[40px] shrink-0">
+                  Manage staff
+                </Button>
               </div>
-            </div>
-          </div>
-        )}
 
-        {/* SUBVIEW: MANAGE STAFF & ADMINS */}
-        {adminSubView === 'team' && (
-          <div className="space-y-6 animate-in fade-in">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900">Staff & Administrator Management</h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Add field technicians, master stringers, delivery executives, and platform administrators.
+              <div className="p-5">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Payments</p>
+                <p className="text-sm text-slate-900 mt-1">
+                  No online payments. Customers pay in person by cash or UPI when the racket is delivered; staff record each payment.
                 </p>
               </div>
-              <span className="text-xs font-semibold bg-blue-50 text-blue-800 px-3 py-1.5 rounded-xl border border-blue-200">
-                Total Team Members: {employees.length}
-              </span>
+
+              <div className="p-5">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Signed in as</p>
+                <p className="text-sm text-slate-900 mt-1">
+                  {userName || 'Admin'}
+                  {userMobile ? ` · ${formatMobile(userMobile)}` : ''}
+                </p>
+              </div>
             </div>
 
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------------ */}
+        {/* STAFF & ADMINS                                                     */}
+        {/* ------------------------------------------------------------------ */}
+        {adminSubView === 'team' && (
+          <div className="space-y-6 animate-in fade-in">
+            {pageHeader(
+              'Staff & Admins',
+              'Create sign-in accounts for stringers, technicians, pickup & delivery staff and admins.'
+            )}
+
             {/* Account Creation Card */}
-            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <h3 className="font-bold text-base text-slate-900">
-                  Create New Account
-                </h3>
-                {/* Switch between Employee and Admin */}
-                <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold">
-                  <button
-                    type="button"
-                    onClick={() => setTeamUserRole('EMPLOYEE')}
-                    className={`px-3 py-1.5 rounded-lg transition-all ${
-                      teamUserRole === 'EMPLOYEE'
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    + New Employee
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTeamUserRole('ADMIN')}
-                    className={`px-3 py-1.5 rounded-lg transition-all ${
-                      teamUserRole === 'ADMIN'
-                        ? 'bg-purple-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    + New Admin
-                  </button>
+            <div className={`${cardCls} p-5 sm:p-6 space-y-4`}>
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <h3 className="font-bold text-base text-slate-900">Create account</h3>
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold" role="radiogroup" aria-label="Account type">
+                  {[
+                    { id: 'EMPLOYEE' as const, label: 'Staff', on: 'bg-blue-600' },
+                    { id: 'ADMIN' as const, label: 'Admin', on: 'bg-purple-600' },
+                  ].map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={teamUserRole === t.id}
+                      onClick={() => setTeamUserRole(t.id)}
+                      className={`min-h-[40px] px-4 rounded-lg transition-all ${
+                        teamUserRole === t.id ? `${t.on} text-white shadow-xs` : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               <form
-                onSubmit={(e) => {
+                noValidate
+                onSubmit={async (e) => {
                   e.preventDefault();
-                  if (!teamName.trim() || !teamEmail.trim() || !teamPhone.trim()) {
-                    addToast('error', 'Incomplete Form', 'Please fill in all required fields.');
+                  if (isCreatingMember) return;
+                  if (!teamName.trim()) {
+                    addToast('error', 'Name required', "Please enter the person's name.");
                     return;
                   }
-                  addEmployee({
+                  const phone = normalizeMobile(teamPhone);
+                  if (!phone) {
+                    setTeamPhoneError(INVALID_MOBILE_MESSAGE);
+                    return;
+                  }
+                  if (teamPassword.trim() && teamPassword.trim().length < 8) {
+                    addToast('error', 'Password too short', 'Use at least 8 characters, or leave it blank to generate one.');
+                    return;
+                  }
+                  setIsCreatingMember(true);
+                  const ok = await addEmployee({
                     name: teamName.trim(),
-                    email: teamEmail.trim(),
-                    phone: teamPhone.trim(),
-                    role: teamRole,
+                    phone,
+                    role: (teamUserRole === 'ADMIN' ? 'Platform Admin' : teamRole) as Employee['role'],
                     userRole: teamUserRole,
-                    password: teamPassword.trim() || 'grsports2026',
+                    password: teamPassword.trim() || undefined,
                   });
-                  setTeamName('');
-                  setTeamEmail('');
-                  setTeamPhone('');
-                  setTeamPassword('');
+                  setIsCreatingMember(false);
+                  if (ok) {
+                    setTeamName('');
+                    setTeamPhone('');
+                    setTeamPhoneError(null);
+                    setTeamPassword('');
+                  }
                 }}
                 className="space-y-4"
               >
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Full Name *
+                    <label htmlFor="team-name" className={labelCls}>
+                      Full name *
                     </label>
                     <input
+                      id="team-name"
                       type="text"
                       required
                       value={teamName}
                       onChange={(e) => setTeamName(e.target.value)}
-                      placeholder={teamUserRole === 'ADMIN' ? 'e.g. Ramesh V (Admin)' : 'e.g. Suresh Nair'}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                      placeholder="e.g. Suresh Nair"
+                      className={inputCls}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Email Address *
+                    <label htmlFor="team-mobile" className={labelCls}>
+                      Mobile number * <span className="font-medium text-slate-400">(used to sign in)</span>
                     </label>
-                    <input
-                      type="email"
-                      required
-                      value={teamEmail}
-                      onChange={(e) => setTeamEmail(e.target.value)}
-                      placeholder={teamUserRole === 'ADMIN' ? 'admin@grsports.in' : 'employee@grsports.in'}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500 outline-none font-medium"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Mobile Number *
-                    </label>
-                    <input
-                      type="text"
-                      required
+                    <MobileInput
+                      id="team-mobile"
+                      name="team-mobile"
                       value={teamPhone}
-                      onChange={(e) => setTeamPhone(e.target.value)}
-                      placeholder="+91 98765 43210"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                      onChange={(v) => {
+                        setTeamPhone(v);
+                        setTeamPhoneError(null);
+                      }}
+                      required
+                      aria-invalid={!!teamPhoneError}
+                      aria-describedby={teamPhoneError ? 'team-mobile-error' : undefined}
                     />
+                    {teamPhoneError && (
+                      <p id="team-mobile-error" className="text-[11px] text-rose-600 mt-1">
+                        {teamPhoneError}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {teamUserRole === 'EMPLOYEE' ? (
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        Designation / Operational Role *
+                      <label htmlFor="team-role" className={labelCls}>
+                        Job *
                       </label>
                       <select
+                        id="team-role"
                         value={teamRole}
-                        onChange={(e) => setTeamRole(e.target.value as any)}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                        onChange={(e) => setTeamRole(e.target.value as typeof teamRole)}
+                        className={inputCls}
                       >
-                        <option value="Technician">Technician (Composite Repair)</option>
-                        <option value="Pickup & Delivery Agent">Pickup & Delivery Agent (Logistics)</option>
-                        <option value="Master Stringer">Master Stringer (Electronic Getting)</option>
+                        <option value="Technician">Technician (repairs)</option>
+                        <option value="Pickup & Delivery Agent">Pickup & Delivery Agent</option>
+                        <option value="Master Stringer">Master Stringer (stringing)</option>
                       </select>
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        Administrative Role
-                      </label>
-                      <input
-                        type="text"
-                        disabled
-                        value="Full Platform Administrator (Root Access)"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-purple-700 font-bold outline-none"
-                      />
+                      <span className={labelCls}>Access</span>
+                      <p className="min-h-[40px] flex items-center px-3 rounded-xl border border-purple-200 bg-purple-50 text-xs text-purple-800 font-semibold">
+                        Full admin access (prices, staff, reports)
+                      </p>
                     </div>
                   )}
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                      <span>Temporary Access Password</span>
-                      <span className="text-[10px] text-emerald-600 font-semibold">Auto-emailed to employee</span>
+                    <label htmlFor="team-password" className={labelCls}>
+                      Password
                     </label>
                     <input
+                      id="team-password"
                       type="text"
+                      autoComplete="off"
                       value={teamPassword}
                       onChange={(e) => setTeamPassword(e.target.value)}
-                      placeholder="Leave blank to auto-generate (Emp@2026)"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                      placeholder="Leave blank to generate one"
+                      aria-describedby="team-password-help"
+                      className={inputCls}
                     />
+                    <p id="team-password-help" className="text-[11px] text-slate-500 mt-1">
+                      At least 8 characters if you set one.
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                  <span className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-blue-600" />
-                    Official login credentials &amp; portal link will be emailed to the user upon creation.
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                  <span className="text-[11px] text-slate-500 flex items-start gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
+                    <span>
+                      They sign in with this mobile number and password. Nothing is sent automatically — a generated password is
+                      shown once after creation; hand it over in person.
+                    </span>
                   </span>
                   <Button
                     type="submit"
                     variant="primary"
                     size="md"
-                    className={teamUserRole === 'ADMIN' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+                    isLoading={isCreatingMember}
+                    className={`shrink-0 min-h-[40px] ${teamUserRole === 'ADMIN' ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
                     leftIcon={<Plus className="w-4 h-4" />}
                   >
-                    {teamUserRole === 'ADMIN' ? 'Create Admin & Send Credentials' : 'Create Employee & Send Credentials'}
+                    {teamUserRole === 'ADMIN' ? 'Create admin' : 'Create staff account'}
                   </Button>
                 </div>
               </form>
             </div>
 
             {/* Team Members List */}
-            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
-              <h3 className="font-bold text-base text-slate-900">
-                Active Staff & Administrators ({employees.filter(e => e.isActive !== false).length})
-              </h3>
+            <div className={`${cardCls} overflow-hidden`}>
+              <div className="p-5 sm:p-6 pb-3">
+                <h3 className="font-bold text-base text-slate-900">Active accounts ({activeEmployees.length})</h3>
+                <p className="text-xs text-slate-500">Open jobs = assigned requests that are not completed or cancelled.</p>
+              </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider border-b border-slate-200 text-[10px]">
+                <table className="w-full min-w-[760px] text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider border-y border-slate-200 text-[10px] font-bold">
                     <tr>
-                      <th className="py-3 px-3">Member</th>
-                      <th className="py-3 px-3">Role / Specialty</th>
-                      <th className="py-3 px-3">Access Level</th>
-                      <th className="py-3 px-3">Contact</th>
-                      <th className="py-3 px-3">Active Jobs</th>
-                      <th className="py-3 px-3 text-right">Actions</th>
+                      <th className={thCls}>Name</th>
+                      <th className={thCls}>Job</th>
+                      <th className={thCls}>Access</th>
+                      <th className={thCls}>Mobile (sign-in)</th>
+                      <th className={thCls}>Open jobs</th>
+                      <th className={`${thCls} text-right`}>Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {employees.map((emp) => (
-                      <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3 px-3 flex items-center gap-2.5">
-                          <img
-                            src={emp.avatar}
-                            alt={emp.name}
-                            className="w-8 h-8 rounded-full object-cover border border-slate-200"
-                          />
-                          <div>
-                            <p className="font-bold text-slate-900">{emp.name}</p>
-                            <p className="text-[10px] text-slate-400 font-mono">{emp.id}</p>
-                          </div>
-                        </td>
-                        <td className="py-3 px-3 font-medium text-slate-700">
-                          {emp.role}
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                            emp.userRole === 'ADMIN'
-                              ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                              : 'bg-blue-100 text-blue-800 border border-blue-200'
-                          }`}>
-                            {emp.userRole || 'EMPLOYEE'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-slate-600">
-                          <p>{emp.phone}</p>
-                          <p className="text-[10px] text-slate-400">{emp.email}</p>
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className="font-mono font-bold text-slate-800">
-                            {emp.activeJobsCount} Jobs
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => removeEmployee(emp.id)}
-                            className="text-red-600 hover:text-red-800 font-semibold text-[11px] hover:underline"
-                          >
-                            Deactivate
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {activeEmployees.length === 0 && emptyRow(6, 'No staff accounts yet.')}
+                    {activeEmployees.map((emp) => {
+                      const isSelf = !!userMobile && normalizeMobile(emp.phone) === normalizeMobile(userMobile);
+                      const openJobs = openJobsFor(emp.id);
+                      return (
+                        <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className={tdCls}>
+                            <div className="flex items-center gap-2.5">
+                              <span
+                                aria-hidden="true"
+                                className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 ${
+                                  emp.userRole === 'ADMIN' ? 'bg-purple-600' : 'bg-blue-600'
+                                }`}
+                              >
+                                {initials(emp.name)}
+                              </span>
+                              <div>
+                                <p className="font-bold text-slate-900">
+                                  {emp.name}
+                                  {isSelf && <span className="ml-1.5 text-[10px] font-bold text-slate-500">(you)</span>}
+                                </p>
+                                <p className="text-[10px] text-slate-500 font-mono">{emp.id}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className={`${tdCls} font-medium text-slate-700`}>{emp.role}</td>
+                          <td className={tdCls}>
+                            <span
+                              className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                emp.userRole === 'ADMIN'
+                                  ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                  : 'bg-blue-100 text-blue-800 border border-blue-200'
+                              }`}
+                            >
+                              {emp.userRole === 'ADMIN' ? 'Admin' : 'Staff'}
+                            </span>
+                          </td>
+                          <td className={`${tdCls} text-slate-600 whitespace-nowrap`}>
+                            {mobileTelHref(emp.phone) ? (
+                              <a href={mobileTelHref(emp.phone)} className="hover:underline">
+                                {formatMobile(emp.phone)}
+                              </a>
+                            ) : (
+                              formatMobile(emp.phone) || '—'
+                            )}
+                          </td>
+                          <td className={tdCls}>
+                            <span className={openJobs > 0 ? 'font-bold text-slate-900' : 'text-slate-500'}>{openJobs}</span>
+                          </td>
+                          <td className={`${tdCls} text-right`}>
+                            <div className="-my-2 flex flex-nowrap items-center justify-end gap-1 whitespace-nowrap">
+                            {!isSelf && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setConfirmState({
+                                    title: `Reset ${emp.name}'s password?`,
+                                    message: (
+                                      <>
+                                        A new temporary password will be shown once. Their current password stops working
+                                        immediately — hand the new one over in person.
+                                      </>
+                                    ),
+                                    confirmLabel: 'Reset password',
+                                    onConfirm: () => resetStaffPassword(emp.id, emp.name),
+                                  })
+                                }
+                                className="min-h-[40px] px-3 rounded-lg text-blue-700 hover:bg-blue-50 font-bold text-[11px]"
+                              >
+                                Reset password
+                              </button>
+                            )}
+                            {isSelf ? (
+                              <span className="text-[11px] text-slate-400">—</span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setConfirmState({
+                                    title: `Deactivate ${emp.name}?`,
+                                    message: (
+                                      <>
+                                        {emp.name} will no longer be able to sign in with <span className="whitespace-nowrap">{formatMobile(emp.phone)}</span>.
+                                        {openJobs > 0 && (
+                                          <>
+                                            {' '}
+                                            They still have <b>{openJobs} open {openJobs === 1 ? 'job' : 'jobs'}</b> — reassign
+                                            them from Service Requests.
+                                          </>
+                                        )}
+                                      </>
+                                    ),
+                                    confirmLabel: 'Deactivate',
+                                    danger: true,
+                                    onConfirm: () => removeEmployee(emp.id),
+                                  })
+                                }
+                                className="min-h-[40px] px-3 rounded-lg text-red-700 hover:bg-red-50 font-bold text-[11px]"
+                              >
+                                Deactivate
+                              </button>
+                            )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1771,121 +2522,699 @@ export const AdminPortal: React.FC = () => {
         )}
       </main>
 
-      {/* MODAL: ASSIGN EMPLOYEE */}
-      {assignModalReqId && (
+      {/* ==================================================================== */}
+      {/* MODAL: ASSIGN STAFF                                                   */}
+      {/* ==================================================================== */}
+      {assignRequest && (
         <div
           onClick={() => setAssignModalReqId(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto animate-in fade-in"
+          className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto animate-in fade-in"
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="assign-title"
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto animate-in zoom-in-95"
+            className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] animate-in zoom-in-95"
           >
-            <div className="shrink-0">
-              <h3 className="font-bold text-base text-slate-900">Assign Technician / Field Agent</h3>
-              <p className="text-xs text-slate-500">Request #{assignModalReqId}</p>
+            <div className="shrink-0 flex items-start justify-between gap-3">
+              <div>
+                <h3 id="assign-title" className="font-bold text-base text-slate-900">
+                  {assignRequest.assignedEmployeeId ? 'Reassign staff' : 'Assign staff'}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {assignRequest.id} · {assignRequest.customerName} · {serviceLabel(assignRequest)}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => setAssignModalReqId(null)}
+                className="w-10 h-10 -mr-2 -mt-2 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <div className="space-y-2 overflow-y-auto">
-              {employees.filter(e => e.isActive !== false).map((emp) => (
-                <div
-                  key={emp.id}
-                  onClick={() => setSelectedEmpId(emp.id)}
-                  className={`p-3 rounded-2xl border-2 cursor-pointer flex items-center justify-between text-xs ${
-                    selectedEmpId === emp.id ? 'border-blue-600 bg-blue-50/50' : 'border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  <div>
-                    <p className="font-bold text-slate-900">{emp.name}</p>
-                    <p className="text-slate-500 text-[11px]">{emp.role}</p>
-                  </div>
-                  <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded font-semibold text-slate-700">
-                    {emp.activeJobsCount} Jobs Active
-                  </span>
-                </div>
-              ))}
+            <div className="space-y-2 overflow-y-auto" role="radiogroup" aria-label="Staff member">
+              {activeEmployees.length === 0 && (
+                <p className="text-sm text-slate-500 py-4 text-center">No active staff. Create accounts under Staff & Admins.</p>
+              )}
+              {activeEmployees.map((emp) => {
+                const openJobs = openJobsFor(emp.id);
+                return (
+                  <button
+                    key={emp.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selectedEmpId === emp.id}
+                    onClick={() => setSelectedEmpId(emp.id)}
+                    className={`w-full p-3 rounded-2xl border-2 flex items-center justify-between gap-3 text-left text-xs ${
+                      selectedEmpId === emp.id ? 'border-blue-600 bg-blue-50/50' : 'border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>
+                      <span className="block font-bold text-slate-900">
+                        {emp.name}
+                        {assignRequest.assignedEmployeeId === emp.id && (
+                          <span className="ml-1.5 text-[10px] text-blue-700">(currently assigned)</span>
+                        )}
+                      </span>
+                      <span className="block text-slate-500 text-[11px]">
+                        {emp.role}
+                        {emp.userRole === 'ADMIN' ? ' · Admin' : ''}
+                      </span>
+                    </span>
+                    <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded font-semibold text-slate-700 whitespace-nowrap">
+                      {openJobs} open {openJobs === 1 ? 'job' : 'jobs'}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             <div className="flex gap-2 pt-2 shrink-0">
-              <Button onClick={() => setAssignModalReqId(null)} variant="outline" className="flex-1" size="sm">
+              <Button onClick={() => setAssignModalReqId(null)} variant="outline" className="flex-1 min-h-[40px]" size="sm">
                 Cancel
               </Button>
               <Button
-                onClick={() => {
-                  assignEmployee(assignModalReqId, selectedEmpId);
-                  setAssignModalReqId(null);
+                onClick={async () => {
+                  if (!selectedEmpId) return;
+                  setIsAssigning(true);
+                  const ok = await assignEmployee(assignRequest.id, selectedEmpId);
+                  setIsAssigning(false);
+                  if (ok) setAssignModalReqId(null);
                 }}
+                disabled={!selectedEmpId || selectedEmpId === assignRequest.assignedEmployeeId}
+                isLoading={isAssigning}
                 variant="primary"
-                className="flex-1"
+                className="flex-1 min-h-[40px]"
                 size="sm"
               >
-                Confirm Assignment
+                Confirm
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL: REQUEST DETAIL INSPECTION */}
-      {detailModalRequest && (
+      <NewBookingDialog
+        open={newBooking !== null}
+        prefill={newBooking}
+        onClose={() => setNewBooking(null)}
+        onCreated={(saved) => {
+          setNewBooking(null);
+          setCustomersRefresh((n) => n + 1);
+          addToast('success', 'Booking created', `${saved.id} for ${saved.customerName} · ${formatMobile(saved.customerMobile)}`);
+          setDetailRequestId(saved.id);
+        }}
+      />
+
+      {/* ==================================================================== */}
+      {/* MODAL: REQUEST DETAIL                                                 */}
+      {/* ==================================================================== */}
+      {detailRequest && (
         <div
-          onClick={() => setDetailModalRequest(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto animate-in fade-in"
+          onClick={() => setDetailRequestId(null)}
+          className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto animate-in fade-in"
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="detail-title"
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto animate-in zoom-in-95"
+            className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl my-auto flex flex-col max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)] animate-in zoom-in-95"
           >
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100 shrink-0">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">
-                  Request #{detailModalRequest.id} — Full Audit Record
+            <div className="flex justify-between items-start gap-3 p-4 sm:p-6 pb-3 border-b border-slate-100 shrink-0">
+              <div className="min-w-0">
+                <h3 id="detail-title" className="text-lg font-bold text-slate-900 flex flex-wrap items-center gap-2">
+                  <span className="font-mono">{detailRequest.id}</span>
+                  <StatusBadge status={detailRequest.status} size="sm" />
                 </h3>
-                <p className="text-xs text-slate-500">
-                  {detailModalRequest.serviceType} • {detailModalRequest.batBrand} {detailModalRequest.batModel}
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {serviceLabel(detailRequest)} · {detailRequest.batBrand} {detailRequest.batModel} · Booked{' '}
+                  {formatDateTime(detailRequest.createdAt)}
                 </p>
               </div>
               <button
-                onClick={() => setDetailModalRequest(null)}
-                className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 cursor-pointer"
+                type="button"
+                aria-label="Close"
+                onClick={() => setDetailRequestId(null)}
+                className="w-10 h-10 shrink-0 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 bg-slate-50 rounded-xl space-y-1">
-                <p className="font-bold text-slate-700">Customer:</p>
-                <p className="font-bold text-slate-900">{detailModalRequest.customerName}</p>
-                <p className="text-slate-600">{detailModalRequest.customerMobile}</p>
-                <p className="text-slate-500">{detailModalRequest.customerEmail}</p>
+            <div className="overflow-y-auto p-4 sm:p-6 space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 bg-slate-50 rounded-xl space-y-1">
+                  <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Customer</p>
+                  <p className="font-bold text-slate-900 text-sm">{detailRequest.customerName}</p>
+                  {mobileTelHref(detailRequest.customerMobile) ? (
+                    <a
+                      href={mobileTelHref(detailRequest.customerMobile)}
+                      className="inline-flex items-center gap-1 text-blue-700 font-semibold hover:underline min-h-[40px]"
+                    >
+                      <Phone className="w-3.5 h-3.5" /> {formatMobile(detailRequest.customerMobile)}
+                    </a>
+                  ) : (
+                    <p className="text-slate-600">{formatMobile(detailRequest.customerMobile) || '—'}</p>
+                  )}
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-xl space-y-1">
+                  <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Pickup address</p>
+                  <p className="text-slate-800">
+                    {[
+                      detailRequest.pickupAddress?.houseFlat,
+                      detailRequest.pickupAddress?.street,
+                      detailRequest.pickupAddress?.area,
+                      detailRequest.pickupAddress?.city,
+                      detailRequest.pickupAddress?.pincode,
+                    ]
+                      .filter(Boolean)
+                      .join(', ') || '—'}
+                  </p>
+                  {detailRequest.pickupAddress?.landmark && (
+                    <p className="text-slate-500">Landmark: {detailRequest.pickupAddress.landmark}</p>
+                  )}
+                  <p className="font-semibold text-slate-700">
+                    {detailRequest.distanceKm} KM from the workshop ·{' '}
+                    {detailRequest.isFreeDelivery ? (
+                      <span className="text-emerald-700">free delivery</span>
+                    ) : (
+                      `${formatINR(detailRequest.pickupDeliveryCharge)} delivery`
+                    )}
+                  </p>
+                  {detailRequest.pickupAddress?.distanceSource && (
+                    <p className="text-slate-500">
+                      Distance{' '}
+                      {DISTANCE_SOURCE_TEXT[detailRequest.pickupAddress.distanceSource] || detailRequest.pickupAddress.distanceSource}
+                    </p>
+                  )}
+                  {detailRequest.paymentStatus !== 'Paid' && detailRequest.status !== 'Cancelled' && !distanceFix && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDistanceFixError(null);
+                        setDistanceFix({ km: String(detailRequest.distanceKm ?? ''), reason: '' });
+                      }}
+                      className="mt-1 inline-flex items-center gap-1 min-h-[40px] px-3 rounded-lg border border-slate-300 bg-white text-slate-700 font-bold text-xs hover:bg-slate-100"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" /> Correct distance
+                    </button>
+                  )}
+                  {distanceFix && detailRequest.paymentStatus !== 'Paid' && detailRequest.status !== 'Cancelled' && (
+                    <form
+                      className="mt-2 space-y-2 border-t border-slate-200 pt-2"
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const km = Number(distanceFix.km);
+                        if (distanceFix.km.trim() === '' || !Number.isFinite(km) || km < 0 || km > 200) {
+                          setDistanceFixError('Enter the distance in KM (0–200).');
+                          return;
+                        }
+                        if (distanceFix.reason.trim().length < 3) {
+                          setDistanceFixError('Say why the distance is being corrected.');
+                          return;
+                        }
+                        setDistanceFixSaving(true);
+                        setDistanceFixError(null);
+                        try {
+                          const updated = await requestService.correctDistance(
+                            detailRequest.id,
+                            Math.round(km * 10) / 10,
+                            distanceFix.reason.trim()
+                          );
+                          setDistanceFix(null);
+                          addToast(
+                            'success',
+                            'Distance corrected',
+                            `${updated?.id || detailRequest.id}: ${updated?.distanceKm ?? km} KM · total ${formatINR(
+                              updated?.totalAmount ?? detailRequest.totalAmount
+                            )}`
+                          );
+                          refreshData();
+                        } catch (err: any) {
+                          setDistanceFixError(err?.message || 'The distance could not be corrected. Please try again.');
+                        } finally {
+                          setDistanceFixSaving(false);
+                        }
+                      }}
+                    >
+                      <p className="text-[11px] text-slate-500">
+                        Recalculates the pickup & delivery charge and the total. The customer sees the new amount.
+                      </p>
+                      <label className="block text-[11px] font-bold text-slate-600">
+                        Distance (KM)
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min="0"
+                          max="200"
+                          step="0.1"
+                          required
+                          value={distanceFix.km}
+                          onChange={(e) => setDistanceFix({ ...distanceFix, km: e.target.value })}
+                          className="mt-1 w-full min-h-[40px] px-2 rounded-lg border border-slate-300 text-sm font-semibold bg-white"
+                        />
+                      </label>
+                      <label className="block text-[11px] font-bold text-slate-600">
+                        Reason
+                        <input
+                          type="text"
+                          maxLength={200}
+                          required
+                          placeholder="e.g. Checked on Google Maps"
+                          value={distanceFix.reason}
+                          onChange={(e) => setDistanceFix({ ...distanceFix, reason: e.target.value })}
+                          className="mt-1 w-full min-h-[40px] px-2 rounded-lg border border-slate-300 text-sm bg-white"
+                        />
+                      </label>
+                      {distanceFixError && (
+                        <p role="alert" className="text-[11px] text-rose-700 flex items-start gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {distanceFixError}
+                        </p>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDistanceFix(null);
+                            setDistanceFixError(null);
+                          }}
+                          className="flex-1 min-h-[40px] rounded-lg border border-slate-300 bg-white text-xs font-bold text-slate-700"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={distanceFixSaving}
+                          className="flex-1 min-h-[40px] rounded-lg bg-blue-600 text-white text-xs font-bold disabled:opacity-60"
+                        >
+                          {distanceFixSaving ? 'Saving…' : 'Save distance'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl space-y-1">
-                <p className="font-bold text-slate-700">Location & Distance:</p>
-                <p className="font-bold text-slate-900">{detailModalRequest.distanceKm} KM from Hub</p>
-                <p className="text-slate-600">
-                  {detailModalRequest.pickupAddress.area}, {detailModalRequest.pickupAddress.pincode}
-                </p>
-                <p className="text-emerald-700 font-semibold">
-                  {detailModalRequest.isFreeDelivery ? 'Free Delivery' : `Surcharge: ₹${detailModalRequest.pickupDeliveryCharge}`}
-                </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 border border-slate-200 rounded-xl space-y-1">
+                  <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Racket & service</p>
+                  <dl className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1">
+                    <dt className="text-slate-500">Racket</dt>
+                    <dd className="font-semibold text-slate-900">
+                      {detailRequest.batBrand} {detailRequest.batModel}
+                    </dd>
+                    {detailRequest.batType && (
+                      <>
+                        <dt className="text-slate-500">Type</dt>
+                        <dd className="text-slate-800">{detailRequest.batType}</dd>
+                      </>
+                    )}
+                    {detailRequest.serviceType === 'GETTING' ? (
+                      <>
+                        {detailRequest.gettingType && (
+                          <>
+                            <dt className="text-slate-500">Package</dt>
+                            <dd className="text-slate-800">{detailRequest.gettingType}</dd>
+                          </>
+                        )}
+                        {(detailRequest.stringType || detailRequest.stringPreference) && (
+                          <>
+                            <dt className="text-slate-500">String</dt>
+                            <dd className="text-slate-800">{detailRequest.stringType || detailRequest.stringPreference}</dd>
+                          </>
+                        )}
+                        {detailRequest.stringTensionLbs ? (
+                          <>
+                            <dt className="text-slate-500">Tension</dt>
+                            <dd className="text-slate-800">{detailRequest.stringTensionLbs} lbs</dd>
+                          </>
+                        ) : null}
+                        {detailRequest.colour && (
+                          <>
+                            <dt className="text-slate-500">Colour</dt>
+                            <dd className="text-slate-800">{detailRequest.colour}</dd>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <dt className="text-slate-500">Issue</dt>
+                        <dd className="text-slate-800">{detailRequest.repairIssue || '—'}</dd>
+                        {detailRequest.repairDescription && (
+                          <>
+                            <dt className="text-slate-500">Details</dt>
+                            <dd className="text-slate-800">{detailRequest.repairDescription}</dd>
+                          </>
+                        )}
+                      </>
+                    )}
+                    <dt className="text-slate-500">Pickup date</dt>
+                    <dd className="text-slate-800">{formatDate(detailRequest.pickupDate, 'Not chosen')}</dd>
+                  </dl>
+                  {detailRequest.additionalNotes && (
+                    <p className="text-slate-600 pt-1">
+                      <b>Customer note:</b> {detailRequest.additionalNotes}
+                    </p>
+                  )}
+                  {detailRequest.batPhotos?.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {detailRequest.batPhotos.slice(0, 6).map((src, i) => (
+                        <a key={i} href={src} target="_blank" rel="noreferrer" className="block">
+                          <img src={src} alt={`Racket photo ${i + 1}`} className="w-14 h-14 rounded-lg object-cover border border-slate-200" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-3 border border-slate-200 rounded-xl space-y-1">
+                  <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Charges & payment</p>
+                  <dl className="grid grid-cols-[1fr,auto] gap-x-3 gap-y-1">
+                    <dt className="text-slate-500">Service</dt>
+                    <dd className="text-right text-slate-800">{formatINR(detailRequest.serviceCharge)}</dd>
+                    <dt className="text-slate-500">Pickup & delivery</dt>
+                    <dd className="text-right text-slate-800">
+                      {detailRequest.isFreeDelivery ? 'Free' : formatINR(detailRequest.pickupDeliveryCharge)}
+                    </dd>
+                    {detailRequest.discount > 0 && (
+                      <>
+                        <dt className="text-slate-500">Discount</dt>
+                        <dd className="text-right text-emerald-700">-{formatINR(detailRequest.discount)}</dd>
+                      </>
+                    )}
+                    <dt className="font-bold text-slate-900 border-t border-slate-100 pt-1">Total</dt>
+                    <dd className="text-right font-bold text-slate-900 border-t border-slate-100 pt-1">{amountText(detailRequest)}</dd>
+                    <dt className="text-slate-500">Payment</dt>
+                    <dd className={`text-right font-semibold ${detailRequest.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                      {paymentText(detailRequest)}
+                    </dd>
+                  </dl>
+                  {detailRequest.paymentStatus !== 'Paid' && detailRequest.status !== 'Cancelled' && !paymentForm && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPaymentForm({ amount: String(detailRequest.totalAmount || ''), method: 'Cash', notes: '' })
+                      }
+                      className="mt-2 w-full min-h-[40px] rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-800 font-bold text-xs hover:bg-emerald-100"
+                    >
+                      Record payment
+                    </button>
+                  )}
+                  {paymentForm && detailRequest.paymentStatus !== 'Paid' && (
+                    <form
+                      className="mt-2 space-y-2 border-t border-slate-100 pt-2"
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const amount = Number(paymentForm.amount);
+                        if (!Number.isFinite(amount) || amount <= 0) {
+                          addToast('error', 'Check the amount', 'Enter the amount received in rupees.');
+                          return;
+                        }
+                        setPaymentSaving(true);
+                        const ok = await recordManualPayment(
+                          detailRequest.id,
+                          amount,
+                          paymentForm.method,
+                          paymentForm.notes.trim() || undefined,
+                          userName || 'Admin'
+                        );
+                        setPaymentSaving(false);
+                        if (ok) setPaymentForm(null);
+                      }}
+                    >
+                      <p className="text-[11px] text-slate-500">
+                        Marks the request as paid and completed. Recorded as collected by {userName || 'Admin'}.
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="text-[11px] font-bold text-slate-600">
+                          Amount (₹)
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            min="1"
+                            step="any"
+                            required
+                            value={paymentForm.amount}
+                            onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                            className="mt-1 w-full min-h-[40px] px-2 rounded-lg border border-slate-300 text-sm font-semibold"
+                          />
+                        </label>
+                        <label className="text-[11px] font-bold text-slate-600">
+                          Method
+                          <select
+                            value={paymentForm.method}
+                            onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value as PaymentMethod })}
+                            className="mt-1 w-full min-h-[40px] px-2 rounded-lg border border-slate-300 text-sm bg-white"
+                          >
+                            <option value="Cash">Cash</option>
+                            <option value="UPI">UPI</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </label>
+                      </div>
+                      <label className="block text-[11px] font-bold text-slate-600">
+                        Note (optional, e.g. UPI reference)
+                        <input
+                          type="text"
+                          maxLength={200}
+                          value={paymentForm.notes}
+                          onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
+                          className="mt-1 w-full min-h-[40px] px-2 rounded-lg border border-slate-300 text-sm"
+                        />
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentForm(null)}
+                          className="flex-1 min-h-[40px] rounded-lg border border-slate-300 text-xs font-bold text-slate-700"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={paymentSaving}
+                          className="flex-1 min-h-[40px] rounded-lg bg-emerald-600 text-white text-xs font-bold disabled:opacity-60"
+                        >
+                          {paymentSaving ? 'Saving…' : 'Save payment'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                  {detailRequest.paymentRecord && (
+                    <p className="text-slate-600 pt-1">
+                      {formatINR(detailRequest.paymentRecord.amount)} by {detailRequest.paymentRecord.method}, collected by{' '}
+                      {detailRequest.paymentRecord.collectedBy} on {formatDateTime(detailRequest.paymentRecord.collectedAt)}
+                      {detailRequest.paymentRecord.transactionNotes ? ` — ${detailRequest.paymentRecord.transactionNotes}` : ''}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {detailRequest.repairEstimate && (
+                <div className="p-3 border border-amber-200 bg-amber-50/50 rounded-xl space-y-1">
+                  <p className="font-bold text-amber-800 uppercase tracking-wider text-[10px]">
+                    Repair estimate{detailRequest.repairEstimate.isRevised ? ' (revised)' : ''}
+                  </p>
+                  <dl className="grid grid-cols-[1fr,auto] gap-x-3 gap-y-1 max-w-sm">
+                    <dt className="text-slate-600">Labour</dt>
+                    <dd className="text-right">{formatINR(detailRequest.repairEstimate.labourCharge)}</dd>
+                    <dt className="text-slate-600">Materials</dt>
+                    <dd className="text-right">{formatINR(detailRequest.repairEstimate.materialsCharge)}</dd>
+                    {detailRequest.repairEstimate.additionalCharges > 0 && (
+                      <>
+                        <dt className="text-slate-600">Additional</dt>
+                        <dd className="text-right">{formatINR(detailRequest.repairEstimate.additionalCharges)}</dd>
+                      </>
+                    )}
+                    <dt className="text-slate-600">Pickup & delivery</dt>
+                    <dd className="text-right">{formatINR(detailRequest.repairEstimate.pickupDeliveryCharge)}</dd>
+                    {detailRequest.repairEstimate.discount > 0 && (
+                      <>
+                        <dt className="text-slate-600">Discount</dt>
+                        <dd className="text-right">-{formatINR(detailRequest.repairEstimate.discount)}</dd>
+                      </>
+                    )}
+                    <dt className="font-bold">Estimate total</dt>
+                    <dd className="text-right font-bold">{formatINR(detailRequest.repairEstimate.totalEstimate)}</dd>
+                  </dl>
+                  {detailRequest.status === 'Repair Declined' || detailRequest.status === 'Completed Without Repair' ? (
+                    <p className="text-slate-600">
+                      Customer declined the estimate. Due on return: pickup & delivery{' '}
+                      {formatINR(detailRequest.pickupDeliveryCharge || 0)}
+                      {(detailRequest.repairEstimate.declinedRepairFee || 0) > 0
+                        ? ` + declined-repair fee ${formatINR(detailRequest.repairEstimate.declinedRepairFee || 0)}`
+                        : ''}
+                      .
+                    </p>
+                  ) : null}
+                  {detailRequest.repairEstimate.isRevised && detailRequest.repairEstimate.originalEstimate !== undefined && (
+                    <p className="text-slate-600">
+                      Original estimate {formatINR(detailRequest.repairEstimate.originalEstimate)}
+                      {detailRequest.repairEstimate.revisionReason ? ` — ${detailRequest.repairEstimate.revisionReason}` : ''}
+                    </p>
+                  )}
+                  {detailRequest.repairEstimate.expectedCompletionDate && (
+                    <p className="text-slate-600">
+                      Expected completion: {formatDate(detailRequest.repairEstimate.expectedCompletionDate)}
+                    </p>
+                  )}
+                  {detailRequest.repairEstimate.inspectionNotes && (
+                    <p className="text-slate-600">Inspection notes: {detailRequest.repairEstimate.inspectionNotes}</p>
+                  )}
+                </div>
+              )}
+
+              {detailRequest.pickupCondition && (
+                <div className="p-3 border border-slate-200 rounded-xl space-y-1">
+                  <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Condition at pickup</p>
+                  <p className="text-slate-800">
+                    <b>{detailRequest.pickupCondition.condition}</b>
+                    {detailRequest.pickupCondition.notes ? ` — ${detailRequest.pickupCondition.notes}` : ''}
+                  </p>
+                  <p className="text-slate-500">
+                    Collected by {detailRequest.pickupCondition.collectedBy} on{' '}
+                    {formatDateTime(detailRequest.pickupCondition.collectedAt)}
+                  </p>
+                </div>
+              )}
+
+              {detailRequest.review && (
+                <div className="p-3 border border-slate-200 rounded-xl space-y-1">
+                  <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Customer review</p>
+                  <p className="text-slate-800">
+                    <b>{detailRequest.review.rating} / 5</b>
+                    {detailRequest.review.comment ? ` — ${detailRequest.review.comment}` : ''}
+                  </p>
+                </div>
+              )}
+
+              {/* Staff & status actions */}
+              <div className="p-3 border border-blue-200 bg-blue-50/40 rounded-xl space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-slate-800">
+                    <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px] block">Assigned staff</span>
+                    <span className="font-semibold">{detailRequest.assignedEmployeeName || 'Not assigned'}</span>
+                  </p>
+                  {isOpenRequest(detailRequest) && (
+                    <Button
+                      onClick={() => openAssign(detailRequest)}
+                      variant="outline"
+                      size="sm"
+                      className="min-h-[40px]"
+                      leftIcon={<UserCheck className="w-4 h-4" />}
+                    >
+                      {detailRequest.assignedEmployeeId ? 'Reassign' : 'Assign staff'}
+                    </Button>
+                  )}
+                </div>
+
+                <div className="border-t border-blue-100 pt-3 space-y-2">
+                  <label htmlFor="status-override" className="font-bold text-slate-500 uppercase tracking-wider text-[10px] block">
+                    Change status
+                  </label>
+                  <p className="text-[11px] text-slate-500">
+                    Staff normally move requests forward in the staff app. Use this to correct a status or cancel a request.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <select
+                      id="status-override"
+                      value={statusDraft}
+                      onChange={(e) => setStatusDraft(e.target.value as RequestStatus | '')}
+                      className={`${inputCls} sm:w-56`}
+                    >
+                      <option value="">Choose new status…</option>
+                      {ALL_STATUSES.filter((s) => s !== detailRequest.status).map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={statusNote}
+                      onChange={(e) => setStatusNote(e.target.value)}
+                      placeholder="Note for the timeline (optional)"
+                      aria-label="Status note"
+                      className={`${inputCls} flex-1`}
+                    />
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="min-h-[40px]"
+                      disabled={!statusDraft}
+                      onClick={() => {
+                        if (!statusDraft) return;
+                        const target = statusDraft;
+                        const reqId = detailRequest.id;
+                        setConfirmState({
+                          title: `Change ${reqId} to “${target}”?`,
+                          message: (
+                            <>
+                              The customer and staff will be notified and the change is added to the request timeline.
+                              {target === 'Completed' && detailRequest.paymentStatus !== 'Paid' && (
+                                <> This request is still unpaid — payments are recorded by staff when collected.</>
+                              )}
+                            </>
+                          ),
+                          confirmLabel: 'Change status',
+                          danger: target === 'Cancelled',
+                          onConfirm: async () => {
+                            const ok = await updateRequestStatus(reqId, target, actor, statusNote.trim() || undefined);
+                            if (ok) {
+                              setStatusDraft('');
+                              setStatusNote('');
+                            }
+                          },
+                        });
+                      }}
+                    >
+                      Update
+                    </Button>
+                  </div>
+                  {detailRequest.status === 'Submitted' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="min-h-[40px] text-emerald-700 border-emerald-200"
+                      onClick={() => updateRequestStatus(detailRequest.id, 'Accepted', actor, 'Accepted by admin')}
+                    >
+                      Accept request
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Timeline */}
+              <div className="space-y-2">
+                <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Timeline</p>
+                {(detailRequest.timeline || []).length === 0 ? (
+                  <p className="text-slate-500">No events yet.</p>
+                ) : (
+                  <ol className="space-y-2 border-l-2 border-slate-200 pl-4">
+                    {[...(detailRequest.timeline || [])].reverse().map((ev, i) => (
+                      <li key={i} className="relative">
+                        <span className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white" />
+                        <p className="font-semibold text-slate-900">{ev.label || ev.status}</p>
+                        <p className="text-[11px] text-slate-500">
+                          {ev.timestamp}
+                          {ev.actor ? ` · ${ev.actor}` : ''}
+                        </p>
+                        {ev.notes && <p className="text-[11px] text-slate-600">{ev.notes}</p>}
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </div>
             </div>
 
-            <div className="p-3 bg-slate-50 rounded-xl text-xs space-y-1">
-              <div className="flex justify-between font-bold">
-                <span>Total Amount:</span>
-                <span className="text-blue-900">₹{detailModalRequest.totalAmount}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Payment Status:</span>
-                <span>{detailModalRequest.paymentStatus}</span>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 shrink-0">
-              <Button onClick={() => setDetailModalRequest(null)} variant="primary" size="sm">
+            <div className="flex justify-end gap-2 p-4 sm:px-6 border-t border-slate-100 shrink-0">
+              <Button onClick={() => setDetailRequestId(null)} variant="primary" size="sm" className="min-h-[40px] px-6">
                 Close
               </Button>
             </div>
@@ -1893,57 +3222,44 @@ export const AdminPortal: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: EMAIL TEMPLATE EDITOR */}
-      {editingTemplateId && (
+      {/* ==================================================================== */}
+      {/* CONFIRM DIALOG                                                        */}
+      {/* ==================================================================== */}
+      {confirmState && (
         <div
-          onClick={() => setEditingTemplateId(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto animate-in fade-in"
+          onClick={() => !isConfirming && setConfirmState(null)}
+          className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in"
         >
           <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="confirm-title"
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto animate-in zoom-in-95"
+            className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 animate-in zoom-in-95"
           >
-            <div className="flex justify-between items-center pb-2 border-b border-slate-100 shrink-0">
-              <h3 className="font-bold text-base text-slate-900">Edit Email Notification Template</h3>
-              <button
-                onClick={() => setEditingTemplateId(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer"
+            <h3 id="confirm-title" className="font-bold text-base text-slate-900 flex items-start gap-2">
+              {confirmState.danger && <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />}
+              {confirmState.title}
+            </h3>
+            <div className="text-sm text-slate-600">{confirmState.message}</div>
+            <div className="flex gap-2 pt-1">
+              <Button
+                onClick={() => setConfirmState(null)}
+                variant="outline"
+                className="flex-1 min-h-[40px]"
+                size="sm"
+                disabled={isConfirming}
               >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Email Subject</label>
-              <input
-                type="text"
-                value={tplSubject}
-                onChange={(e) => setTplSubject(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Email Body Content</label>
-              <textarea
-                rows={6}
-                value={tplBody}
-                onChange={(e) => setTplBody(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-mono outline-none"
-              />
-            </div>
-            <div className="flex gap-2 pt-2 shrink-0">
-              <Button onClick={() => setEditingTemplateId(null)} variant="outline" className="flex-1" size="sm">
                 Cancel
               </Button>
               <Button
-                onClick={() => {
-                  updateEmailTemplate(editingTemplateId, tplSubject, tplBody);
-                  setEditingTemplateId(null);
-                }}
+                onClick={runConfirm}
+                isLoading={isConfirming}
                 variant="primary"
-                className="flex-1"
                 size="sm"
+                className={`flex-1 min-h-[40px] ${confirmState.danger ? 'bg-rose-600 hover:bg-rose-700' : ''}`}
               >
-                Save Template Changes
+                {confirmState.confirmLabel}
               </Button>
             </div>
           </div>
@@ -1957,17 +3273,21 @@ export const AdminPortal: React.FC = () => {
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto animate-in fade-in"
         >
           <div
+            role="dialog"
+            aria-modal="true"
             onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto animate-in zoom-in-95"
           >
             <div className="flex justify-between items-center pb-2 border-b border-slate-100 shrink-0">
               <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                 <Edit3 className="w-4 h-4 text-blue-600" />
-                Edit Bat Getting Package ({editingGettingItem.id})
+                Edit stringing package
               </h3>
               <button
                 onClick={() => setEditingGettingItem(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer"
+                type="button"
+                aria-label="Close"
+                className="w-10 h-10 -mr-2 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1975,18 +3295,18 @@ export const AdminPortal: React.FC = () => {
 
             <div className="space-y-3 text-xs overflow-y-auto">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Package Name *</label>
+                <label className="block font-bold text-slate-700 mb-1">Package name *</label>
                 <input
                   type="text"
                   value={getFormName}
                   onChange={(e) => setGetFormName(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none"
+                  className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Customer Price (₹) *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Price (₹) *</label>
                   <input
                     type="number"
                     value={getFormPrice}
@@ -1996,74 +3316,78 @@ export const AdminPortal: React.FC = () => {
                       setGetFormPrice(val === '' ? '' : parseInt(val, 10) || 0);
                     }}
                     placeholder="e.g. 450"
-                    className="w-full p-2.5 rounded-xl border border-slate-300 text-sm font-black text-blue-700 outline-none"
+                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-black text-blue-700 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Turnaround SLA *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Turnaround shown to customers *</label>
                   <input
                     type="text"
                     value={getFormTurnaround}
                     onChange={(e) => setGetFormTurnaround(e.target.value)}
                     placeholder="e.g. 24 Hours / 24–48 Hours"
-                    className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none"
+                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Package Description</label>
+                <label className="block font-bold text-slate-700 mb-1">Description</label>
                 <textarea
                   rows={2}
                   value={getFormDesc}
                   onChange={(e) => setGetFormDesc(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
+                  className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
                 />
               </div>
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
-                  Features & Inclusions (comma-separated)
+                  What's included (comma-separated)
                 </label>
                 <input
                   type="text"
                   value={getFormFeatures}
                   onChange={(e) => setGetFormFeatures(e.target.value)}
-                  placeholder="e.g. Pro Strings, Grommet inspection, 28 lbs tension"
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
+                  placeholder="e.g. String included, grommet check"
+                  className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
                 />
               </div>
             </div>
 
             <div className="flex gap-2 pt-2 border-t border-slate-100 shrink-0">
-              <Button onClick={() => setEditingGettingItem(null)} variant="outline" className="flex-1" size="sm">
+              <Button onClick={() => setEditingGettingItem(null)} variant="outline" className="flex-1 min-h-[40px]" size="sm">
                 Cancel
               </Button>
               <Button
-                onClick={() => {
+                onClick={async () => {
                   const feats = getFormFeatures
                     .split(',')
                     .map((s) => s.trim())
                     .filter(Boolean);
                   const parsedPrice = typeof getFormPrice === 'number' ? getFormPrice : parseInt(getFormPrice, 10);
-                  if (!getFormName || isNaN(parsedPrice) || parsedPrice <= 0) {
-                    addToast('warning', 'Invalid Price', 'Please enter a valid price greater than 0.');
+                  if (!getFormName.trim() || isNaN(parsedPrice) || parsedPrice <= 0) {
+                    addToast('warning', 'Check the package', 'Enter a package name and a price greater than ₹0.');
                     return;
                   }
-                  updateGettingService(editingGettingItem.id, {
-                    name: getFormName,
+                  if (isSavingTier) return;
+                  setIsSavingTier(true);
+                  const ok = await updateGettingService(editingGettingItem.id, {
+                    name: getFormName.trim(),
                     price: parsedPrice,
-                    turnaround: getFormTurnaround,
-                    description: getFormDesc,
-                    features: feats.length > 0 ? feats : editingGettingItem.features,
+                    turnaround: getFormTurnaround.trim(),
+                    description: getFormDesc.trim(),
+                    features: feats,
                   });
-                  setEditingGettingItem(null);
+                  setIsSavingTier(false);
+                  if (ok) setEditingGettingItem(null);
                 }}
+                isLoading={isSavingTier}
                 variant="primary"
-                className="flex-1 font-bold"
+                className="flex-1 font-bold min-h-[40px]"
                 size="sm"
               >
-                Save Package Changes
+                Save package
               </Button>
             </div>
           </div>
@@ -2077,17 +3401,21 @@ export const AdminPortal: React.FC = () => {
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto animate-in fade-in"
         >
           <div
+            role="dialog"
+            aria-modal="true"
             onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto animate-in zoom-in-95"
           >
             <div className="flex justify-between items-center pb-2 border-b border-slate-100 shrink-0">
               <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-600" />
-                Add New Bat Getting Package
+                Add stringing package
               </h3>
               <button
                 onClick={() => setAddGettingModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer"
+                type="button"
+                aria-label="Close"
+                className="w-10 h-10 -mr-2 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2095,13 +3423,13 @@ export const AdminPortal: React.FC = () => {
 
             <div className="space-y-3 text-xs overflow-y-auto">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Package Name *</label>
+                <label className="block font-bold text-slate-700 mb-1">Package name *</label>
                 <input
                   type="text"
                   placeholder="e.g. Express Tournament Getting"
                   value={getFormName}
                   onChange={(e) => setGetFormName(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none"
+                  className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none"
                 />
               </div>
 
@@ -2117,17 +3445,17 @@ export const AdminPortal: React.FC = () => {
                       const val = e.target.value;
                       setGetFormPrice(val === '' ? '' : parseInt(val, 10) || 0);
                     }}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 text-sm font-black text-blue-700 outline-none"
+                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-black text-blue-700 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Turnaround SLA *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Turnaround shown to customers *</label>
                   <input
                     type="text"
                     placeholder="e.g. 12 Hours Express"
                     value={getFormTurnaround}
                     onChange={(e) => setGetFormTurnaround(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none"
+                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none"
                   />
                 </div>
               </div>
@@ -2136,47 +3464,56 @@ export const AdminPortal: React.FC = () => {
                 <label className="block font-bold text-slate-700 mb-1">Description</label>
                 <textarea
                   rows={2}
-                  placeholder="Describe target players and string characteristics"
+                  placeholder="Who this package suits and which string is used"
                   value={getFormDesc}
                   onChange={(e) => setGetFormDesc(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
+                  className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Features (comma-separated)</label>
+                <label className="block font-bold text-slate-700 mb-1">What's included (comma-separated)</label>
                 <input
                   type="text"
-                  placeholder="e.g. Electronic constant pull, Yonex string, Dampener"
+                  placeholder="e.g. String included, grommet check"
                   value={getFormFeatures}
                   onChange={(e) => setGetFormFeatures(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
+                  className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
                 />
               </div>
             </div>
 
             <div className="flex gap-2 pt-2 border-t border-slate-100 shrink-0">
-              <Button onClick={() => setAddGettingModalOpen(false)} variant="outline" className="flex-1" size="sm">
+              <Button onClick={() => setAddGettingModalOpen(false)} variant="outline" className="flex-1 min-h-[40px]" size="sm">
                 Cancel
               </Button>
               <Button
-                onClick={() => {
+                isLoading={isSavingTier}
+                onClick={async () => {
+                  if (isSavingTier) return;
                   const parsedPrice = typeof getFormPrice === 'number' ? getFormPrice : parseInt(getFormPrice, 10);
-                  if (!getFormName || isNaN(parsedPrice) || parsedPrice <= 0) {
-                    addToast('warning', 'Incomplete Fields', 'Please enter package name and a valid price greater than 0.');
+                  if (!getFormName.trim() || isNaN(parsedPrice) || parsedPrice <= 0) {
+                    addToast('warning', 'Incomplete fields', 'Please enter a package name and a price greater than ₹0.');
+                    return;
+                  }
+                  if (!getFormTurnaround.trim()) {
+                    addToast('warning', 'Turnaround required', 'Enter the turnaround customers should expect, e.g. "24 hours".');
                     return;
                   }
                   const feats = getFormFeatures
                     .split(',')
                     .map((s) => s.trim())
                     .filter(Boolean);
-                  addGettingService({
-                    name: getFormName,
+                  setIsSavingTier(true);
+                  const ok = await addGettingService({
+                    name: getFormName.trim(),
                     price: parsedPrice,
-                    turnaround: getFormTurnaround || '24 Hours',
-                    description: getFormDesc || 'Professional badminton stringing package.',
-                    features: feats.length > 0 ? feats : ['Electronic Stringing', 'Grommet Check'],
+                    turnaround: getFormTurnaround.trim(),
+                    description: getFormDesc.trim(),
+                    features: feats,
                   });
+                  setIsSavingTier(false);
+                  if (!ok) return;
                   setAddGettingModalOpen(false);
                   setGetFormName('');
                   setGetFormPrice(0);
@@ -2185,10 +3522,10 @@ export const AdminPortal: React.FC = () => {
                   setGetFormFeatures('');
                 }}
                 variant="primary"
-                className="flex-1 font-bold"
+                className="flex-1 font-bold min-h-[40px]"
                 size="sm"
               >
-                Create Package
+                Add package
               </Button>
             </div>
           </div>
@@ -2202,17 +3539,21 @@ export const AdminPortal: React.FC = () => {
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto animate-in fade-in"
         >
           <div
+            role="dialog"
+            aria-modal="true"
             onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto animate-in zoom-in-95"
           >
             <div className="flex justify-between items-center pb-2 border-b border-slate-100 shrink-0">
               <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                 <Edit3 className="w-4 h-4 text-blue-600" />
-                Edit Repair Category ({editingRepairItem.name})
+                Edit repair category
               </h3>
               <button
                 onClick={() => setEditingRepairItem(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer"
+                type="button"
+                aria-label="Close"
+                className="w-10 h-10 -mr-2 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2220,18 +3561,18 @@ export const AdminPortal: React.FC = () => {
 
             <div className="space-y-3 text-xs overflow-y-auto">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Category Name *</label>
+                <label className="block font-bold text-slate-700 mb-1">Category name *</label>
                 <input
                   type="text"
                   value={repFormName}
                   onChange={(e) => setRepFormName(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none"
+                  className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Starting Base Price (₹) *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Starting price (₹) *</label>
                   <input
                     type="number"
                     value={repFormBasePrice}
@@ -2241,74 +3582,82 @@ export const AdminPortal: React.FC = () => {
                       setRepFormBasePrice(val === '' ? '' : parseInt(val, 10) || 0);
                     }}
                     placeholder="e.g. 300"
-                    className="w-full p-2.5 rounded-xl border border-slate-300 text-sm font-black text-slate-900 outline-none"
+                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-black text-slate-900 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">SLA Target (Days Max) *</label>
+                  <label className="block font-bold text-slate-700 mb-1">SLA (days) *</label>
                   <input
                     type="number"
                     min={1}
-                    max={14}
+                    max={60}
                     value={repFormSlaDays}
                     onFocus={(e) => e.target.select()}
                     onChange={(e) => {
                       const val = e.target.value;
                       setRepFormSlaDays(val === '' ? '' : parseInt(val, 10) || 7);
                     }}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 text-sm font-bold text-amber-700 outline-none"
+                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-bold text-amber-700 outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Typical Turnaround Text</label>
+                <label className="block font-bold text-slate-700 mb-1">Turnaround shown to customers *</label>
                 <input
                   type="text"
                   value={repFormTurnaround}
                   onChange={(e) => setRepFormTurnaround(e.target.value)}
                   placeholder="e.g. 5–7 Days"
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
+                  className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Category Description & Technical Scope</label>
+                <label className="block font-bold text-slate-700 mb-1">Description</label>
                 <textarea
                   rows={3}
                   value={repFormDesc}
                   onChange={(e) => setRepFormDesc(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
+                  className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
                 />
               </div>
             </div>
 
             <div className="flex gap-2 pt-2 border-t border-slate-100 shrink-0">
-              <Button onClick={() => setEditingRepairItem(null)} variant="outline" className="flex-1" size="sm">
+              <Button onClick={() => setEditingRepairItem(null)} variant="outline" className="flex-1 min-h-[40px]" size="sm">
                 Cancel
               </Button>
               <Button
-                onClick={() => {
+                isLoading={isSavingTier}
+                onClick={async () => {
+                  if (isSavingTier) return;
                   const parsedBase = typeof repFormBasePrice === 'number' ? repFormBasePrice : parseInt(repFormBasePrice, 10);
                   const parsedSla = typeof repFormSlaDays === 'number' ? repFormSlaDays : parseInt(repFormSlaDays, 10);
-                  if (!repFormName || isNaN(parsedBase) || parsedBase <= 0) {
-                    addToast('warning', 'Invalid Price', 'Please enter a valid base price greater than 0.');
+                  if (!repFormName.trim() || isNaN(parsedBase) || parsedBase <= 0) {
+                    addToast('warning', 'Check the category', 'Enter a category name and a starting price greater than ₹0.');
                     return;
                   }
-                  updateRepairCategory(editingRepairItem.id, {
-                    name: repFormName,
+                  if (isNaN(parsedSla) || parsedSla < 1 || parsedSla > 60) {
+                    addToast('warning', 'Check the SLA', 'SLA days must be between 1 and 60.');
+                    return;
+                  }
+                  setIsSavingTier(true);
+                  const ok = await updateRepairCategory(editingRepairItem.id, {
+                    name: repFormName.trim(),
                     basePrice: parsedBase,
-                    slaDays: isNaN(parsedSla) || parsedSla <= 0 ? 7 : parsedSla,
-                    turnaround: repFormTurnaround,
-                    description: repFormDesc,
+                    slaDays: parsedSla,
+                    turnaround: repFormTurnaround.trim(),
+                    description: repFormDesc.trim(),
                   });
-                  setEditingRepairItem(null);
+                  setIsSavingTier(false);
+                  if (ok) setEditingRepairItem(null);
                 }}
                 variant="primary"
-                className="flex-1 font-bold"
+                className="flex-1 font-bold min-h-[40px]"
                 size="sm"
               >
-                Save Category Changes
+                Save category
               </Button>
             </div>
           </div>
@@ -2322,17 +3671,21 @@ export const AdminPortal: React.FC = () => {
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto animate-in fade-in"
         >
           <div
+            role="dialog"
+            aria-modal="true"
             onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto animate-in zoom-in-95"
           >
             <div className="flex justify-between items-center pb-2 border-b border-slate-100 shrink-0">
               <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-600" />
-                Add New Repair Category
+                Add repair category
               </h3>
               <button
                 onClick={() => setAddRepairModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer"
+                type="button"
+                aria-label="Close"
+                className="w-10 h-10 -mr-2 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2340,19 +3693,19 @@ export const AdminPortal: React.FC = () => {
 
             <div className="space-y-3 text-xs overflow-y-auto">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Category Name *</label>
+                <label className="block font-bold text-slate-700 mb-1">Category name *</label>
                 <input
                   type="text"
                   placeholder="e.g. Cone Replacement & Shaft Balancing"
                   value={repFormName}
                   onChange={(e) => setRepFormName(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none"
+                  className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Base Price (₹) *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Starting price (₹) *</label>
                   <input
                     type="number"
                     placeholder="e.g. 350"
@@ -2362,68 +3715,81 @@ export const AdminPortal: React.FC = () => {
                       const val = e.target.value;
                       setRepFormBasePrice(val === '' ? '' : parseInt(val, 10) || 0);
                     }}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 text-sm font-black text-slate-900 outline-none"
+                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-black text-slate-900 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">SLA Target (Days Max) *</label>
+                  <label className="block font-bold text-slate-700 mb-1">SLA (days) *</label>
                   <input
                     type="number"
                     min={1}
-                    max={14}
+                    max={60}
                     value={repFormSlaDays}
                     onFocus={(e) => e.target.select()}
                     onChange={(e) => {
                       const val = e.target.value;
                       setRepFormSlaDays(val === '' ? '' : parseInt(val, 10) || 7);
                     }}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 text-sm font-bold text-amber-700 outline-none"
+                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-bold text-amber-700 outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Turnaround Text</label>
+                <label className="block font-bold text-slate-700 mb-1">Turnaround shown to customers *</label>
                 <input
                   type="text"
                   placeholder="e.g. 4–6 Days"
                   value={repFormTurnaround}
                   onChange={(e) => setRepFormTurnaround(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
+                  className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Description & Scope</label>
+                <label className="block font-bold text-slate-700 mb-1">Description</label>
                 <textarea
                   rows={3}
-                  placeholder="Describe repair process, carbon curing, and warranty"
+                  placeholder="What this repair covers"
                   value={repFormDesc}
                   onChange={(e) => setRepFormDesc(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
+                  className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-xs outline-none"
                 />
               </div>
             </div>
 
             <div className="flex gap-2 pt-2 border-t border-slate-100 shrink-0">
-              <Button onClick={() => setAddRepairModalOpen(false)} variant="outline" className="flex-1" size="sm">
+              <Button onClick={() => setAddRepairModalOpen(false)} variant="outline" className="flex-1 min-h-[40px]" size="sm">
                 Cancel
               </Button>
               <Button
-                onClick={() => {
+                isLoading={isSavingTier}
+                onClick={async () => {
+                  if (isSavingTier) return;
                   const parsedBase = typeof repFormBasePrice === 'number' ? repFormBasePrice : parseInt(repFormBasePrice, 10);
                   const parsedSla = typeof repFormSlaDays === 'number' ? repFormSlaDays : parseInt(repFormSlaDays, 10);
-                  if (!repFormName || isNaN(parsedBase) || parsedBase <= 0) {
-                    addToast('warning', 'Incomplete Fields', 'Please enter category name and a valid base price.');
+                  if (!repFormName.trim() || isNaN(parsedBase) || parsedBase <= 0) {
+                    addToast('warning', 'Incomplete fields', 'Enter a category name and a starting price greater than ₹0.');
                     return;
                   }
-                  addRepairCategory({
-                    name: repFormName,
+                  if (isNaN(parsedSla) || parsedSla < 1 || parsedSla > 60) {
+                    addToast('warning', 'Check the SLA', 'SLA days must be between 1 and 60.');
+                    return;
+                  }
+                  if (!repFormTurnaround.trim()) {
+                    addToast('warning', 'Turnaround required', 'Enter the turnaround customers should expect, e.g. "4–6 days".');
+                    return;
+                  }
+                  setIsSavingTier(true);
+                  const ok = await addRepairCategory({
+                    name: repFormName.trim(),
                     basePrice: parsedBase,
-                    slaDays: isNaN(parsedSla) || parsedSla <= 0 ? 7 : parsedSla,
-                    turnaround: repFormTurnaround || '5–7 Days',
-                    description: repFormDesc || 'Precision structural repair service.',
+                    slaDays: parsedSla,
+                    turnaround: repFormTurnaround.trim(),
+                    description: repFormDesc.trim(),
                   });
+                  setIsSavingTier(false);
+                  if (!ok) return;
                   setAddRepairModalOpen(false);
                   setRepFormName('');
                   setRepFormBasePrice('');
@@ -2432,10 +3798,10 @@ export const AdminPortal: React.FC = () => {
                   setRepFormDesc('');
                 }}
                 variant="primary"
-                className="flex-1 font-bold"
+                className="flex-1 font-bold min-h-[40px]"
                 size="sm"
               >
-                Create Category
+                Add category
               </Button>
             </div>
           </div>

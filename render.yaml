@@ -7,17 +7,36 @@ services:
     plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt && python -m alembic upgrade head
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.0
+      - key: ENVIRONMENT
+        value: production
+      # Secrets: set these in the Render dashboard (Environment tab). Never commit them.
       - key: DATABASE_URL
-        value: postgresql://neondb_owner:npg_AygEc1f4VMSb@ep-divine-dawn-b4jpbxy7.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require
+        sync: false
       - key: SECRET_KEY
         generateValue: true
-      - key: RESEND_API_KEY
+      # First admin: 10-digit mobile number + password (at least 8 characters)
+      - key: ADMIN_PHONE
         sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      # Customer login codes by SMS (MSG91 auth key + DLT-approved OTP template id)
+      - key: MSG91_AUTH_KEY
+        sync: false
+      - key: MSG91_OTP_TEMPLATE_ID
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://badminton-service-platform.onrender.com
+      - key: PUBLIC_API_URL
+        value: https://badminton-service-backend.onrender.com
+      # Login codes are only ever sent by SMS in production. Setting this to "auto" would
+      # show codes on screen while SMS isn't set up — anyone could then log in as any customer.
+      - key: EXPOSE_OTP_IN_RESPONSE
+        value: "false"
 
   # 2. React Vite Frontend Static Site
   - type: web
@@ -25,6 +44,13 @@ services:
     env: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
+    headers:
+      - path: /images/*
+        name: Cache-Control
+        value: public, max-age=604800
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
     routes:
       - type: rewrite
         source: /*

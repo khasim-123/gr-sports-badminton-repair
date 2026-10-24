@@ -1,13 +1,25 @@
+import os
+from datetime import date, timedelta
 from sqlalchemy.orm import Session
+from app.config import settings
+from app.security import hash_password
+from app.services.content_service import business_today, get_availability_settings, new_id, now_iso
+from app.string_catalogue import STRING_CATALOGUE
+from app.services.sms_service import normalize_phone
 from app.models import (
     DistanceConfigModel,
     EmployeeModel,
     GettingServiceTierModel,
     RepairCategoryTierModel,
-    EmailTemplateModel,
     ServiceRequestModel,
     AuditLogModel,
     NotificationModel,
+    CustomerModel,
+    StringProductModel,
+    StringVariantModel,
+    RacketModel,
+    AppMetaModel,
+    EventModel,
 )
 
 def seed_database(db: Session):
@@ -15,9 +27,9 @@ def seed_database(db: Session):
     if not db.query(DistanceConfigModel).first():
         distance_config = DistanceConfigModel(
             id=1,
-            shopLocationName="GR Sports Master Hub, 80 Feet Road, Indiranagar, Bengaluru",
-            shopLat=12.9716,
-            shopLng=77.6412,
+            shopLocationName=settings.DEFAULT_SHOP_NAME,
+            shopLat=settings.DEFAULT_SHOP_LAT,
+            shopLng=settings.DEFAULT_SHOP_LNG,
             freeRadiusKm=10.0,
             perKmRateBeyondFree=15.0,
             pricingMethod="PER_KM",
@@ -32,8 +44,11 @@ def seed_database(db: Session):
         )
         db.add(distance_config)
 
+    # Demo people/requests are for local development only; production starts clean.
+    seed_demo = os.getenv("SEED_DEMO_DATA", "false" if settings.is_production else "true").lower() in ("1", "true", "yes")
+
     # 2. Employees & Admins
-    if not db.query(EmployeeModel).first():
+    if seed_demo and not db.query(EmployeeModel).first():
         employees = [
             EmployeeModel(
                 id="EMP-01",
@@ -90,8 +105,8 @@ def seed_database(db: Session):
                 name="Basic Getting",
                 price=400.0,
                 turnaround="24 Hours",
-                description="Standard synthetic gut stringing (20–24 lbs). Good durability & tension hold for casual and club play.",
-                features=["Standard Synthetic Gut", "20-24 lbs Tension Range", "Grommet Inspection", "Free Vibration Dampener"],
+                description="Restringing with a standard, durable string at the tension you choose. Good for casual and club play.",
+                features=["Standard durable string", "Tension of your choice", "Grommets checked before stringing"],
                 isActive=True
             ),
             GettingServiceTierModel(
@@ -99,8 +114,8 @@ def seed_database(db: Session):
                 name="Tournament Getting",
                 price=600.0,
                 turnaround="24–36 Hours",
-                description="Tournament-grade multifilament string (Yonex BG80 / Aerobite) with electronic constant-pull tensioning up to 30 lbs.",
-                features=["Tournament Grade Strings", "Up to 30 lbs Electronic Tension", "Constant-Pull Machine", "Grommet Cleaning"],
+                description="Restringing with a thinner, higher-performance string for more power and feel. Choose the exact string and colour when you book.",
+                features=["Performance strings from our catalogue", "Tension of your choice", "Grommets checked before stringing"],
                 isActive=True
             ),
             GettingServiceTierModel(
@@ -108,8 +123,8 @@ def seed_database(db: Session):
                 name="Durability Getting",
                 price=500.0,
                 turnaround="24 Hours",
-                description="Thick gauge high-abrasion strings (Yonex BG65 / Li-Ning No.7). Engineered for maximum string lifespan and endurance.",
-                features=["0.70mm High-Durability String", "22-26 lbs Tension Range", "Pre-Stretch Treatment", "Reinforced Knot Ties"],
+                description="Restringing with a thicker, longer-lasting string (around 0.70 mm). A good choice if you break strings often.",
+                features=["Thicker, longer-lasting string", "Tension of your choice", "Grommets checked before stringing"],
                 isActive=True
             ),
             GettingServiceTierModel(
@@ -117,8 +132,8 @@ def seed_database(db: Session):
                 name="Custom Getting",
                 price=750.0,
                 turnaround="48 Hours",
-                description="Bespoke hybrid tensioning (differential mains & crosses), premium grip overwrap, and dynamic balance calibration.",
-                features=["Hybrid String Setup", "Independent Cross/Main Tension", "AC102EX Premium Grip Included", "Frame Stress Load Analysis"],
+                description="Special setups such as hybrid strings or different tensions for mains and crosses. Describe what you want in the booking notes.",
+                features=["Hybrid string setups", "Separate main and cross tension", "Setup discussed with our stringer"],
                 isActive=True
             ),
         ]
@@ -132,7 +147,7 @@ def seed_database(db: Session):
                 name="Broken Bat (Frame Fracture)",
                 basePrice=400.0,
                 turnaround="5–7 Days",
-                description="Full structural carbon fiber splice & high-grade epoxy curing. Restores structural integrity up to 28 lbs tension.",
+                description="Repair of a broken or snapped frame. We inspect the racket first and confirm whether it can be repaired safely, and the final price, before starting work.",
                 slaDays=7,
                 isActive=True
             ),
@@ -141,7 +156,7 @@ def seed_database(db: Session):
                 name="Frame Damage",
                 basePrice=350.0,
                 turnaround="4–6 Days",
-                description="Hairline crack reinforcement and internal graphite sleeve insertion at 10, 12, or 2 o’clock frame positions.",
+                description="Repair of cracks or damage on the racket head. Final price is confirmed after inspection.",
                 slaDays=7,
                 isActive=True
             ),
@@ -150,7 +165,7 @@ def seed_database(db: Session):
                 name="Shaft Damage",
                 basePrice=450.0,
                 turnaround="5–7 Days",
-                description="Shaft carbon-braid compression sleeve rebuild and flex calibration.",
+                description="Repair of cracks or breaks in the shaft. Final price is confirmed after inspection.",
                 slaDays=7,
                 isActive=True
             ),
@@ -159,7 +174,7 @@ def seed_database(db: Session):
                 name="Handle Damage",
                 basePrice=250.0,
                 turnaround="3–4 Days",
-                description="Internal wooden cone replacement, polyurethane handle rebuild, and factory staple re-anchoring.",
+                description="Repair of a loose, cracked or damaged handle. Final price is confirmed after inspection.",
                 slaDays=5,
                 isActive=True
             ),
@@ -168,7 +183,7 @@ def seed_database(db: Session):
                 name="Joint Damage (T-Joint)",
                 basePrice=300.0,
                 turnaround="4–5 Days",
-                description="Built-in T-Joint stabilizing resin weld and torsional twist correction.",
+                description="Repair of damage where the shaft meets the head (T-joint). Final price is confirmed after inspection.",
                 slaDays=6,
                 isActive=True
             ),
@@ -177,7 +192,7 @@ def seed_database(db: Session):
                 name="Grip & Cushion Issue",
                 basePrice=150.0,
                 turnaround="1–2 Days",
-                description="Wood handle antiseptic cleaning, base cushion foam replacement, and sweat-resistant overgrip application.",
+                description="Grip replacement and handle cushion repair.",
                 slaDays=3,
                 isActive=True
             ),
@@ -186,113 +201,59 @@ def seed_database(db: Session):
                 name="Other / Custom Issue",
                 basePrice=200.0,
                 turnaround="5–7 Days",
-                description="Custom composite restoration assessed upon workshop physical inspection.",
+                description="Any other problem — describe it when you book. We inspect the racket and confirm the work and price before starting.",
                 slaDays=7,
                 isActive=True
             ),
         ]
         db.add_all(repair_tiers)
 
-    # 5. Email Templates
-    if not db.query(EmailTemplateModel).first():
-        templates = [
-            EmailTemplateModel(
-                id="TPL-01",
-                name="OTP Email",
-                category="Customer",
-                subject="Your GR Sports Verification Code: {otp}",
-                body="Hello {customer_name},\n\nYour one-time login code for GR Sports Badminton Services is {otp}. This code is valid for 10 minutes.\n\nDo not share this code with anyone.\n\nBest regards,\nTeam GR Sports",
-                variables=["customer_name", "otp"]
-            ),
-            EmailTemplateModel(
-                id="TPL-02",
-                name="Request Submitted",
-                category="Customer",
-                subject="Service Booking Confirmed: {request_id} ({service_type})",
-                body="Hello {customer_name},\n\nYour badminton bat {service_type} request {request_id} has been submitted successfully.\n\nBat: {bat_brand} {bat_model}\nPickup Address: {pickup_address}\nDistance: {distance_km} KM ({pickup_charge_status})\n\nNote: Payment will be collected after delivery. No advance payment is needed.\n\nBest regards,\nGR Sports Operations",
-                variables=["customer_name", "request_id", "service_type", "bat_brand", "bat_model", "pickup_address", "distance_km", "pickup_charge_status"]
-            ),
-            EmailTemplateModel(
-                id="TPL-03",
-                name="Repair Estimate Ready",
-                category="Customer",
-                subject="Repair Estimate Ready for {request_id} — Approval Required",
-                body="Hello {customer_name},\n\nOur workshop technicians have inspected your {bat_brand} {bat_model}.\n\nInspection Findings:\n{inspection_findings}\n\nEstimate Breakdown:\nLabour: ₹{labour_charge}\nMaterials: ₹{materials_charge}\nTotal Estimate: ₹{total_amount}\n\nPlease review and approve this estimate so our team can commence the repair:\n{action_link}\n\nBest regards,\nGR Sports Workshop Team",
-                variables=["customer_name", "request_id", "bat_brand", "bat_model", "inspection_findings", "labour_charge", "materials_charge", "total_amount", "action_link"]
-            ),
-            EmailTemplateModel(
-                id="TPL-04",
-                name="Revised Estimate Notification",
-                category="Customer",
-                subject="UPDATED Repair Estimate for {request_id} — Approval Required",
-                body="Hello {customer_name},\n\nDuring detailed repair preparation of your {bat_brand} {bat_model}, additional damage was discovered:\n\nReason: {revision_reason}\nPrevious Estimate: ₹{original_estimate}\nAdditional Repair: ₹{additional_charges}\nNew Total: ₹{new_total}\n\nRepair work will remain paused until you review and approve the revised estimate.\n\nApprove or Decline here:\n{action_link}",
-                variables=["customer_name", "request_id", "bat_brand", "bat_model", "revision_reason", "original_estimate", "additional_charges", "new_total", "action_link"]
-            ),
-            EmailTemplateModel(
-                id="TPL-05",
-                name="Out for Delivery",
-                category="Customer",
-                subject="Your Badminton Bat is Out for Delivery ({request_id})",
-                body="Hello {customer_name},\n\nYour serviced {bat_brand} {bat_model} is out for delivery with our executive {employee_name} ({employee_phone}).\n\nTotal to be collected on delivery: ₹{total_amount}\nAccepted Payment Methods: Cash, UPI, or Card at doorstep.\n\nThank you for choosing GR Sports!",
-                variables=["customer_name", "request_id", "bat_brand", "bat_model", "employee_name", "employee_phone", "total_amount"]
-            ),
-            EmailTemplateModel(
-                id="TPL-06",
-                name="Payment Confirmation & Completed",
-                category="Customer",
-                subject="Service Completed & Payment Receipt ({request_id})",
-                body="Hello {customer_name},\n\nThank you for your payment of ₹{amount_paid} collected by {collected_by} via {payment_method}.\n\nYour service {request_id} is marked as COMPLETED.\n\nHave a great game on court!\nGR Sports Team",
-                variables=["customer_name", "request_id", "amount_paid", "collected_by", "payment_method"]
-            ),
-        ]
-        db.add_all(templates)
-
     # 6. Initial Requests
-    if not db.query(ServiceRequestModel).first():
+    if seed_demo and not db.query(ServiceRequestModel).first():
         default_address_1 = {
             "id": "ADDR-1",
             "label": "Home",
-            "houseFlat": "Flat 402, Green Glen Heights",
-            "street": "Outer Ring Road, Bellandur",
-            "area": "Bellandur",
-            "city": "Bengaluru",
-            "state": "Karnataka",
-            "pincode": "560103",
-            "landmark": "Near EcoSpace Tech Park",
+            "houseFlat": "Flat 402, Sai Residency",
+            "street": "Sector 4, MVP Colony",
+            "area": "MVP Colony",
+            "city": "Visakhapatnam",
+            "state": "Andhra Pradesh",
+            "pincode": "530017",
+            "landmark": "Near MVP Rythu Bazar",
             "distanceKm": 11.8,
             "isDefault": True,
-            "lat": 12.9260,
-            "lng": 77.6762,
+            "lat": 17.7417,
+            "lng": 83.3346,
         }
         default_address_2 = {
             "id": "ADDR-2",
             "label": "Office",
-            "houseFlat": "Level 5, Tower B, Helios Business Park",
-            "street": "Kadubeesanahalli",
-            "area": "Marathahalli",
-            "city": "Bengaluru",
-            "state": "Karnataka",
-            "pincode": "560103",
-            "landmark": "Opposite Cisco",
+            "houseFlat": "Door 9-1-24, Siripuram Towers",
+            "street": "Siripuram Junction Road",
+            "area": "Siripuram",
+            "city": "Visakhapatnam",
+            "state": "Andhra Pradesh",
+            "pincode": "530003",
+            "landmark": "Opposite Andhra University gate",
             "distanceKm": 13.5,
             "isDefault": False,
-            "lat": 12.9380,
-            "lng": 77.6910,
+            "lat": 17.7206,
+            "lng": 83.3170,
         }
         default_address_3 = {
             "id": "ADDR-3",
             "label": "Other",
-            "houseFlat": "Villa 18, Palm Meadows",
-            "street": "Ramagondanahalli, Varthur Road",
-            "area": "Whitefield",
-            "city": "Bengaluru",
-            "state": "Karnataka",
-            "pincode": "560066",
-            "landmark": "Near Forum Value Mall",
+            "houseFlat": "House 18, Old Gajuwaka",
+            "street": "Gajuwaka Main Road",
+            "area": "Gajuwaka",
+            "city": "Visakhapatnam",
+            "state": "Andhra Pradesh",
+            "pincode": "530026",
+            "landmark": "Near Gajuwaka Junction",
             "distanceKm": 22.4,
             "isDefault": False,
-            "lat": 12.9698,
-            "lng": 77.7499,
+            "lat": 17.6868,
+            "lng": 83.2185,
         }
 
         requests = [
@@ -506,11 +467,11 @@ def seed_database(db: Session):
         db.add_all(requests)
 
     # 7. Initial Audit Logs
-    if not db.query(AuditLogModel).first():
+    if seed_demo and not db.query(AuditLogModel).first():
         logs = [
             AuditLogModel(id="LOG-001", timestamp="2026-10-01 16:45", user="Amit Verma", role="EMPLOYEE", action="Recorded ₹400 payment via UPI", requestId="GET-00021", details="Delivered to customer doorstep"),
             AuditLogModel(id="LOG-002", timestamp="2026-10-01 15:30", user="Sneha Patel", role="EMPLOYEE", action="Requested revised estimate ₹650", requestId="REP-00025", details="Additional shaft micro-fracture found"),
-            AuditLogModel(id="LOG-003", timestamp="2026-10-01 15:00", user="Priya Anand", role="ADMIN", action="Assigned Amit Verma", requestId="GET-00025", details="Pickup scheduled for Bellandur"),
+            AuditLogModel(id="LOG-003", timestamp="2026-10-01 15:00", user="Priya Anand", role="ADMIN", action="Assigned Amit Verma", requestId="GET-00025", details="Pickup scheduled for MVP Colony"),
             AuditLogModel(id="LOG-004", timestamp="2026-10-01 14:30", user="Pooja Hegde", role="CUSTOMER", action="Created new getting request", requestId="GET-00025", details="Yonex Astrox 88D Pro"),
             AuditLogModel(id="LOG-005", timestamp="2026-10-01 11:30", user="Sneha Patel", role="EMPLOYEE", action="Created initial estimate ₹400", requestId="REP-00026", details="Awaiting customer approval"),
             AuditLogModel(id="LOG-006", timestamp="2026-09-30 14:00", user="Priya Anand", role="ADMIN", action="Updated distance pricing config", requestId="SYSTEM", details="Free radius set to 10 KM"),
@@ -518,7 +479,7 @@ def seed_database(db: Session):
         db.add_all(logs)
 
     # 8. Initial Notification
-    if not db.query(NotificationModel).first():
+    if seed_demo and not db.query(NotificationModel).first():
         notif = NotificationModel(
             id="NOTIF-000001",
             type="system",
@@ -531,4 +492,270 @@ def seed_database(db: Session):
         )
         db.add(notif)
 
+    # 9. Two upcoming demo events so a local preview shows how event banners look.
+    # Demo branch only: production starts with no events.
+    if seed_demo and not db.query(EventModel).first():
+        db.add_all(demo_events(business_today()))
+
     db.commit()
+
+    seed_string_catalogue(db)
+    seed_rackets(db)
+    refresh_seeded_wording(db)
+    get_availability_settings(db)
+    move_default_shop_to_visakhapatnam(db)
+    normalize_existing_phones(db)
+    ensure_bootstrap_admin(db)
+
+
+def seed_string_catalogue(db: Session):
+    """Adds catalogue models (no prices — the admin sets them) that haven't been seeded before.
+    Each code is seeded only once, so a model the admin deletes doesn't come back on restart."""
+    meta = db.query(AppMetaModel).filter(AppMetaModel.key == "seeded_string_codes").first()
+    if meta is None:
+        # Databases seeded before this bookkeeping existed: everything already present counts.
+        existing = [code for (code,) in db.query(StringProductModel.code).all() if code]
+        meta = AppMetaModel(key="seeded_string_codes", value=existing)
+        db.add(meta)
+    seeded = set(meta.value or [])
+    present = {code for (code,) in db.query(StringProductModel.code).all() if code}
+    next_order = db.query(StringProductModel).count()
+
+    added = []
+    for item in STRING_CATALOGUE:
+        code = item["code"]
+        if code in seeded or code in present:
+            continue
+        product = StringProductModel(
+            id=new_id("STR"),
+            brand=item.get("brand", "Hundred"),
+            code=code,
+            name=item["name"],
+            gauge=item["gauge"],
+            price=None,
+            description=None,
+            isFeatured=item["isFeatured"],
+            isActive=True,
+            sortOrder=next_order,
+            createdAt=now_iso(),
+        )
+        next_order += 1
+        for v_order, (colour, hex_code, image) in enumerate(sorted(item["variants"], key=lambda v: v[0])):
+            product.variants.append(StringVariantModel(
+                id=new_id("VAR"),
+                colour=colour,
+                colourHex=hex_code,
+                imageUrl=image,
+                inStock=True,
+                sortOrder=v_order,
+            ))
+        db.add(product)
+        added.append(code)
+    meta.value = sorted(seeded | present | set(added))
+    db.commit()
+
+
+def ensure_bootstrap_admin(db: Session):
+    """Creates the first admin from ADMIN_PHONE / ADMIN_PASSWORD, or sets the password of
+    that admin if it has none yet. Never overwrites an existing password."""
+    phone = normalize_phone(settings.ADMIN_PHONE)
+    password = settings.ADMIN_PASSWORD
+    if not settings.ADMIN_PHONE or not password:
+        return
+    if not phone:
+        print("[bootstrap] ADMIN_PHONE must be a valid 10-digit Indian mobile number; admin not configured")
+        return
+    if len(password) < 8:
+        print("[bootstrap] ADMIN_PASSWORD must be at least 8 characters; admin not configured")
+        return
+    admin = db.query(EmployeeModel).filter(EmployeeModel.phone == phone).first()
+    if admin is None:
+        db.add(EmployeeModel(
+            id=new_id("EMP"),
+            name=settings.ADMIN_NAME,
+            email=None,
+            phone=phone,
+            role="Platform Admin",
+            userRole="ADMIN",
+            activeJobsCount=0,
+            password=hash_password(password),
+            isActive=True,
+        ))
+        db.commit()
+    elif not admin.password:
+        admin.password = hash_password(password)
+        admin.userRole = "ADMIN"
+        admin.isActive = True
+        db.commit()
+
+
+def normalize_existing_phones(db: Session):
+    """Stores every mobile number as +91XXXXXXXXXX so logins and booking history match.
+    Idempotent; numbers that aren't valid Indian mobiles are left untouched."""
+    changed = False
+    for model, column in ((CustomerModel, "phone"), (EmployeeModel, "phone"), (ServiceRequestModel, "customerMobile")):
+        for row in db.query(model).all():
+            current = getattr(row, column)
+            normalized = normalize_phone(current)
+            if normalized and normalized != current:
+                setattr(row, column, normalized)
+                changed = True
+    if changed:
+        db.commit()
+
+
+OLD_BENGALURU_DEFAULT = (12.9716, 77.6412)
+
+
+def move_default_shop_to_visakhapatnam(db: Session):
+    """The original template shipped with a Bengaluru shop location, which made every
+    Visakhapatnam pickup look ~800 km away. Replace it only if it's still that untouched default."""
+    config = db.query(DistanceConfigModel).first()
+    if config and (round(config.shopLat, 4), round(config.shopLng, 4)) == OLD_BENGALURU_DEFAULT:
+        config.shopLocationName = settings.DEFAULT_SHOP_NAME
+        config.shopLat = settings.DEFAULT_SHOP_LAT
+        config.shopLng = settings.DEFAULT_SHOP_LNG
+        db.commit()
+
+
+# brand, name, tag, weight, balance, flex, max tension — the rackets from the original
+# homepage. Prices and photos are left for the admin (no invented prices).
+STARTER_RACKETS = [
+    ("Yonex", "Astrox 88D Pro", "Bestseller", "3U / 4U", "Head Heavy", "Stiff", "Up to 28 lbs"),
+    ("Yonex", "Nanoflare 1000Z", "Speed Flagship", None, "Head Light", "Extra Stiff", "Up to 29 lbs"),
+    ("Li-Ning", "Axforce 90 Max Dragon", "Power Series", None, "Head Heavy", "Stiff", "Up to 31 lbs"),
+    ("Victor", "Thruster Ryuga II Pro", "Attacking", None, "Head Heavy", "Medium Stiff", "Up to 32 lbs"),
+    ("Apacs", "Z-Ziggler High Tension", "High Tension", None, "Head Heavy", "Medium", "Up to 38 lbs"),
+    ("Hundred", "Atomic X Vigor", "Club Value", None, "Even Balance", "Flexible", "Up to 32 lbs"),
+    ("Yonex", "Arcsaber 11 Pro", "Control", None, "Even Balance", "Stiff", "Up to 28 lbs"),
+    ("Li-Ning", "Halbertec 8000", "Control", None, "Even Balance", "Medium", "Up to 30 lbs"),
+]
+
+
+def seed_rackets(db: Session):
+    if db.query(RacketModel).first():
+        return
+    for order, (brand, name, tag, weight, balance, flex, tension) in enumerate(STARTER_RACKETS):
+        db.add(RacketModel(
+            id=new_id("RKT"), brand=brand, name=name, price=None, tag=tag, weight=weight,
+            balance=balance, flex=flex, maxTension=tension, description=None, images=[],
+            inStock=True, isFeatured=order < 4, isActive=True, sortOrder=order, createdAt=now_iso(),
+        ))
+    db.commit()
+
+
+# Original template wording -> plain, verifiable wording. Only rows the admin hasn't edited
+# (text still identical to the original seed) are updated.
+PACKAGE_WORDING = {
+    'basic': ('Standard synthetic gut stringing (20–24 lbs). Good durability & tension hold for casual and club play.', ['Standard Synthetic Gut', '20-24 lbs Tension Range', 'Grommet Inspection', 'Free Vibration Dampener'], 'Restringing with a standard, durable string at the tension you choose. Good for casual and club play.', ['Standard durable string', 'Tension of your choice', 'Grommets checked before stringing']),
+    'tournament': ('Tournament-grade multifilament string (Yonex BG80 / Aerobite) with electronic constant-pull tensioning up to 30 lbs.', ['Tournament Grade Strings', 'Up to 30 lbs Electronic Tension', 'Constant-Pull Machine', 'Grommet Cleaning'], 'Restringing with a thinner, higher-performance string for more power and feel. Choose the exact string and colour when you book.', ['Performance strings from our catalogue', 'Tension of your choice', 'Grommets checked before stringing']),
+    'durability': ('Thick gauge high-abrasion strings (Yonex BG65 / Li-Ning No.7). Engineered for maximum string lifespan and endurance.', ['0.70mm High-Durability String', '22-26 lbs Tension Range', 'Pre-Stretch Treatment', 'Reinforced Knot Ties'], 'Restringing with a thicker, longer-lasting string (around 0.70 mm). A good choice if you break strings often.', ['Thicker, longer-lasting string', 'Tension of your choice', 'Grommets checked before stringing']),
+    'custom': ('Bespoke hybrid tensioning (differential mains & crosses), premium grip overwrap, and dynamic balance calibration.', ['Hybrid String Setup', 'Independent Cross/Main Tension', 'AC102EX Premium Grip Included', 'Frame Stress Load Analysis'], 'Special setups such as hybrid strings or different tensions for mains and crosses. Describe what you want in the booking notes.', ['Hybrid string setups', 'Separate main and cross tension', 'Setup discussed with our stringer']),
+}
+CATEGORY_WORDING = {
+    'broken': ('Full structural carbon fiber splice & high-grade epoxy curing. Restores structural integrity up to 28 lbs tension.', 'Repair of a broken or snapped frame. We inspect the racket first and confirm whether it can be repaired safely, and the final price, before starting work.'),
+    'frame': ('Hairline crack reinforcement and internal graphite sleeve insertion at 10, 12, or 2 o’clock frame positions.', 'Repair of cracks or damage on the racket head. Final price is confirmed after inspection.'),
+    'shaft': ('Shaft carbon-braid compression sleeve rebuild and flex calibration.', 'Repair of cracks or breaks in the shaft. Final price is confirmed after inspection.'),
+    'handle': ('Internal wooden cone replacement, polyurethane handle rebuild, and factory staple re-anchoring.', 'Repair of a loose, cracked or damaged handle. Final price is confirmed after inspection.'),
+    'joint': ('Built-in T-Joint stabilizing resin weld and torsional twist correction.', 'Repair of damage where the shaft meets the head (T-joint). Final price is confirmed after inspection.'),
+    'grip': ('Wood handle antiseptic cleaning, base cushion foam replacement, and sweat-resistant overgrip application.', 'Grip replacement and handle cushion repair.'),
+    'other': ('Custom composite restoration assessed upon workshop physical inspection.', 'Any other problem — describe it when you book. We inspect the racket and confirm the work and price before starting.'),
+}
+
+
+def refresh_seeded_wording(db: Session):
+    changed = False
+    for tier in db.query(GettingServiceTierModel).all():
+        wording = PACKAGE_WORDING.get(tier.id)
+        if not wording:
+            continue
+        old_desc, old_feats, new_desc, new_feats = wording
+        if tier.description == old_desc:
+            tier.description = new_desc
+            changed = True
+        if list(tier.features or []) == old_feats:
+            tier.features = new_feats
+            changed = True
+    for cat in db.query(RepairCategoryTierModel).all():
+        wording = CATEGORY_WORDING.get(cat.id)
+        if wording and cat.description == wording[0]:
+            cat.description = wording[1]
+            changed = True
+    if changed:
+        db.commit()
+
+
+def _next_weekday(start: date, weekday: int) -> date:
+    """First date on or after `start` that falls on `weekday` (0 = Monday)."""
+    return start + timedelta(days=(weekday - start.weekday()) % 7)
+
+
+def demo_events(today: date) -> list:
+    """Local-development sample events (SEED_DEMO_DATA). Dates are relative to today."""
+    tournament_start = _next_weekday(today + timedelta(days=21), 5)  # a Saturday ~3 weeks out
+    camp_start = _next_weekday(today + timedelta(days=42), 0)  # a Monday ~6 weeks out
+    return [
+        EventModel(
+            id=new_id("EVT"),
+            title="GR Sports Doubles Tournament",
+            category="tournament",
+            summary="Men's, women's and mixed doubles, plus U-15 singles. Register online before the deadline.",
+            description=(
+                "Knockout matches for club and recreational players.\n\n"
+                "Categories: Men's Doubles, Women's Doubles, Mixed Doubles and U-15 Singles.\n"
+                "Entry: ₹600 per pair (₹600 per player for U-15 Singles).\n\n"
+                "The venue, draws and match timings are shared on WhatsApp after registrations close. "
+                "Please report 30 minutes before your first match.\n\n"
+                "Questions? Call or WhatsApp GR Sports on +91 76758 31496."
+            ),
+            startDate=tournament_start.isoformat(),
+            endDate=(tournament_start + timedelta(days=1)).isoformat(),
+            timeText="7:00 AM onwards",
+            venue="Indoor badminton courts, MVP Colony (venue confirmed on registration)",
+            venueMapUrl=None,
+            entryFee=600,
+            feeNote="per pair",
+            categories=["Men's Doubles", "Women's Doubles", "Mixed Doubles", "U-15 Singles"],
+            registrationMode="form",
+            registrationUrl=None,
+            registrationDeadline=(tournament_start - timedelta(days=3)).isoformat(),
+            capacity=64,
+            bannerImageUrl="/images/site/events/tournament.webp",
+            mobileImageUrl=None,
+            showAsBanner=True,
+            isActive=True,
+            sortOrder=0,
+            createdAt=now_iso(),
+        ),
+        EventModel(
+            id=new_id("EVT"),
+            title="Junior Badminton Coaching Camp",
+            category="coaching_camp",
+            summary="Two-week morning camp for players aged 8–15: grip, footwork, strokes and match play.",
+            description=(
+                "Morning sessions, Monday to Saturday, for beginners and junior players aged 8 to 15.\n\n"
+                "Covers grip and basic strokes, footwork, serving and supervised match play. "
+                "Players are grouped by age and level.\n\n"
+                "Bring your own racket and non-marking shoes.\n\n"
+                "To book a place, message GR Sports on WhatsApp (+91 76758 31496) with the player's name and age."
+            ),
+            startDate=camp_start.isoformat(),
+            endDate=(camp_start + timedelta(days=12)).isoformat(),
+            timeText="6:00 – 8:00 AM, Mon–Sat",
+            venue="Indoor badminton courts, Dondaparthy (venue confirmed on WhatsApp)",
+            venueMapUrl=None,
+            entryFee=2500,
+            feeNote="per player",
+            categories=["Ages 8–11", "Ages 12–15"],
+            registrationMode="whatsapp",
+            registrationUrl=None,
+            registrationDeadline=None,
+            capacity=None,
+            bannerImageUrl="/images/site/events/coaching-camp.webp",
+            mobileImageUrl=None,
+            showAsBanner=True,
+            isActive=True,
+            sortOrder=1,
+            createdAt=now_iso(),
+        ),
+    ]

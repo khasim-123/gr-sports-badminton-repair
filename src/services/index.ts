@@ -5,4 +5,5 @@ export * from './pricingService';
 export * from './employeeService';
 export * from './notificationService';
 export * from './auditService';
-export * from './emailService';
+export * from './contentService';
+export * from './analyticsService';

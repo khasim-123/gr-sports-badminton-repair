@@ -39,14 +39,17 @@ class AddressSchema(BaseModel):
     houseFlat: str
     street: str
     area: str
-    city: str = 'Bengaluru'
-    state: str = 'Karnataka'
+    city: str = 'Visakhapatnam'
+    state: str = 'Andhra Pradesh'
     pincode: str
     landmark: Optional[str] = None
     distanceKm: float = 0.0
     isDefault: Optional[bool] = False
     lat: Optional[float] = None
     lng: Optional[float] = None
+    # How distanceKm was found: 'location' (server, from lat/lng), 'customer' (typed in),
+    # 'staff' (corrected by the workshop). Always set by the server on bookings.
+    distanceSource: Optional[Literal['location', 'customer', 'staff']] = None
 
 class TimelineEventSchema(BaseModel):
     status: RequestStatus
@@ -109,18 +112,20 @@ class NotificationCreate(BaseModel):
 class EmployeeSchema(BaseModel):
     id: str
     name: str
-    email: str
+    email: Optional[str] = None
     phone: str
     role: str = 'Technician'
     userRole: UserRole = 'EMPLOYEE'
     activeJobsCount: int = 0
     avatar: Optional[str] = None
-    password: Optional[str] = None
     isActive: bool = True
+
+    class Config:
+        from_attributes = True
 
 class EmployeeCreate(BaseModel):
     name: str
-    email: str
+    email: Optional[str] = None
     phone: str
     role: str = 'Technician'
     userRole: UserRole = 'EMPLOYEE'
@@ -131,7 +136,7 @@ class ServiceRequestSchema(BaseModel):
     id: str
     serviceType: ServiceType
     customerName: str
-    customerEmail: str
+    customerEmail: Optional[str] = None
     customerMobile: str
     createdAt: str
     status: RequestStatus
@@ -185,7 +190,7 @@ class ServiceRequestSchema(BaseModel):
 class RequestCreate(BaseModel):
     serviceType: ServiceType = 'GETTING'
     customerName: str
-    customerEmail: str
+    customerEmail: Optional[str] = None  # ignored; customers are identified by mobile
     customerMobile: str
     batBrand: str
     batModel: str
@@ -203,6 +208,7 @@ class RequestCreate(BaseModel):
     distanceKm: float = 12.0
     serviceCharge: Optional[float] = None
     additionalNotes: Optional[str] = None
+    pickupDate: Optional[str] = None  # YYYY-MM-DD, validated against availability
 
 class RequestStatusUpdate(BaseModel):
     status: RequestStatus
@@ -275,7 +281,7 @@ class RepairCategoryTierSchema(BaseModel):
     slaDays: int = 7
     isActive: bool = True
 
-# Audit & Email
+# Audit
 class AuditLogSchema(BaseModel):
     id: str
     timestamp: str
@@ -285,53 +291,463 @@ class AuditLogSchema(BaseModel):
     requestId: str
     details: Optional[str] = None
 
-class EmailTemplateSchema(BaseModel):
-    id: str
-    name: str
-    subject: str
-    body: str
-    category: Literal['Customer', 'Employee', 'Admin']
-    variables: List[str] = []
 
-class EmailSimulateRequest(BaseModel):
-    templateId: str
-    recipient: str
-    variables: dict[str, Any]
 
 # Auth Schemas
 class LoginCredentials(BaseModel):
-    email: str
-    password: Optional[str] = None
-    otp: Optional[str] = None
+    phone: str  # 10-digit Indian mobile number (any common format)
+    password: Optional[str] = None  # staff / admin
+    otp: Optional[str] = None  # customers (SMS code)
     role: UserRole = 'CUSTOMER'
 
 class AuthSessionResponse(BaseModel):
     isLoggedIn: bool
     token: str
     role: UserRole
-    email: str
     name: str
-    mobile: str
+    mobile: str  # +91XXXXXXXXXX
     title: Optional[str] = None
     activeView: Optional[str] = None
     customerSubView: Optional[str] = None
     employeeSubView: Optional[str] = None
     adminSubView: Optional[str] = None
+    isNewCustomer: bool = False
 
 class OtpRequest(BaseModel):
-    identifier: str
+    phone: str
 
 class CustomerCreate(BaseModel):
     name: str
-    email: str
-    phone: str
     address: Optional[str] = None
-    password: Optional[str] = None
 
 class CustomerResponse(BaseModel):
     id: str
     name: str
-    email: str
     phone: str
     address: Optional[str] = None
     createdAt: str
+
+
+# ---------------- Website content ----------------
+
+BannerCtaTarget = Literal['stringing', 'repair', 'strings', 'rackets', 'tshirts', 'courts', 'tournaments', 'url', 'none']
+ReviewStatus = Literal['pending', 'approved', 'hidden']
+DocumentCategory = Literal['Price List', 'Terms & Conditions', 'Warranty', 'Policy', 'Guide', 'Internal', 'Other']
+DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
+
+
+class OrmModel(BaseModel):
+    class Config:
+        from_attributes = True
+
+
+class MediaResponse(BaseModel):
+    id: str
+    url: str
+    contentType: str
+    size: int
+    fileName: Optional[str] = None
+
+
+class BannerBase(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+    subtitle: Optional[str] = Field(default=None, max_length=300)
+    badge: Optional[str] = Field(default=None, max_length=40)
+    ctaLabel: Optional[str] = Field(default=None, max_length=40)
+    ctaTarget: BannerCtaTarget = 'none'
+    ctaUrl: Optional[str] = Field(default=None, max_length=500)
+    desktopImageUrl: str = Field(min_length=1, max_length=500)
+    mobileImageUrl: Optional[str] = Field(default=None, max_length=500)
+    isActive: bool = True
+    startsAt: Optional[str] = Field(default=None, pattern=DATE_PATTERN)
+    endsAt: Optional[str] = Field(default=None, pattern=DATE_PATTERN)
+
+
+class BannerCreate(BannerBase):
+    sortOrder: Optional[int] = None
+
+
+class BannerUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    subtitle: Optional[str] = Field(default=None, max_length=300)
+    badge: Optional[str] = Field(default=None, max_length=40)
+    ctaLabel: Optional[str] = Field(default=None, max_length=40)
+    ctaTarget: Optional[BannerCtaTarget] = None
+    ctaUrl: Optional[str] = Field(default=None, max_length=500)
+    desktopImageUrl: Optional[str] = Field(default=None, min_length=1, max_length=500)
+    mobileImageUrl: Optional[str] = Field(default=None, max_length=500)
+    isActive: Optional[bool] = None
+    sortOrder: Optional[int] = None
+    startsAt: Optional[str] = Field(default=None, pattern=DATE_PATTERN)
+    endsAt: Optional[str] = Field(default=None, pattern=DATE_PATTERN)
+
+
+class BannerSchema(BannerBase, OrmModel):
+    id: str
+    sortOrder: int = 0
+    createdAt: str
+
+
+class ReorderRequest(BaseModel):
+    ids: List[str]
+
+
+class StringVariantBase(BaseModel):
+    colour: str = Field(min_length=1, max_length=60)
+    colourHex: Optional[str] = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+    imageUrl: Optional[str] = Field(default=None, max_length=500)
+    inStock: bool = True
+
+
+class StringVariantCreate(StringVariantBase):
+    sortOrder: Optional[int] = None
+
+
+class StringVariantUpdate(BaseModel):
+    colour: Optional[str] = Field(default=None, min_length=1, max_length=60)
+    colourHex: Optional[str] = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+    imageUrl: Optional[str] = Field(default=None, max_length=500)
+    inStock: Optional[bool] = None
+    sortOrder: Optional[int] = None
+
+
+class StringVariantSchema(StringVariantBase, OrmModel):
+    id: str
+    productId: str
+    sortOrder: int = 0
+
+
+class StringProductBase(BaseModel):
+    brand: str = Field(default="Hundred", min_length=1, max_length=60)
+    code: Optional[str] = Field(default=None, max_length=40)
+    name: str = Field(min_length=1, max_length=120)
+    gauge: Optional[str] = Field(default=None, max_length=40)
+    price: Optional[float] = Field(default=None, ge=0)
+    description: Optional[str] = Field(default=None, max_length=1000)
+    isFeatured: bool = False
+    isActive: bool = True
+
+
+class StringProductCreate(StringProductBase):
+    sortOrder: Optional[int] = None
+
+
+class StringProductUpdate(BaseModel):
+    brand: Optional[str] = Field(default=None, min_length=1, max_length=60)
+    code: Optional[str] = Field(default=None, max_length=40)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    gauge: Optional[str] = Field(default=None, max_length=40)
+    price: Optional[float] = Field(default=None, ge=0)
+    description: Optional[str] = Field(default=None, max_length=1000)
+    isFeatured: Optional[bool] = None
+    isActive: Optional[bool] = None
+    sortOrder: Optional[int] = None
+
+
+class StringProductSchema(StringProductBase, OrmModel):
+    id: str
+    sortOrder: int = 0
+    variants: List[StringVariantSchema] = []
+    inStockCount: int = 0
+    createdAt: str
+
+
+class StockUpdate(BaseModel):
+    inStock: bool
+
+
+class RacketBase(BaseModel):
+    brand: str = Field(min_length=1, max_length=40)
+    name: str = Field(min_length=1, max_length=120)
+    price: Optional[float] = Field(default=None, ge=0)
+    tag: Optional[str] = Field(default=None, max_length=30)
+    weight: Optional[str] = Field(default=None, max_length=40)
+    balance: Optional[str] = Field(default=None, max_length=40)
+    flex: Optional[str] = Field(default=None, max_length=40)
+    maxTension: Optional[str] = Field(default=None, max_length=40)
+    description: Optional[str] = Field(default=None, max_length=1500)
+    images: List[str] = Field(default_factory=list, max_length=6)
+    inStock: bool = True
+    isFeatured: bool = False
+    isActive: bool = True
+
+
+class RacketCreate(RacketBase):
+    sortOrder: Optional[int] = None
+
+
+class RacketUpdate(BaseModel):
+    brand: Optional[str] = Field(default=None, min_length=1, max_length=40)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    price: Optional[float] = Field(default=None, ge=0)
+    tag: Optional[str] = Field(default=None, max_length=30)
+    weight: Optional[str] = Field(default=None, max_length=40)
+    balance: Optional[str] = Field(default=None, max_length=40)
+    flex: Optional[str] = Field(default=None, max_length=40)
+    maxTension: Optional[str] = Field(default=None, max_length=40)
+    description: Optional[str] = Field(default=None, max_length=1500)
+    images: Optional[List[str]] = Field(default=None, max_length=6)
+    inStock: Optional[bool] = None
+    isFeatured: Optional[bool] = None
+    isActive: Optional[bool] = None
+    sortOrder: Optional[int] = None
+
+
+class RacketSchema(RacketBase, OrmModel):
+    id: str
+    sortOrder: int = 0
+    createdAt: str
+
+
+class ReviewSubmission(BaseModel):
+    authorName: str = Field(min_length=2, max_length=60)
+    rating: int = Field(ge=1, le=5)
+    comment: str = Field(min_length=10, max_length=1500)
+    serviceType: Optional[str] = Field(default=None, max_length=40)
+    location: Optional[str] = Field(default=None, max_length=60)
+
+
+class ReviewModerationUpdate(BaseModel):
+    status: Optional[ReviewStatus] = None
+    isFeatured: Optional[bool] = None
+    adminReply: Optional[str] = Field(default=None, max_length=1000)
+
+
+class CustomerReviewSchema(OrmModel):
+    id: str
+    authorName: str
+    rating: int
+    comment: str
+    serviceType: Optional[str] = None
+    location: Optional[str] = None
+    status: ReviewStatus
+    isFeatured: bool = False
+    isVerified: bool = False
+    requestId: Optional[str] = None
+    adminReply: Optional[str] = None
+    createdAt: str
+
+
+class ReviewSummary(BaseModel):
+    average: float
+    count: int
+    distribution: dict
+
+
+class PublicReviewsResponse(BaseModel):
+    summary: ReviewSummary
+    reviews: List[CustomerReviewSchema]
+
+
+class DocumentBase(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+    description: Optional[str] = Field(default=None, max_length=500)
+    category: DocumentCategory = 'Other'
+    fileUrl: str = Field(min_length=1, max_length=500)
+    fileName: Optional[str] = Field(default=None, max_length=200)
+    contentType: Optional[str] = Field(default=None, max_length=100)
+    isPublic: bool = True
+
+
+class DocumentCreate(DocumentBase):
+    sortOrder: Optional[int] = None
+
+
+class DocumentUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    description: Optional[str] = Field(default=None, max_length=500)
+    category: Optional[DocumentCategory] = None
+    fileUrl: Optional[str] = Field(default=None, min_length=1, max_length=500)
+    fileName: Optional[str] = Field(default=None, max_length=200)
+    contentType: Optional[str] = Field(default=None, max_length=100)
+    isPublic: Optional[bool] = None
+    sortOrder: Optional[int] = None
+
+
+class DocumentSchema(DocumentBase, OrmModel):
+    id: str
+    sortOrder: int = 0
+    createdAt: str
+
+
+class ClosedDateSchema(BaseModel):
+    date: str = Field(pattern=DATE_PATTERN)
+    reason: Optional[str] = Field(default=None, max_length=80)
+
+
+class AvailabilitySettingsSchema(OrmModel):
+    openWeekdays: List[int] = Field(default_factory=lambda: [0, 1, 2, 3, 4, 5])
+    dailyPickupCapacity: int = Field(default=0, ge=0, le=500)
+    leadTimeDays: int = Field(default=0, ge=0, le=30)
+    bookingWindowDays: int = Field(default=30, ge=1, le=180)
+    pickupSlots: List[str] = []
+    closedDates: List[ClosedDateSchema] = []
+    notice: Optional[str] = Field(default=None, max_length=300)
+
+
+class AvailabilityDaySchema(BaseModel):
+    date: str
+    available: bool
+    reason: Optional[str] = None
+    remaining: Optional[int] = None
+
+
+class PublicAvailabilitySchema(BaseModel):
+    settings: AvailabilitySettingsSchema
+    days: List[AvailabilityDaySchema]
+
+
+# ---------------- Events ----------------
+# Lengths here are generous hard caps; the router applies the friendlier, tighter limits
+# (with readable error messages) in _clean_event / register_for_event.
+
+SiteEventCategory = Literal['tournament', 'coaching_camp', 'clinic', 'store_event', 'other']
+EventRegistrationMode = Literal['form', 'whatsapp', 'phone', 'url', 'none']
+EventStatus = Literal['upcoming', 'ongoing', 'past']
+EventRegistrationStatus = Literal['registered', 'cancelled']
+
+
+class EventBase(BaseModel):
+    title: str = Field(max_length=300)
+    category: SiteEventCategory = 'tournament'
+    summary: Optional[str] = Field(default=None, max_length=1000)
+    description: Optional[str] = Field(default=None, max_length=10000)
+    startDate: str = Field(max_length=20)
+    endDate: Optional[str] = Field(default=None, max_length=20)
+    timeText: Optional[str] = Field(default=None, max_length=300)
+    venue: str = Field(max_length=500)
+    venueMapUrl: Optional[str] = Field(default=None, max_length=1000)
+    entryFee: Optional[float] = None
+    feeNote: Optional[str] = Field(default=None, max_length=300)
+    categories: List[str] = Field(default_factory=list, max_length=50)
+    registrationMode: EventRegistrationMode = 'none'
+    registrationUrl: Optional[str] = Field(default=None, max_length=1000)
+    registrationDeadline: Optional[str] = Field(default=None, max_length=20)
+    capacity: Optional[int] = None
+    bannerImageUrl: str = Field(max_length=1000)
+    mobileImageUrl: Optional[str] = Field(default=None, max_length=1000)
+    showAsBanner: bool = True
+    isActive: bool = True
+
+
+class EventCreate(EventBase):
+    sortOrder: Optional[int] = None
+
+
+class EventUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, max_length=300)
+    category: Optional[SiteEventCategory] = None
+    summary: Optional[str] = Field(default=None, max_length=1000)
+    description: Optional[str] = Field(default=None, max_length=10000)
+    startDate: Optional[str] = Field(default=None, max_length=20)
+    endDate: Optional[str] = Field(default=None, max_length=20)
+    timeText: Optional[str] = Field(default=None, max_length=300)
+    venue: Optional[str] = Field(default=None, max_length=500)
+    venueMapUrl: Optional[str] = Field(default=None, max_length=1000)
+    entryFee: Optional[float] = None
+    feeNote: Optional[str] = Field(default=None, max_length=300)
+    categories: Optional[List[str]] = Field(default=None, max_length=50)
+    registrationMode: Optional[EventRegistrationMode] = None
+    registrationUrl: Optional[str] = Field(default=None, max_length=1000)
+    registrationDeadline: Optional[str] = Field(default=None, max_length=20)
+    capacity: Optional[int] = None
+    bannerImageUrl: Optional[str] = Field(default=None, max_length=1000)
+    mobileImageUrl: Optional[str] = Field(default=None, max_length=1000)
+    showAsBanner: Optional[bool] = None
+    isActive: Optional[bool] = None
+    sortOrder: Optional[int] = None
+
+
+class EventSchema(EventBase, OrmModel):
+    id: str
+    sortOrder: int = 0
+    createdAt: str
+    # Computed by the server (Asia/Kolkata dates)
+    status: EventStatus
+    registrationOpen: bool
+    registrationCount: int = 0
+    spotsLeft: Optional[int] = None
+
+
+class EventRegistrationCreate(BaseModel):
+    name: str = Field(max_length=300)
+    mobile: str = Field(max_length=40)
+    partnerName: Optional[str] = Field(default=None, max_length=300)
+    playCategory: Optional[str] = Field(default=None, max_length=300)
+    notes: Optional[str] = Field(default=None, max_length=3000)
+
+
+class EventRegistrationUpdate(BaseModel):
+    status: EventRegistrationStatus
+
+
+class EventRegistrationSchema(OrmModel):
+    id: str
+    eventId: str
+    name: str
+    mobile: str
+    partnerName: Optional[str] = None
+    playCategory: Optional[str] = None
+    notes: Optional[str] = None
+    status: EventRegistrationStatus
+    createdAt: str
+
+
+class PublicSiteContent(BaseModel):
+    events: List[EventSchema] = []
+    banners: List[BannerSchema]
+    strings: List[StringProductSchema]
+    rackets: List[RacketSchema]
+    reviews: PublicReviewsResponse
+    documents: List[DocumentSchema]
+    availability: PublicAvailabilitySchema
+
+
+# ---------------- Shop settings (admin-editable shop details) ----------------
+
+class ShopSettingsSchema(BaseModel):
+    name: str
+    tagline: str = ""
+    phone: str
+    whatsapp: str
+    email: Optional[str] = None
+    addressLine: str
+    area: str
+    pincode: Optional[str] = None
+    mapsUrl: Optional[str] = None
+    openingHours: str = ""
+    declinedRepairFee: float = 0
+
+
+class PublicSiteContentWithShop(PublicSiteContent):
+    shop: ShopSettingsSchema
+
+
+# ---------------- Customers (admin) ----------------
+
+class CustomerSummarySchema(BaseModel):
+    id: str
+    name: str
+    phone: str
+    address: Optional[str] = None
+    createdAt: str
+    bookings: int = 0
+    openBookings: int = 0
+    lastBookingAt: Optional[str] = None
+    totalPaid: float = 0
+
+
+class CustomerRequestSummarySchema(BaseModel):
+    id: str
+    serviceType: str
+    status: str
+    paymentStatus: Optional[str] = None
+    totalAmount: float = 0
+    createdAt: str
+    batBrand: Optional[str] = None
+    batModel: Optional[str] = None
+
+
+class CustomerDetailSchema(BaseModel):
+    customer: CustomerSummarySchema
+    requests: List[CustomerRequestSummarySchema] = []

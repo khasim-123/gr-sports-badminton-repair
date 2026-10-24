@@ -20,6 +20,11 @@ export const employeeService = {
     return apiClient.delete<{ success: boolean; message: string }>(`/employees/${id}`);
   },
 
+  /** Admin: set a new password, or omit it to have the server generate a temporary one. */
+  async resetPassword(id: string, newPassword?: string): Promise<{ success: boolean; temporaryPassword: string | null }> {
+    return apiClient.put(`/employees/${id}/password`, { newPassword: newPassword || null });
+  },
+
   async getEmployeeWorkload(id: string): Promise<any> {
     return apiClient.get<any>(`/employees/${id}/workload`);
   },

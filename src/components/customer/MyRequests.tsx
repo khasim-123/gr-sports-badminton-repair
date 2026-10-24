@@ -2,178 +2,187 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { StatusBadge } from '../common/Badge';
 import { Button } from '../common/Button';
-import { EmptyState } from '../common/EmptyStates';
-import {
-  Search,
-  Filter,
-  Wrench,
-  Clock,
-  ArrowRight,
-  ChevronRight,
-  PlusCircle,
-  MapPin,
-} from 'lucide-react';
+import { CardSkeleton } from '../common/Skeletons';
+import { Search, ChevronRight, PlusCircle, MapPin, CalendarDays } from 'lucide-react';
+import { formatDate } from '../../utils/format';
+import { CustomerEmptyState, ServiceTypeTile, isOpenRequest, needsApproval, paymentLabel, priceLabel, serviceSummary } from './requestDisplay';
+
+type Tab = 'All' | 'Active' | 'Stringing' | 'Repair' | 'Completed' | 'Declined / Cancelled';
+const TABS: Tab[] = ['All', 'Active', 'Stringing', 'Repair', 'Completed', 'Declined / Cancelled'];
 
 export const MyRequests: React.FC = () => {
-  const { requests, openRequestDetail, setCustomerSubView } = useApp();
-  const [activeTab, setActiveTab] = useState<'All' | 'Getting' | 'Repair' | 'Active' | 'Completed' | 'Cancelled'>('All');
+  const { requests, openRequestDetail, openWizardWithService, isDataLoading, dataLoaded, gettingServices } = useApp();
+  const showLoading = isDataLoading && !dataLoaded;
+  const [activeTab, setActiveTab] = useState<Tab>('All');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const matchesTab = (req: (typeof requests)[number], tab: Tab) => {
+    switch (tab) {
+      case 'Stringing':
+        return req.serviceType === 'GETTING';
+      case 'Repair':
+        return req.serviceType === 'REPAIR';
+      case 'Active':
+        return isOpenRequest(req);
+      case 'Completed':
+        return req.status === 'Completed';
+      case 'Declined / Cancelled':
+        return req.status === 'Cancelled' || req.status === 'Repair Declined' || req.status === 'Completed Without Repair';
+      default:
+        return true;
+    }
+  };
+
+  const q = searchQuery.trim().toLowerCase();
   const filteredRequests = requests.filter((req) => {
-    // Search filter
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchId = req.id.toLowerCase().includes(q);
-      const matchBrand = req.batBrand.toLowerCase().includes(q);
-      const matchModel = req.batModel.toLowerCase().includes(q);
-      if (!matchId && !matchBrand && !matchModel) return false;
+    if (q) {
+      const haystack = [req.id, req.batBrand, req.batModel, req.stringType, req.repairIssue].filter(Boolean).join(' ').toLowerCase();
+      if (!haystack.includes(q)) return false;
     }
-
-    // Tab filter
-    if (activeTab === 'Getting') return req.serviceType === 'GETTING';
-    if (activeTab === 'Repair') return req.serviceType === 'REPAIR';
-    if (activeTab === 'Active') {
-      return req.status !== 'Completed' && req.status !== 'Cancelled' && req.status !== 'Completed Without Repair';
-    }
-    if (activeTab === 'Completed') return req.status === 'Completed';
-    if (activeTab === 'Cancelled') {
-      return req.status === 'Cancelled' || req.status === 'Repair Declined' || req.status === 'Completed Without Repair';
-    }
-
-    return true;
-  });
+    return matchesTab(req, activeTab);
+  }).sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
 
   return (
-    <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="max-w-5xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-black text-slate-900">My Service Requests</h2>
+          <h1 className="text-2xl font-black text-slate-900">My Requests</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Monitor stringing, inspection status, and doorstep delivery for all your badminton bats.
+            Every stringing and repair you have booked, newest first. Open one for its progress and charges.
           </p>
         </div>
         <Button
-          onClick={() => setCustomerSubView('wizard')}
+          onClick={() => openWizardWithService('GETTING')}
           variant="primary"
           size="md"
+          className="min-h-[44px] shrink-0"
           leftIcon={<PlusCircle className="w-4 h-4" />}
         >
-          Book New Service
+          Book a service
         </Button>
       </div>
 
-      {/* Tabs and Search Bar */}
-      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-        {/* Tabs */}
-        <div className="flex overflow-x-auto gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200 text-xs font-semibold shrink-0">
-          {(['All', 'Getting', 'Repair', 'Active', 'Completed', 'Cancelled'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-3.5 py-1.5 rounded-xl transition-all whitespace-nowrap ${
-                activeTab === tab
-                  ? 'bg-white text-blue-900 shadow-2xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        {/* Search */}
-        <div className="relative min-w-[220px]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by ID or Model..."
-            className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-          />
-        </div>
-      </div>
-
-      {/* Requests List */}
-      {filteredRequests.length === 0 ? (
-        <EmptyState
-          type="no_requests"
-          title="No Matching Requests Found"
-          description="Try adjusting your filter or search query, or submit a new badminton service request."
-          actionText="Book New Service"
-          onAction={() => setCustomerSubView('wizard')}
-        />
-      ) : (
-        <div className="space-y-3">
-          {filteredRequests.map((req) => (
-            <div
-              key={req.id}
-              onClick={() => openRequestDetail(req.id)}
-              className="bg-white rounded-3xl border border-slate-200/90 p-5 hover:border-blue-400 hover:shadow-xl transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
-            >
-              <div className="flex items-start sm:items-center gap-4">
-                {/* Rich Service Thumbnail */}
-                <div className="relative w-16 h-16 rounded-2xl overflow-hidden shrink-0 border border-slate-200 shadow-2xs group-hover:scale-103 transition-transform">
-                  <img
-                    src={req.serviceType === 'GETTING' ? '/images/stringing-machine.jpg' : '/images/racket-repair.jpg'}
-                    alt={req.batBrand}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
-                  <span className={`absolute bottom-0 inset-x-0 text-[8px] font-black uppercase text-center py-0.5 text-white ${
-                    req.serviceType === 'GETTING' ? 'bg-blue-600' : 'bg-amber-600'
-                  }`}>
-                    {req.serviceType === 'GETTING' ? 'Stringing' : 'Repair'}
+      {requests.length > 0 && (
+        <div className="flex flex-col lg:flex-row gap-3 lg:items-center justify-between">
+          <div className="flex overflow-x-auto no-scrollbar gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200 text-xs font-semibold" role="tablist">
+            {TABS.map((tab) => {
+              const count = requests.filter((r) => matchesTab(r, tab)).length;
+              const active = activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-3 min-h-[40px] rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                    active ? 'bg-white text-blue-900 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {tab}
+                  <span className={`text-[10px] px-1.5 rounded-full ${active ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-600'}`}>
+                    {count}
                   </span>
-                </div>
+                </button>
+              );
+            })}
+          </div>
 
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                    <span className="font-mono text-xs font-bold text-blue-900 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-200">
-                      {req.id}
-                    </span>
-                    <h3 className="text-base font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors">
-                      {req.batBrand} {req.batModel}
-                    </h3>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-                      {req.batType}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-slate-600 flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-slate-800">
-                      {req.serviceType === 'GETTING'
-                        ? `${req.gettingType} • ${req.stringTensionLbs || 26} lbs (${req.stringType || 'Yonex BG65'})`
-                        : `Defect: ${req.repairIssue}`}
-                    </span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1 text-slate-500">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                      {req.pickupAddress.area} ({req.distanceKm} KM)
-                    </span>
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between sm:justify-end gap-4 pl-20 sm:pl-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100">
-                <div className="text-left sm:text-right">
-                  <StatusBadge status={req.status} size="sm" />
-                  <p className="text-sm font-extrabold text-slate-900 mt-1">
-                    {req.totalAmount > 0 ? `₹${req.totalAmount}` : 'Quote on Inspection'}
-                  </p>
-                  <p className="text-[10px] text-slate-400">
-                    Payment: {req.paymentStatus} (Doorstep)
-                  </p>
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-slate-50 group-hover:bg-blue-600 text-slate-400 group-hover:text-white transition-all shadow-2xs">
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
-            </div>
-          ))}
+          <div className="relative lg:w-64 shrink-0">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search ID, racket or string"
+              aria-label="Search your requests"
+              className="w-full pl-9 pr-3 min-h-[44px] rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+            />
+          </div>
         </div>
+      )}
+
+      {showLoading ? (
+        <div className="space-y-3">
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
+      ) : filteredRequests.length === 0 ? (
+        requests.length === 0 ? (
+          <CustomerEmptyState
+            icon="requests"
+            title="No bookings yet"
+            description="Book racket stringing or a repair and it will show up here, with live progress and charges."
+            actionText="Book your first service"
+            onAction={() => openWizardWithService('GETTING')}
+          />
+        ) : (
+          <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
+            No requests match {q ? `"${searchQuery.trim()}"` : 'this filter'}.{' '}
+            <button
+              type="button"
+              className="text-blue-700 font-bold underline min-h-[40px]"
+              onClick={() => {
+                setSearchQuery('');
+                setActiveTab('All');
+              }}
+            >
+              Show all requests
+            </button>
+          </div>
+        )
+      ) : (
+        <ul className="space-y-3">
+          {filteredRequests.map((req) => {
+            const approval = needsApproval(req);
+            return (
+              <li key={req.id}>
+                <button
+                  type="button"
+                  onClick={() => openRequestDetail(req.id)}
+                  className={`w-full text-left bg-white rounded-2xl sm:rounded-3xl border p-4 sm:p-5 hover:border-blue-400 hover:shadow-lg transition-all group grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_12rem_auto] items-center gap-x-4 gap-y-3 ${
+                    approval ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200'
+                  }`}
+                >
+                  <ServiceTypeTile type={req.serviceType} />
+
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="font-mono text-xs font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                        {req.id}
+                      </span>
+                      <span className="text-base font-extrabold text-slate-900 group-hover:text-blue-700">
+                        {req.batBrand} {req.batModel}
+                      </span>
+                    </span>
+                    <span className="block text-xs font-semibold text-slate-700 mt-1">{serviceSummary(req, gettingServices)}</span>
+                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 mt-1">
+                      <span className="inline-flex items-center gap-1">
+                        <CalendarDays className="w-3.5 h-3.5" /> Booked {formatDate(req.createdAt)}
+                      </span>
+                      {req.pickupAddress?.area && (
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5" /> {req.pickupAddress.area} ({req.distanceKm} KM)
+                        </span>
+                      )}
+                    </span>
+                  </span>
+
+                  <span className="col-span-2 sm:col-span-1 flex sm:flex-col items-center sm:items-end justify-between gap-1 border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
+                    <StatusBadge status={req.status} size="sm" />
+                    <span className="text-right">
+                      <span className="block text-sm font-extrabold text-slate-900">{priceLabel(req)}</span>
+                      <span className="block text-[11px] text-slate-500">{paymentLabel(req)}</span>
+                    </span>
+                  </span>
+
+                  <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 hidden sm:block" />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );

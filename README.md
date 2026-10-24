@@ -15,8 +15,8 @@ A modern, production-ready responsive web application and clickable prototype de
 
 ## 🌟 Core Highlights & Business Rules
 
-1. **Email OTP Authentication**:
-   - Passwordless login using 6-digit email OTP.
+1. **Mobile Number Login**:
+   - Customers sign in with their mobile number and a 6-digit SMS code; staff and admin use mobile number + password.
    - Demo verification code prefilled: `849201`.
    - First-time player profile configuration (Name, Mobile, Default Address).
 
@@ -72,7 +72,6 @@ A modern, production-ready responsive web application and clickable prototype de
   - Getting pricing & repair categories management
   - Reconciled payment register
   - Exportable CSV reports and printable PDF view
-  - 15 Email notification templates with placeholder tokens (`{customer_name}`, `{request_id}`, etc.)
   - Full system audit trail
 
 ---
@@ -91,7 +90,7 @@ The sticky bottom toolbar allows instant jumping to any of the 16 Figma pages:
 - **09** — Employee Portal
 - **10** — Admin Portal
 - **11** — Reports & Analytics
-- **12** — Notifications & Email Templates
+- **12** — Website Content
 - **13** — Settings & Distance Rules
 - **14** — Mobile Responsive (390px Viewport)
 - **15** — Prototype User Flows & 1-Click Test Scenarios

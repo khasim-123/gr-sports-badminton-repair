@@ -1,48 +1,50 @@
 import React from 'react';
-import { Truck } from 'lucide-react';
+import { MapPin, Truck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { openStoreSection } from '../../utils/storeNavigation';
+import { fullAddress, localityOf, useShopSettings } from '../../hooks/useShopSettings';
 
+/**
+ * Slim bar above the navbar on customer-facing app screens (the landing page has its own header).
+ * Store links open the matching section of the shop's website; the address comes from the shop settings and the promise text comes from the
+ * live pickup configuration.
+ */
 export const TopAnnouncementBar: React.FC = () => {
-  const { setActiveView } = useApp();
+  const { setActiveView, distanceConfig } = useApp();
+  const shop = useShopSettings();
+  const shortAddress = [shop.addressLine.split(',')[0].trim(), localityOf(shop)].filter(Boolean).join(', ');
 
-  const scrollToSection = (sectionId: string) => {
-    setActiveView('landing');
-    setTimeout(() => {
-      const el = document.getElementById(sectionId);
-      el?.scrollIntoView({ behavior: 'smooth' });
-    }, 150);
-  };
-
-  const navItems = [
-    { label: '🏸 Badminton', id: 'services' },
-    { label: '👕 T-Shirts', id: 'services' },
+  const links = [
+    { label: 'Strings', view: 'strings' },
+    { label: 'Rackets', view: 'rackets' },
   ];
 
   return (
-    <div className="w-full bg-yellow-400 text-yellow-900 py-3 px-6 flex items-center justify-between text-sm font-bold leading-none overflow-x-hidden relative">
-      {/* Left: Brand tag + clickable category links */}
-      <div className="flex items-center gap-0 shrink-0">
-        <span className="font-black text-yellow-900 tracking-widest text-base mr-3">GR SPORTS</span>
-        <span className="text-yellow-800 opacity-40 mr-3 text-lg">|</span>
-        <div className="hidden sm:flex items-center gap-1">
-          {navItems.map((item, i) => (
-            <React.Fragment key={item.label}>
-              {i > 0 && <span className="opacity-30 mx-1.5 text-base">·</span>}
-              <button
-                onClick={() => scrollToSection(item.id)}
-                className="px-3 py-1 rounded-lg hover:bg-yellow-500/60 active:bg-yellow-600/40 transition-colors text-yellow-900 font-bold text-sm"
-              >
-                {item.label}
-              </button>
-            </React.Fragment>
+    <div className="w-full bg-ink text-white/80 print:hidden">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 min-h-[36px] flex items-center justify-between gap-3 text-[13px]">
+        <div className="hidden md:flex items-center gap-3 shrink-0">
+          <span className="flex items-center gap-1.5" title={fullAddress(shop)}>
+            <MapPin className="w-3.5 h-3.5 text-accent shrink-0" />
+            {shortAddress}
+          </span>
+          <span className="text-white/25" aria-hidden="true">|</span>
+          {links.map((link) => (
+            <button
+              key={link.view}
+              type="button"
+              onClick={() => openStoreSection(setActiveView, link.view)}
+              className="min-h-[32px] hover:text-white underline-offset-4 hover:underline transition-colors"
+            >
+              {link.label}
+            </button>
           ))}
         </div>
-      </div>
-
-      {/* Right / Center: Promo message */}
-      <div className="flex items-center gap-2 text-yellow-900 font-bold text-sm whitespace-nowrap">
-        <Truck className="w-4 h-4 shrink-0" />
-        <span>Free Pickup within 10 KM — Zero Advance Payment</span>
+        <p className="flex items-center gap-2 min-w-0 py-1.5 mx-auto md:mx-0">
+          <Truck className="w-4 h-4 shrink-0 text-accent" />
+          <span className="truncate">
+            Free pickup and delivery within {distanceConfig.freeRadiusKm} km · Pay when it comes back
+          </span>
+        </p>
       </div>
     </div>
   );

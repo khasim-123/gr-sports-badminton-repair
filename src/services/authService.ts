@@ -1,35 +1,62 @@
 /**
  * GR Sports Platform - Authentication Service
  * Endpoints for Player, Staff, and Admin authentication.
+ *
+ * The backend issues a signed JWT (`token`) with every AuthSession. The full
+ * session (including the token) is kept in localStorage so `apiClient` can send
+ * it as a Bearer token. Never overwrite the stored session without the token —
+ * use `updateStoredSession` for partial updates (view state, profile edits).
  */
-import { apiClient } from './apiClient';
+import { apiClient, AUTH_SESSION_STORAGE_KEY } from './apiClient';
 import { UserRole } from '../types';
+import { formatMobile, normalizeMobile } from '../utils/phone';
 
 export interface AuthSession {
   isLoggedIn: boolean;
   token?: string;
   role: UserRole;
-  email: string;
   name: string;
+  /** The user's identity: an Indian mobile number, always "+91XXXXXXXXXX". */
   mobile: string;
   title?: string;
+  /** True when an SMS-code login succeeded for a number that has no customer account yet. */
+  isNewCustomer?: boolean;
   activeView?: string;
   customerSubView?: string;
   employeeSubView?: string;
   adminSubView?: string;
 }
 
+/**
+ * Customers log in with `phone` + `otp` (SMS code) only.
+ * Staff and admins log in with `phone` + `password`.
+ */
 export interface LoginCredentials {
-  email: string;
+  phone: string;
   password?: string;
   otp?: string;
   role: UserRole;
 }
 
-const STORAGE_KEY = 'shuttlecraft_auth_session';
+export interface OtpRequestResponse {
+  success: boolean;
+  message: string;
+  /** Whether the SMS was actually handed to the SMS provider. */
+  smsSent?: boolean;
+  /** Only present when the server runs in dev/demo mode (EXPOSE_OTP_IN_RESPONSE). */
+  otp?: string;
+}
+
+/** The mobile number comes from the Bearer token of the SMS-code login. */
+export interface RegisterCustomerPayload {
+  name: string;
+  address?: string;
+}
+
+const STORAGE_KEY = AUTH_SESSION_STORAGE_KEY;
 
 export const authService = {
-  // Local Session Management
+  // ---------- Local Session Management ----------
   getStoredSession(): AuthSession | null {
     try {
       const data = localStorage.getItem(STORAGE_KEY);
@@ -47,6 +74,19 @@ export const authService = {
     }
   },
 
+  /**
+   * Merge a partial update into the stored session, preserving the token.
+   * Does nothing (returns null) when there is no stored session, so it can
+   * never resurrect a session that was cleared (e.g. after a 401).
+   */
+  updateStoredSession(patch: Partial<AuthSession>): AuthSession | null {
+    const current = this.getStoredSession();
+    if (!current) return null;
+    const next: AuthSession = { ...current, ...patch, token: patch.token || current.token };
+    this.setStoredSession(next);
+    return next;
+  },
+
   clearStoredSession(): void {
     try {
       localStorage.removeItem(STORAGE_KEY);
@@ -55,7 +95,7 @@ export const authService = {
     }
   },
 
-  // Remote API Calls (Switches to real backend when VITE_USE_MOCK_API=false)
+  // ---------- Remote API Calls ----------
   async login(credentials: LoginCredentials): Promise<AuthSession> {
     if (!apiClient.isMockEnabled()) {
       const response = await apiClient.post<AuthSession>('/auth/login', credentials);
@@ -63,50 +103,97 @@ export const authService = {
       return response;
     }
 
-    // Mock Login response
+    // Offline mock mode (development only) — no fabricated identities.
     const mockSession: AuthSession = {
       isLoggedIn: true,
       token: `mock_jwt_${credentials.role.toLowerCase()}_${Date.now()}`,
       role: credentials.role,
-      email: credentials.email,
-      name:
-        credentials.role === 'ADMIN'
-          ? 'Priya Anand'
-          : credentials.role === 'EMPLOYEE'
-          ? 'Rahul Sharma'
-          : 'Vikram Malhotra',
-      mobile:
-        credentials.role === 'ADMIN'
-          ? '+91 98451 11223'
-          : credentials.role === 'EMPLOYEE'
-          ? '+91 98765 43210'
-          : '+91 99887 76655',
-      title:
-        credentials.role === 'ADMIN'
-          ? 'Platform Admin & Operations Lead'
-          : credentials.role === 'EMPLOYEE'
-          ? 'Field Operations & Workshop Technician'
-          : 'Tournament Player',
+      name: '',
+      mobile: normalizeMobile(credentials.phone) || credentials.phone,
+      isNewCustomer: credentials.role === 'CUSTOMER',
     };
-
     this.setStoredSession(mockSession);
     return mockSession;
   },
 
-  async requestOtp(mobileOrEmail: string): Promise<{ success: boolean; message: string }> {
+  /** Sends a 6-digit login code by SMS to the given mobile number. */
+  async requestOtp(phone: string): Promise<OtpRequestResponse> {
     if (!apiClient.isMockEnabled()) {
-      return apiClient.post('/auth/otp/request', { identifier: mobileOrEmail });
+      return apiClient.post<OtpRequestResponse>('/auth/otp/request', { phone });
     }
-    return { success: true, message: 'OTP sent to ' + mobileOrEmail };
+    return { success: true, message: 'Verification code sent by SMS to ' + formatMobile(phone), smsSent: false };
+  },
+
+  /**
+   * Complete a new customer's profile. Requires the Bearer token from the OTP
+   * login (the mobile number is taken from it). The returned session (fresh token) replaces the
+   * stored one.
+   */
+  /** Customer: update name / address on the account (PATCH /api/auth/profile). */
+  async updateProfile(payload: { name?: string; address?: string }): Promise<AuthSession> {
+    const response = await apiClient.patch<AuthSession>('/auth/profile', payload);
+    const previous = this.getStoredSession();
+    const session: AuthSession = { ...(previous || {}), ...response, token: response.token || previous?.token };
+    this.setStoredSession(session);
+    return session;
+  },
+
+  async register(payload: RegisterCustomerPayload): Promise<AuthSession> {
+    const body: RegisterCustomerPayload = { name: payload.name.trim() };
+    if (payload.address && payload.address.trim()) body.address = payload.address.trim();
+
+    if (!apiClient.isMockEnabled()) {
+      const response = await apiClient.post<AuthSession>('/auth/register-customer', body);
+      const previous = this.getStoredSession();
+      const session: AuthSession = {
+        ...response,
+        isNewCustomer: false,
+        token: response.token || previous?.token,
+      };
+      this.setStoredSession(session);
+      return session;
+    }
+
+    const mockSession: AuthSession = {
+      isLoggedIn: true,
+      token: this.getStoredSession()?.token || `mock_jwt_customer_${Date.now()}`,
+      role: 'CUSTOMER',
+      name: body.name,
+      mobile: this.getStoredSession()?.mobile || '',
+      isNewCustomer: false,
+    };
+    this.setStoredSession(mockSession);
+    return mockSession;
+  },
+
+  /** GET /auth/me — validates the stored token and returns the current session. */
+  async me(): Promise<AuthSession> {
+    if (!apiClient.isMockEnabled()) {
+      const response = await apiClient.get<AuthSession>('/auth/me');
+      // Only take identity fields; keep locally persisted view state and token.
+      const merged = this.updateStoredSession({
+        isLoggedIn: true,
+        token: response.token || undefined,
+        role: response.role,
+        name: response.name,
+        mobile: response.mobile,
+        title: response.title ?? undefined,
+      });
+      return merged || response;
+    }
+    const stored = this.getStoredSession();
+    if (!stored) throw new Error('Not logged in');
+    return stored;
   },
 
   async logout(): Promise<void> {
     if (!apiClient.isMockEnabled()) {
-      try {
-        await apiClient.post('/auth/logout');
-      } catch {
-        // ignore error on logout
-      }
+      // The token is read synchronously when the request starts, so the local
+      // session can be cleared immediately without waiting for the server.
+      const pending = apiClient.post('/auth/logout').catch(() => undefined);
+      this.clearStoredSession();
+      await pending;
+      return;
     }
     this.clearStoredSession();
   },

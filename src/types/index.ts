@@ -84,6 +84,8 @@ export interface RepairEstimate {
   isRevised?: boolean;
   originalEstimate?: number;
   revisionReason?: string;
+  /** ₹ fee charged when the customer declined this estimate (stored at decline time). */
+  declinedRepairFee?: number;
 }
 
 export interface Address {
@@ -100,6 +102,9 @@ export interface Address {
   isDefault?: boolean;
   lat?: number;
   lng?: number;
+  /** How distanceKm was found: 'location' = computed by the server from lat/lng (phone GPS),
+   * 'customer' = entered by the customer, 'staff' = corrected by staff/admin. Set by the server. */
+  distanceSource?: 'location' | 'customer' | 'staff';
 }
 
 export interface TimelineEvent {
@@ -114,7 +119,9 @@ export interface ServiceRequest {
   id: string; // e.g. GET-00025 or REP-00025
   serviceType: ServiceType;
   customerName: string;
-  customerEmail: string;
+  /** Legacy field: null on new records (customers are identified by mobile). Never displayed. */
+  customerEmail?: string | null;
+  /** Customer's mobile number, "+91XXXXXXXXXX". */
   customerMobile: string;
   createdAt: string;
   status: RequestStatus;
@@ -216,7 +223,9 @@ export interface RepairCategoryTier {
 export interface Employee {
   id: string;
   name: string;
-  email: string;
+  /** Optional, unused by the business (staff log in with their mobile number). */
+  email?: string | null;
+  /** Staff login identity, "+91XXXXXXXXXX". */
   phone: string;
   role: 'Technician' | 'Pickup & Delivery Agent' | 'Master Stringer';
   userRole: 'EMPLOYEE' | 'ADMIN';
@@ -224,6 +233,16 @@ export interface Employee {
   avatar: string;
   password?: string;
   isActive?: boolean;
+}
+
+/** Admin customer list item (GET /api/auth/customers). */
+export interface Customer {
+  id: string;
+  name: string;
+  /** "+91XXXXXXXXXX" */
+  phone: string;
+  address?: string | null;
+  createdAt?: string;
 }
 
 export interface AuditLogItem {
@@ -236,14 +255,6 @@ export interface AuditLogItem {
   details?: string;
 }
 
-export interface EmailTemplate {
-  id: string;
-  name: string;
-  subject: string;
-  body: string;
-  category: 'Customer' | 'Employee' | 'Admin';
-  variables: string[];
-}
 
 export interface WizardPrefill {
   serviceType?: ServiceType;
@@ -251,6 +262,9 @@ export interface WizardPrefill {
   batModel?: string;
   stringType?: string;
   stringTension?: number;
+  stringColour?: string;
+  pickupDate?: string; // YYYY-MM-DD
   repairIssue?: string;
+  repairDescription?: string;
 }
 

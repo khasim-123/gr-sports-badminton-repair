@@ -1,11 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   UserRole,
   ServiceType,
   ServiceRequest,
   DistancePricingConfig,
   AuditLogItem,
-  EmailTemplate,
   Address,
   RequestStatus,
   RepairEstimate,
@@ -18,26 +17,22 @@ import {
   Employee,
   WizardPrefill,
 } from '../types';
+import { initialDistanceConfig, gettingTypesData, repairCategoriesData } from '../data/mockData';
 import {
-  initialRequests,
-  initialDistanceConfig,
-  initialAuditLogs,
-  initialEmailTemplates,
-  defaultSavedAddresses,
-  mockEmployees,
-  gettingTypesData,
-  repairCategoriesData,
-} from '../data/mockData';
-import {
+  ApiError,
+  apiClient,
+  SESSION_EXPIRED_EVENT,
+  AuthSession,
   authService,
   requestService,
+  CreateRequestPayload,
   pricingService,
   employeeService,
   notificationService,
   auditService,
-  emailService,
 } from '../services';
 import confetti from 'canvas-confetti';
+import { formatMobile, normalizeMobile } from '../utils/phone';
 
 interface ToastMessage {
   id: string;
@@ -45,7 +40,15 @@ interface ToastMessage {
   title: string;
   message: string;
   timestamp: string;
+  /** Sticky toasts stay until closed and are never evicted by newer ones. */
+  sticky?: boolean;
 }
+
+type ToastType = ToastMessage['type'];
+type ToastSpec = [ToastType, string, string];
+
+/** 'validating' = a stored session is being checked with GET /auth/me on app start. */
+type SessionStatus = 'none' | 'validating' | 'valid';
 
 interface AppContextType {
   // Navigation & Role
@@ -61,8 +64,6 @@ interface AppContextType {
   setAdminSubView: (view: string) => void;
   selectedRequestId: string | null;
   setSelectedRequestId: (id: string | null) => void;
-  deviceViewport: 'responsive' | 'desktop' | 'tablet' | 'mobile';
-  setDeviceViewport: (vp: 'responsive' | 'desktop' | 'tablet' | 'mobile') => void;
 
   // Modals
   authModalOpen: boolean;
@@ -81,12 +82,19 @@ interface AppContextType {
 
   // Authentication State
   isLoggedIn: boolean;
-  userEmail: string;
+  /** True while a restored session is being validated with the server on app start. */
+  isAuthChecking: boolean;
   userName: string;
+  /** The signed-in user's identity: mobile number, "+91XXXXXXXXXX". */
   userMobile: string;
   userTitle?: string;
-  loginWithEmailOtp: (email: string, name?: string, mobile?: string) => void;
-  loginAsRole: (role: UserRole, email?: string, name?: string, mobile?: string, title?: string) => void;
+  /** Finish sign-in with a server-issued AuthSession (must carry the JWT). */
+  completeLogin: (session: AuthSession) => void;
+  /**
+   * Legacy helper: enters the portal for the session already stored by
+   * `authService.login` / `authService.register` (keeps its token).
+   * Refuses when there is no stored server session for that role.
+   */
   logout: () => void;
   loginRoleTab: UserRole;
   setLoginRoleTab: (role: UserRole) => void;
@@ -98,69 +106,81 @@ interface AppContextType {
   wizardPrefill: WizardPrefill | null;
   setWizardPrefill: (prefill: WizardPrefill | null) => void;
   openWizardWithService: (type: ServiceType, prefill?: Partial<WizardPrefill>) => void;
-  addNewAddress: (address: Omit<Address, 'id'>) => void;
+  addNewAddress: (address: Omit<Address, 'id'>) => Address;
   deleteAddress: (id: string) => void;
   setDefaultAddress: (id: string) => void;
-  updateUserProfile: (name: string, mobile: string) => void;
+  /** Updates the display name on this device. The mobile number is the login identity and cannot change. */
+  updateUserProfile: (name: string) => void;
 
   // Requests Data & Actions
   requests: ServiceRequest[];
+  /** True while the signed-in user's data (requests, notifications, ...) is loading. */
+  isDataLoading: boolean;
+  /** True once the signed-in user's data has been fetched at least once. */
+  dataLoaded: boolean;
+  /** Re-fetch the signed-in user's data from the server. */
+  refreshData: () => void;
   distanceConfig: DistancePricingConfig;
   savedAddresses: Address[];
   auditLogs: AuditLogItem[];
-  emailTemplates: EmailTemplate[];
   toasts: ToastMessage[];
-  addToast: (type: 'success' | 'info' | 'warning' | 'error', title: string, message: string) => void;
+  /** `durationMs: 0` keeps the toast until the user closes it. */
+  addToast: (
+    type: 'success' | 'info' | 'warning' | 'error',
+    title: string,
+    message: string,
+    options?: { durationMs?: number }
+  ) => void;
   removeToast: (id: string) => void;
 
-  // Service Business Workflows
-  addRequest: (newReq: Partial<ServiceRequest>) => string;
-  updateRequestStatus: (id: string, status: RequestStatus, actor: string, notes?: string) => void;
-  assignEmployee: (requestId: string, employeeId: string) => void;
+  // Service Business Workflows (all resolve once the server has answered)
+  /** Creates the request on the server. Rejects (after toasting) if the server refuses. */
+  addRequest: (newReq: Partial<ServiceRequest>) => Promise<ServiceRequest>;
+  updateRequestStatus: (id: string, status: RequestStatus, actor: string, notes?: string) => Promise<boolean>;
+  assignEmployee: (requestId: string, employeeId: string) => Promise<boolean>;
   recordPickupCondition: (
     requestId: string,
     condition: BatConditionAtPickup,
     notes: string,
     photos: string[]
-  ) => void;
-  createRepairEstimate: (requestId: string, estimate: RepairEstimate) => void;
-  approveRepairEstimate: (requestId: string) => void;
-  declineRepairEstimate: (requestId: string) => void;
+  ) => Promise<boolean>;
+  createRepairEstimate: (requestId: string, estimate: RepairEstimate) => Promise<boolean>;
+  approveRepairEstimate: (requestId: string) => Promise<boolean>;
+  declineRepairEstimate: (requestId: string) => Promise<boolean>;
   requestPriceRevision: (
     requestId: string,
     additionalAmount: number,
     newTotal: number,
     reason: string
-  ) => void;
-  completeGettingJob: (requestId: string, notes?: string) => void;
-  completeRepairJob: (requestId: string, notes?: string) => void;
-  startDelivery: (requestId: string) => void;
+  ) => Promise<boolean>;
+  startDelivery: (requestId: string) => Promise<boolean>;
   recordManualPayment: (
     requestId: string,
     amount: number,
     method: PaymentMethod,
-    notes?: string
-  ) => void;
+    notes?: string,
+    collectedBy?: string
+  ) => Promise<boolean>;
 
   // Configuration Actions
-  updateDistanceConfig: (config: DistancePricingConfig) => void;
-  updateEmailTemplate: (id: string, subject: string, body: string) => void;
+  updateDistanceConfig: (config: DistancePricingConfig) => Promise<boolean>;
   calculateDistanceCharge: (distanceKm: number) => { charge: number; isFree: boolean; chargeableKm: number };
 
   // Service Pricing Configuration
   gettingServices: GettingServiceTier[];
   repairCategories: RepairCategoryTier[];
-  updateGettingService: (id: string, updated: Partial<GettingServiceTier>) => void;
-  updateRepairCategory: (id: string, updated: Partial<RepairCategoryTier>) => void;
-  addGettingService: (newTier: Omit<GettingServiceTier, 'id'>) => void;
-  addRepairCategory: (newCategory: Omit<RepairCategoryTier, 'id'>) => void;
-  resetPricingToDefaults: () => void;
+  updateGettingService: (id: string, updated: Partial<GettingServiceTier>) => Promise<boolean>;
+  updateRepairCategory: (id: string, updated: Partial<RepairCategoryTier>) => Promise<boolean>;
+  addGettingService: (newTier: Omit<GettingServiceTier, 'id'>) => Promise<boolean>;
+  addRepairCategory: (newCategory: Omit<RepairCategoryTier, 'id'>) => Promise<boolean>;
+  resetPricingToDefaults: () => Promise<boolean>;
 
   // Helper for opening request detail directly
   openRequestDetail: (id: string) => void;
 
   // Notifications
   notifications: AppNotification[];
+  /** Adds a local (this-session-only) notification. */
   addNotification: (notif: Omit<AppNotification, 'id' | 'timestamp' | 'isRead'>) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
@@ -168,27 +188,116 @@ interface AppContextType {
 
   // Employee & Admin Management
   employees: Employee[];
-  addEmployee: (emp: Omit<Employee, 'id' | 'activeJobsCount' | 'avatar'>) => void;
-  removeEmployee: (id: string) => void;
+  addEmployee: (emp: Omit<Employee, 'id' | 'activeJobsCount' | 'avatar'>) => Promise<boolean>;
+  removeEmployee: (id: string) => Promise<boolean>;
 
   // Customer Review
-  submitReview: (requestId: string, review: Review) => void;
+  submitReview: (requestId: string, review: Review) => Promise<boolean>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+// ---------------------------------------------------------------------------
+// localStorage helpers
+// ---------------------------------------------------------------------------
+
+/** Per-user caches that must never survive a logout (shared devices). */
+const USER_CACHE_KEYS = [
+  'shuttlecraft_requests',
+  'shuttlecraft_employees',
+  'shuttlecraft_addresses',
+  'shuttlecraft_notifications',
+  'shuttlecraft_audit_logs',
+  'shuttlecraft_email_templates', // legacy key, still cleared on logout
+];
+const ADDRESSES_KEY = 'shuttlecraft_addresses';
+const DIST_CONFIG_KEY = 'shuttlecraft_dist_config';
+const GETTING_SERVICES_KEY = 'shuttlecraft_getting_services';
+const REPAIR_CATEGORIES_KEY = 'shuttlecraft_repair_categories';
+
+const purgeUserCaches = () => {
+  USER_CACHE_KEYS.forEach((key) => {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // ignore
+    }
+  });
+};
+
+const readCache = <T,>(key: string, fallback: T): T => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writeCache = (key: string, value: unknown) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // ignore
+  }
+};
+
+/** Saved pickup addresses are kept on this device only, tagged with their owner's mobile number. */
+const loadSavedAddresses = (mobile: string): Address[] => {
+  const owner = normalizeMobile(mobile);
+  if (!owner) return [];
+  const data = readCache<{ owner?: string; addresses?: Address[] } | null>(ADDRESSES_KEY, null);
+  if (data && data.owner === owner && Array.isArray(data.addresses)) return data.addresses;
+  return [];
+};
+
+const persistSavedAddresses = (mobile: string, addresses: Address[]) => {
+  const owner = normalizeMobile(mobile);
+  if (!owner) return;
+  writeCache(ADDRESSES_KEY, { owner, addresses });
+};
+
+const errorMessage = (err: unknown, fallback: string): string => {
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
+};
+
+/** 401s are handled globally (session-expired logout + toast). */
+const isSessionExpiredError = (err: unknown) => err instanceof ApiError && err.status === 401;
+
+const portalForRole = (role: UserRole) =>
+  role === 'ADMIN' ? 'admin_portal' : role === 'EMPLOYEE' ? 'employee_portal' : 'customer_portal';
+
+/** Read the stored session once on startup; sessions without a JWT are discarded. */
+const readInitialSession = (): AuthSession | null => {
+  const stored = authService.getStoredSession();
+  if (stored && stored.isLoggedIn && stored.token && !stored.isNewCustomer) return stored;
+  if (stored) authService.clearStoredSession();
+  // No valid session → nothing user-specific may linger on this device.
+  purgeUserCaches();
+  return null;
+};
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Stored Session helper for reload resilience
-  const storedSession = authService.getStoredSession();
+  const [initialSession] = useState<AuthSession | null>(readInitialSession);
 
   // Navigation & Role
-  const [currentRole, setCurrentRole] = useState<UserRole>(storedSession?.role || 'CUSTOMER');
-  const [activeView, setActiveView] = useState<string>(storedSession?.activeView || 'landing');
-  const [customerSubView, setCustomerSubView] = useState<string>(storedSession?.customerSubView || 'dashboard');
-  const [employeeSubView, setEmployeeSubView] = useState<string>(storedSession?.employeeSubView || 'dashboard');
-  const [adminSubView, setAdminSubView] = useState<string>(storedSession?.adminSubView || 'dashboard');
-  const [selectedRequestId, setSelectedRequestId] = useState<string | null>('REP-00025');
-  const [deviceViewport, setDeviceViewport] = useState<'responsive' | 'desktop' | 'tablet' | 'mobile'>('responsive');
+  const [currentRole, setCurrentRole] = useState<UserRole>(initialSession?.role || 'CUSTOMER');
+  const [activeView, setActiveView] = useState<string>(() => {
+    if (!initialSession) return 'landing';
+    const view = initialSession.activeView;
+    return view && view !== 'login' ? view : portalForRole(initialSession.role);
+  });
+  const [customerSubView, setCustomerSubView] = useState<string>(() => {
+    const sub = initialSession?.customerSubView || 'dashboard';
+    // The selected request id isn't persisted, so a restored detail view would be empty.
+    return sub === 'detail' ? 'requests' : sub;
+  });
+  const [employeeSubView, setEmployeeSubView] = useState<string>(initialSession?.employeeSubView || 'dashboard');
+  const [adminSubView, setAdminSubView] = useState<string>(initialSession?.adminSubView || 'dashboard');
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
 
   // Modals
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
@@ -199,109 +308,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [modalTargetRequestId, setModalTargetRequestId] = useState<string | null>(null);
 
   // Authentication
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(storedSession ? storedSession.isLoggedIn : false);
-  const [userEmail, setUserEmail] = useState<string>(storedSession?.email || '');
-  const [userName, setUserName] = useState<string>(storedSession?.name || '');
-  const [userMobile, setUserMobile] = useState<string>(storedSession?.mobile || '');
-  const [userTitle, setUserTitle] = useState<string>(storedSession?.title || '');
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(!!initialSession);
+  const [sessionStatus, setSessionStatus] = useState<SessionStatus>(initialSession ? 'validating' : 'none');
+  const [sessionNonce, setSessionNonce] = useState<number>(0);
+  const [userName, setUserName] = useState<string>(initialSession?.name || '');
+  const [userMobile, setUserMobile] = useState<string>(initialSession?.mobile || '');
+  const [userTitle, setUserTitle] = useState<string>(initialSession?.title || '');
   const [loginRoleTab, setLoginRoleTab] = useState<UserRole>('CUSTOMER');
   const [wizardServiceType, setWizardServiceType] = useState<ServiceType>('GETTING');
   const [pendingWizardLaunch, setPendingWizardLaunch] = useState<boolean>(false);
   const [wizardPrefill, setWizardPrefill] = useState<WizardPrefill | null>(null);
 
-  // Core Data
-  const [requests, setRequests] = useState<ServiceRequest[]>(() => {
-    const saved = localStorage.getItem('shuttlecraft_requests');
-    return saved ? JSON.parse(saved) : initialRequests;
-  });
-
-  const [distanceConfig, setDistanceConfig] = useState<DistancePricingConfig>(() => {
-    const saved = localStorage.getItem('shuttlecraft_dist_config');
-    return saved ? JSON.parse(saved) : initialDistanceConfig;
-  });
-
+  // Public configuration — static price tiers are only a pre-load fallback.
+  const [distanceConfig, setDistanceConfig] = useState<DistancePricingConfig>(() =>
+    readCache<DistancePricingConfig>(DIST_CONFIG_KEY, initialDistanceConfig)
+  );
   const [gettingServices, setGettingServices] = useState<GettingServiceTier[]>(() => {
-    try {
-      const saved = localStorage.getItem('shuttlecraft_getting_services');
-      return saved ? JSON.parse(saved) : gettingTypesData;
-    } catch {
-      return gettingTypesData;
-    }
+    const cached = readCache<GettingServiceTier[]>(GETTING_SERVICES_KEY, gettingTypesData);
+    return Array.isArray(cached) ? cached : gettingTypesData;
   });
-
   const [repairCategories, setRepairCategories] = useState<RepairCategoryTier[]>(() => {
-    try {
-      const saved = localStorage.getItem('shuttlecraft_repair_categories');
-      return saved ? JSON.parse(saved) : repairCategoriesData;
-    } catch {
-      return repairCategoriesData;
-    }
+    const cached = readCache<RepairCategoryTier[]>(REPAIR_CATEGORIES_KEY, repairCategoriesData);
+    return Array.isArray(cached) ? cached : repairCategoriesData;
   });
 
-  const [savedAddresses, setSavedAddresses] = useState<Address[]>(defaultSavedAddresses);
-  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(initialAuditLogs);
-  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>(initialEmailTemplates);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  // User-specific data — always starts empty and only ever comes from the server.
+  const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>(() => {
-    try {
-      const saved = localStorage.getItem('shuttlecraft_employees');
-      return saved ? JSON.parse(saved) : mockEmployees;
-    } catch {
-      return mockEmployees;
-    }
-  });
+  const [savedAddresses, setSavedAddresses] = useState<Address[]>(() =>
+    initialSession ? loadSavedAddresses(initialSession.mobile || '') : []
+  );
+  const [isDataLoading, setIsDataLoading] = useState<boolean>(!!initialSession);
+  const [dataLoaded, setDataLoaded] = useState<boolean>(false);
+  const [reloadNonce, setReloadNonce] = useState<number>(0);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  // Fetch live database records from PostgreSQL backend on mount
-  useEffect(() => {
-    const fetchBackendData = async () => {
-      try {
-        const [
-          serverReqs,
-          serverDist,
-          serverGetting,
-          serverRepair,
-          serverEmps,
-          serverNotifs,
-          serverAudits,
-          serverTemplates,
-        ] = await Promise.all([
-          requestService.getRequests().catch(() => null),
-          pricingService.getDistanceConfig().catch(() => null),
-          pricingService.getGettingServices().catch(() => null),
-          pricingService.getRepairCategories().catch(() => null),
-          employeeService.getEmployees().catch(() => null),
-          notificationService.getNotifications().catch(() => null),
-          auditService.getAuditLogs().catch(() => null),
-          emailService.getTemplates().catch(() => null),
-        ]);
+  /** Synchronously-updated login flag (state updates are async). */
+  const isLoggedInRef = useRef<boolean>(!!initialSession);
+  /** Incremented whenever user data must be (re)loaded or discarded; stale responses are ignored. */
+  const loadGenRef = useRef<number>(0);
 
-        if (serverReqs && serverReqs.length > 0) setRequests(serverReqs);
-        if (serverDist) setDistanceConfig(serverDist);
-        if (serverGetting && serverGetting.length > 0) setGettingServices(serverGetting);
-        if (serverRepair && serverRepair.length > 0) setRepairCategories(serverRepair);
-        if (serverEmps && serverEmps.length > 0) setEmployees(serverEmps);
-        if (serverNotifs) setNotifications(serverNotifs);
-        if (serverAudits && serverAudits.length > 0) setAuditLogs(serverAudits);
-        if (serverTemplates && serverTemplates.length > 0) setEmailTemplates(serverTemplates);
-      } catch (err) {
-        console.error('Error fetching backend data:', err);
-      }
-    };
+  // -------------------------------------------------------------------------
+  // Toasts
+  // -------------------------------------------------------------------------
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
 
-    fetchBackendData();
-  }, []);
-
-  // Persist requests to localStorage as secondary cache
-  useEffect(() => {
-    try {
-      localStorage.setItem('shuttlecraft_requests', JSON.stringify(requests));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [requests]);
-
-  const addToast = (type: 'success' | 'info' | 'warning' | 'error', title: string, message: string) => {
+  const addToast = (type: ToastType, title: string, message: string, options?: { durationMs?: number }) => {
     const newToast: ToastMessage = {
       id: 'toast-' + Date.now() + Math.random().toString(36).substring(2, 6),
       type,
@@ -309,136 +365,311 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
-    setToasts((prev) => [newToast, ...prev.slice(0, 4)]);
-    setTimeout(() => {
-      removeToast(newToast.id);
-    }, 5500);
-  };
-
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
-
-  const logAudit = (user: string, role: UserRole, action: string, requestId: string, details?: string) => {
-    const now = new Date();
-    const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const newLog: AuditLogItem = {
-      id: 'LOG-' + Date.now().toString().slice(-4),
-      timestamp: formattedDate,
-      user,
-      role,
-      action,
-      requestId,
-      details,
-    };
-    setAuditLogs((prev) => [newLog, ...prev]);
-  };
-
-  const loginAsRole = (
-    role: UserRole,
-    email?: string,
-    name?: string,
-    mobile?: string,
-    title?: string
-  ) => {
-    setIsLoggedIn(true);
-    setCurrentRole(role);
-    setAuthModalOpen(false);
-
-    if (role === 'CUSTOMER') {
-      const finalEmail = email || 'customer@grsports.com';
-      const finalName = name || 'Vikram Malhotra';
-      const finalMobile = mobile || '+91 99887 76655';
-      const finalTitle = title || 'Tournament Player';
-      setUserEmail(finalEmail);
-      setUserName(finalName);
-      setUserMobile(finalMobile);
-      setUserTitle(finalTitle);
-      const targetSubView = pendingWizardLaunch ? 'wizard' : 'dashboard';
-      setActiveView('customer_portal');
-      setCustomerSubView(targetSubView);
-      if (pendingWizardLaunch) {
-        setPendingWizardLaunch(false);
-      }
-      authService.setStoredSession({
-        isLoggedIn: true,
-        role: 'CUSTOMER',
-        email: finalEmail,
-        name: finalName,
-        mobile: finalMobile,
-        title: finalTitle,
-        activeView: 'customer_portal',
-        customerSubView: targetSubView,
-      });
-      addToast('success', 'Customer Access Granted', `Welcome back, ${finalName}!`);
-      logAudit(finalName, 'CUSTOMER', 'Customer Login', 'AUTH', `Email: ${finalEmail}`);
-    } else if (role === 'EMPLOYEE') {
-      const finalEmail = email || 'employee@grsports.com';
-      const finalName = name || 'Rahul Sharma';
-      const finalMobile = mobile || '+91 98765 43210';
-      const finalTitle = title || 'Field Operations & Workshop Technician';
-      setUserEmail(finalEmail);
-      setUserName(finalName);
-      setUserMobile(finalMobile);
-      setUserTitle(finalTitle);
-      setActiveView('employee_portal');
-      setEmployeeSubView('dashboard');
-      authService.setStoredSession({
-        isLoggedIn: true,
-        role: 'EMPLOYEE',
-        email: finalEmail,
-        name: finalName,
-        mobile: finalMobile,
-        title: finalTitle,
-        activeView: 'employee_portal',
-        employeeSubView: 'dashboard',
-      });
-      addToast('success', 'Operations Portal Access Granted', `Authenticated as ${finalName} (Operations & Workshop)`);
-      logAudit(finalName, 'EMPLOYEE', 'Employee Login', 'AUTH', `Email: ${finalEmail}`);
-    } else if (role === 'ADMIN') {
-      const finalEmail = email || 'admin@grsports.com';
-      const finalName = name || 'Priya Anand';
-      const finalMobile = mobile || '+91 98451 11223';
-      const finalTitle = title || 'Head of Platform Operations';
-      setUserEmail(finalEmail);
-      setUserName(finalName);
-      setUserMobile(finalMobile);
-      setUserTitle(finalTitle);
-      setActiveView('admin_portal');
-      setAdminSubView('dashboard');
-      authService.setStoredSession({
-        isLoggedIn: true,
-        role: 'ADMIN',
-        email: finalEmail,
-        name: finalName,
-        mobile: finalMobile,
-        title: finalTitle,
-        activeView: 'admin_portal',
-        adminSubView: 'dashboard',
-      });
-      addToast('success', 'Admin Console Access Granted', `Authenticated as ${finalName} (Master Administrator)`);
-      logAudit(finalName, 'ADMIN', 'Admin Login', 'AUTH', `Email: ${finalEmail}`);
+    const duration = options?.durationMs ?? 5500;
+    newToast.sticky = duration <= 0;
+    setToasts((prev) => [
+      newToast,
+      ...prev.filter((t) => t.sticky),
+      ...prev.filter((t) => !t.sticky).slice(0, 4),
+    ]);
+    if (duration > 0) {
+      setTimeout(() => {
+        removeToast(newToast.id);
+      }, duration);
     }
   };
 
-  const loginWithEmailOtp = (email: string, name?: string, mobile?: string) => {
-    loginAsRole('CUSTOMER', email, name || 'Vikram Malhotra', mobile || '+91 99887 76655');
+  // -------------------------------------------------------------------------
+  // Session lifecycle
+  // -------------------------------------------------------------------------
+
+  const clearUserData = () => {
+    loadGenRef.current += 1; // drop any in-flight responses for the previous identity
+    setRequests([]);
+    setEmployees([]);
+    setAuditLogs([]);
+    setNotifications([]);
+    setSavedAddresses([]);
+    setSelectedRequestId(null);
+    setModalTargetRequestId(null);
+    setRepairEstimateModalOpen(false);
+    setRevisedEstimateModalOpen(false);
+    setDataLoaded(false);
+    setIsDataLoading(false);
   };
 
-  const logout = () => {
-    authService.clearStoredSession();
+  /** Ends the session locally (and optionally on the server). Idempotent. */
+  const endSession = (opts: { callServer?: boolean; toast?: ToastSpec | null }) => {
+    const wasLoggedIn = isLoggedInRef.current;
+    isLoggedInRef.current = false;
+    if (opts.callServer) {
+      authService.logout().catch(() => undefined);
+    } else {
+      authService.clearStoredSession();
+    }
+    purgeUserCaches();
+    clearUserData();
     setIsLoggedIn(false);
+    setSessionStatus('none');
     setActiveView('landing');
     setCurrentRole('CUSTOMER');
-    setUserEmail('');
+    setCustomerSubView('dashboard');
+    setEmployeeSubView('dashboard');
+    setAdminSubView('dashboard');
     setUserName('');
     setUserMobile('');
     setUserTitle('');
     setPendingWizardLaunch(false);
     setWizardPrefill(null);
-    addToast('info', 'Logged Out', 'You have been safely signed out. Returning to home page.');
+    // Toasts may hold the previous user's data (e.g. a staff member's temporary password).
+    setToasts([]);
+    if (wasLoggedIn && opts.toast) addToast(...opts.toast);
   };
 
+  const logout = () => {
+    endSession({
+      callServer: true,
+      toast: ['info', 'Logged Out', 'You have been safely signed out. Returning to home page.'],
+    });
+  };
+
+  const completeLogin = (session: AuthSession) => {
+    const stored = authService.getStoredSession();
+    const token = session.token || stored?.token;
+    if (!token && !apiClient.isMockEnabled()) {
+      addToast('error', 'Sign-in failed', 'The server did not return a session token. Please try again.');
+      return;
+    }
+
+    const role = session.role;
+    const portal = portalForRole(role);
+    const launchWizard = role === 'CUSTOMER' && pendingWizardLaunch;
+    const targetCustomerSubView = launchWizard ? 'wizard' : 'dashboard';
+
+    authService.setStoredSession({
+      ...(stored || {}),
+      ...session,
+      token,
+      isLoggedIn: true,
+      isNewCustomer: false,
+      activeView: portal,
+      customerSubView: targetCustomerSubView,
+      employeeSubView: 'dashboard',
+      adminSubView: 'dashboard',
+    });
+
+    // Never show the previous user's data to the next one.
+    purgeUserCaches();
+    clearUserData();
+
+    isLoggedInRef.current = true;
+    setIsLoggedIn(true);
+    setSessionStatus('valid');
+    setSessionNonce((n) => n + 1);
+    setCurrentRole(role);
+    setUserName(session.name || '');
+    setUserMobile(session.mobile || '');
+    setUserTitle(session.title || '');
+    setSavedAddresses(loadSavedAddresses(session.mobile || ''));
+    setAuthModalOpen(false);
+    setActiveView(portal);
+    setCustomerSubView(targetCustomerSubView);
+    setEmployeeSubView('dashboard');
+    setAdminSubView('dashboard');
+    if (pendingWizardLaunch) setPendingWizardLaunch(false);
+    if (role !== 'CUSTOMER') setWizardPrefill(null);
+
+    const displayName = session.name || formatMobile(session.mobile);
+    addToast('success', 'Signed In', `Welcome, ${displayName}!`);
+  };
+
+  // Latest-closure ref for the global session-expired listener.
+  const endSessionRef = useRef(endSession);
+  endSessionRef.current = endSession;
+
+  // 401 from any authenticated request → logout + toast (apiClient already cleared the stored session).
+  useEffect(() => {
+    const onExpired = () => {
+      if (!isLoggedInRef.current) return;
+      endSessionRef.current({
+        toast: ['warning', 'Session Expired', 'Your session expired, please log in again.'],
+      });
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+  }, []);
+
+  // On start, validate a restored session with GET /auth/me.
+  useEffect(() => {
+    if (!initialSession) return;
+    let cancelled = false;
+    authService
+      .me()
+      .then((session) => {
+        if (cancelled || !isLoggedInRef.current) return;
+        if (session.role && session.role !== currentRole) setCurrentRole(session.role);
+        if (session.role && session.role !== initialSession.role) setActiveView(portalForRole(session.role));
+        setUserName(session.name || '');
+        setUserMobile(session.mobile || '');
+        setUserTitle(session.title || '');
+        setSessionStatus('valid');
+      })
+      .catch((err) => {
+        if (cancelled || !isLoggedInRef.current) return;
+        const status = err instanceof ApiError ? err.status : -1;
+        if (status === 0 || status >= 500) {
+          // Server unreachable / failing: keep the session (every request is still
+          // authorised server-side, and any 401 logs the user out).
+          setSessionStatus('valid');
+          addToast(
+            'warning',
+            'Could not verify your session',
+            'The server is not reachable right now. Some data may be unavailable.'
+          );
+          return;
+        }
+        endSessionRef.current({
+          toast: ['warning', 'Session Expired', 'Your session expired, please log in again.'],
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist navigation state into the stored session (merging — the token is preserved).
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    authService.updateStoredSession({ activeView, customerSubView, employeeSubView, adminSubView });
+  }, [isLoggedIn, activeView, customerSubView, employeeSubView, adminSubView]);
+
+  // -------------------------------------------------------------------------
+  // Data loading
+  // -------------------------------------------------------------------------
+
+  // Public configuration (GET /config/* is public). Server result always wins.
+  useEffect(() => {
+    let cancelled = false;
+    Promise.allSettled([
+      pricingService.getDistanceConfig(),
+      pricingService.getGettingServices(),
+      pricingService.getRepairCategories(),
+    ]).then(([dist, getting, repair]) => {
+      if (cancelled) return;
+      if (dist.status === 'fulfilled' && dist.value) {
+        setDistanceConfig(dist.value);
+        writeCache(DIST_CONFIG_KEY, dist.value);
+      }
+      if (getting.status === 'fulfilled' && Array.isArray(getting.value)) {
+        setGettingServices(getting.value);
+        writeCache(GETTING_SERVICES_KEY, getting.value);
+      }
+      if (repair.status === 'fulfilled' && Array.isArray(repair.value)) {
+        setRepairCategories(repair.value);
+        writeCache(REPAIR_CATEGORIES_KEY, repair.value);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // User data: (re)loaded whenever the signed-in identity/role changes; only
+  // endpoints the role may access are called.
+  useEffect(() => {
+    if (!isLoggedIn || sessionStatus !== 'valid') return;
+    const gen = ++loadGenRef.current;
+    const role = currentRole;
+    const isStaff = role === 'EMPLOYEE' || role === 'ADMIN';
+    const isAdmin = role === 'ADMIN';
+    setIsDataLoading(true);
+
+    Promise.allSettled([
+      requestService.getRequests(),
+      notificationService.getNotifications(),
+      isStaff ? employeeService.getEmployees() : Promise.resolve(null),
+      isAdmin ? auditService.getAuditLogs() : Promise.resolve(null),
+    ]).then(([reqs, notifs, emps, audits]) => {
+      if (gen !== loadGenRef.current) return; // identity changed or logged out meanwhile
+
+      if (reqs.status === 'fulfilled') setRequests(Array.isArray(reqs.value) ? reqs.value : []);
+      if (notifs.status === 'fulfilled') setNotifications(Array.isArray(notifs.value) ? notifs.value : []);
+      if (isStaff && emps.status === 'fulfilled') setEmployees(Array.isArray(emps.value) ? emps.value : []);
+      if (isAdmin && audits.status === 'fulfilled') setAuditLogs(Array.isArray(audits.value) ? audits.value : []);
+
+      const failures = [reqs, notifs, emps, audits]
+        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+        .map((r) => r.reason);
+      if (failures.length > 0 && !failures.some(isSessionExpiredError)) {
+        console.error('Failed to load some data:', failures);
+        addToast(
+          'warning',
+          'Some data could not be loaded',
+          errorMessage(failures[0], 'Please check your connection and try again.')
+        );
+      }
+      setDataLoaded(true);
+      setIsDataLoading(false);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, sessionStatus, currentRole, userMobile, sessionNonce, reloadNonce]);
+
+  const refreshData = () => setReloadNonce((n) => n + 1);
+
+  /** After a successful mutation, refresh notifications (+ audit logs for admins). */
+  const refreshSideData = () => {
+    if (!isLoggedInRef.current) return;
+    const gen = loadGenRef.current;
+    notificationService
+      .getNotifications()
+      .then((n) => {
+        if (gen === loadGenRef.current) setNotifications(Array.isArray(n) ? n : []);
+      })
+      .catch(() => undefined);
+    if (currentRole === 'ADMIN') {
+      auditService
+        .getAuditLogs()
+        .then((a) => {
+          if (gen === loadGenRef.current) setAuditLogs(Array.isArray(a) ? a : []);
+        })
+        .catch(() => undefined);
+    }
+  };
+
+  const reportFailure = (title: string, err: unknown, fallback = 'The server rejected this change.') => {
+    console.error(title, err);
+    if (isSessionExpiredError(err)) return; // handled globally
+    addToast('error', title, errorMessage(err, fallback));
+  };
+
+  /**
+   * Runs a server mutation for one request. State only changes once the server
+   * accepted it (no optimistic success); failures are toasted.
+   */
+  const mutateRequest = async (
+    requestId: string,
+    call: () => Promise<ServiceRequest>,
+    opts: { success?: ToastSpec; errorTitle: string; onSuccess?: (updated: ServiceRequest) => void }
+  ): Promise<boolean> => {
+    try {
+      const updated = await call();
+      if (updated && updated.id) {
+        setRequests((prev) => prev.map((r) => (r.id === requestId ? updated : r)));
+      }
+      if (opts.success) addToast(...opts.success);
+      opts.onSuccess?.(updated);
+      refreshSideData();
+      return true;
+    } catch (err) {
+      reportFailure(opts.errorTitle, err);
+      return false;
+    }
+  };
+
+  // -------------------------------------------------------------------------
+  // Navigation helpers
+  // -------------------------------------------------------------------------
   const openLoginWithRole = (role: UserRole) => {
     setLoginRoleTab(role);
     setActiveView('login');
@@ -467,23 +698,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCustomerSubView('wizard');
   };
 
-  const addNewAddress = (addrData: Omit<Address, 'id'>) => {
+  // -------------------------------------------------------------------------
+  // Customer profile & addresses (kept on this device, per user)
+  // -------------------------------------------------------------------------
+  const updateAddresses = (updater: (prev: Address[]) => Address[]) => {
+    setSavedAddresses((prev) => {
+      const next = updater(prev);
+      persistSavedAddresses(userMobile, next);
+      return next;
+    });
+  };
+
+  const addNewAddress = (addrData: Omit<Address, 'id'>): Address => {
     const newAddress: Address = {
       ...addrData,
-      id: `ADDR-${Date.now().toString().slice(-4)}`,
+      id: `ADDR-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`,
     };
-    setSavedAddresses((prev) => [newAddress, ...prev]);
-    addToast('success', 'Address Saved', `${newAddress.label} address successfully registered.`);
-    logAudit(userName || 'Player', 'CUSTOMER', 'Added new pickup address', newAddress.id, `${newAddress.houseFlat}, ${newAddress.area}`);
+    updateAddresses((prev) => {
+      const list = newAddress.isDefault ? prev.map((a) => ({ ...a, isDefault: false })) : prev;
+      return [newAddress, ...list];
+    });
+    addToast('success', 'Address Saved', `${newAddress.label} address saved.`);
+    return newAddress;
   };
 
   const deleteAddress = (id: string) => {
-    setSavedAddresses((prev) => prev.filter((a) => a.id !== id));
+    updateAddresses((prev) => prev.filter((a) => a.id !== id));
     addToast('info', 'Address Removed', 'The address was removed from your profile.');
   };
 
   const setDefaultAddress = (id: string) => {
-    setSavedAddresses((prev) =>
+    updateAddresses((prev) =>
       prev.map((a) => ({
         ...a,
         isDefault: a.id === id,
@@ -492,11 +737,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('success', 'Default Address Updated', 'Default pickup location updated.');
   };
 
-  const updateUserProfile = (name: string, mobile: string) => {
-    setUserName(name);
-    setUserMobile(mobile);
-    addToast('success', 'Profile Updated', 'Player contact details have been successfully saved.');
-    logAudit(name, 'CUSTOMER', 'Updated player profile', 'PROFILE', `Mobile: ${mobile}`);
+  const updateUserProfile = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setUserName(trimmed);
+    authService.updateStoredSession({ name: trimmed });
+    addToast('success', 'Profile Updated', 'Your contact details have been updated.');
   };
 
   const calculateDistanceCharge = (distanceKm: number) => {
@@ -519,167 +765,74 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const addRequest = (newReq: Partial<ServiceRequest>): string => {
-    const isGetting = newReq.serviceType === 'GETTING';
-    const prefix = isGetting ? 'GET' : 'REP';
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const newId = `${prefix}-${randomNum}`;
-
-    const distInfo = calculateDistanceCharge(newReq.distanceKm || 12);
-
-    const now = new Date();
-    const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
-      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    const createdRequest: ServiceRequest = {
-      id: newId,
-      serviceType: newReq.serviceType || 'GETTING',
+  // -------------------------------------------------------------------------
+  // Service request workflows
+  // -------------------------------------------------------------------------
+  const addRequest = async (newReq: Partial<ServiceRequest>): Promise<ServiceRequest> => {
+    if (!newReq.pickupAddress) {
+      const err = new Error('Please choose a pickup address.');
+      addToast('error', 'Booking Failed', err.message);
+      throw err;
+    }
+    const serviceType: ServiceType = newReq.serviceType || 'GETTING';
+    const isGetting = serviceType === 'GETTING';
+    const payload: CreateRequestPayload = {
+      serviceType,
       customerName: newReq.customerName || userName,
-      customerEmail: newReq.customerEmail || userEmail,
-      customerMobile: newReq.customerMobile || userMobile,
-      createdAt: now.toISOString(),
-      status: 'Submitted',
-      batBrand: newReq.batBrand || 'Yonex',
-      batModel: newReq.batModel || 'Astrox 99',
-      batType: newReq.batType || 'Head Heavy (Power / Smash)',
-      batPhotos: newReq.batPhotos && newReq.batPhotos.length > 0
-        ? newReq.batPhotos
-        : ['https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&w=600&q=80'],
-      gettingType: newReq.gettingType,
-      stringType: newReq.stringType,
-      stringTensionLbs: newReq.stringTensionLbs,
-      gettingPrice: newReq.gettingPrice || 0,
-      repairIssue: newReq.repairIssue,
-      repairDescription: newReq.repairDescription,
-      pickupAddress: newReq.pickupAddress || defaultSavedAddresses[0],
-      distanceKm: newReq.distanceKm || 12,
-      pickupDeliveryCharge: distInfo.charge,
-      isFreeDelivery: distInfo.isFree,
-      serviceCharge: newReq.serviceCharge || (isGetting ? newReq.gettingPrice || 450 : 0),
-      discount: 0,
-      totalAmount: (newReq.serviceCharge || (isGetting ? newReq.gettingPrice || 450 : 0)) + distInfo.charge,
-      paymentStatus: 'Pending',
-      timeline: [
-        {
-          status: 'Submitted',
-          label: 'Request Submitted Online',
-          timestamp: formattedTimestamp,
-          actor: 'Customer (' + (newReq.customerName || userName) + ')',
-          notes: 'Customer notified via Email. Awaiting Admin Review.',
-        },
-      ],
-      additionalNotes: newReq.additionalNotes,
+      // Customers: the server always uses the logged-in number. Staff: must be a valid mobile.
+      customerMobile:
+        currentRole === 'CUSTOMER' ? userMobile || newReq.customerMobile || '' : newReq.customerMobile || userMobile,
+      batBrand: (newReq.batBrand || '').trim(),
+      batModel: (newReq.batModel || '').trim(),
+      batType: newReq.batType,
+      batPhotos: newReq.batPhotos || [],
+      gettingType: isGetting ? newReq.gettingType : undefined,
+      stringPreference: isGetting ? newReq.stringPreference : undefined,
+      stringType: isGetting ? newReq.stringType : undefined,
+      stringTensionLbs: isGetting ? newReq.stringTensionLbs : undefined,
+      gettingPrice: isGetting ? newReq.gettingPrice : undefined,
+      colour: isGetting ? newReq.colour : undefined,
+      repairIssue: !isGetting ? newReq.repairIssue : undefined,
+      repairDescription: !isGetting ? newReq.repairDescription : undefined,
+      pickupAddress: newReq.pickupAddress,
+      distanceKm: newReq.distanceKm ?? newReq.pickupAddress.distanceKm ?? 0,
+      serviceCharge: newReq.serviceCharge,
+      additionalNotes: newReq.additionalNotes || undefined,
+      pickupDate: newReq.pickupDate || undefined,
     };
 
-    setRequests((prev) => [createdRequest, ...prev]);
-
-    // Persist to PostgreSQL backend via REST API
-    requestService.createRequest(createdRequest).then((saved) => {
-      setRequests((prev) => [saved, ...prev.filter((r) => r.id !== saved.id && r.id !== newId)]);
-      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
-      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
-    }).catch((err) => {
-      console.error('Failed to create request in backend:', err);
-    });
-
-    logAudit(userName, 'CUSTOMER', `Created ${createdRequest.serviceType} request`, newId, `${createdRequest.batBrand} ${createdRequest.batModel}`);
-    addToast('success', 'Request Created!', `Your request ${newId} has been successfully placed.`);
-
-    // Notify employee and admin (simulated email)
-    addNotification({
-      type: 'new_request',
-      title: `New ${createdRequest.serviceType === 'GETTING' ? 'Getting' : 'Repair'} Request`,
-      message: `${createdRequest.customerName} submitted ${newId} — ${createdRequest.batBrand} ${createdRequest.batModel}. Pickup: ${createdRequest.pickupAddress.area}.`,
-      requestId: newId,
-      targetRoles: ['ADMIN', 'EMPLOYEE'],
-    });
-    addToast('info', '📧 Email Sent', `Notification sent to Employee & Admin for request ${newId}.`);
-
     try {
-      confetti({ particleCount: 75, spread: 60, origin: { y: 0.7 } });
-    } catch (e) {
-      // ignore
+      const saved = await requestService.createRequest(payload);
+      setRequests((prev) => [saved, ...prev.filter((r) => r.id !== saved.id)]);
+      refreshSideData();
+      // Staff bookings (phone / walk-in) show their own confirmation in the admin console.
+      if (currentRole === 'CUSTOMER') {
+        addToast('success', 'Request Created!', `Your request ${saved.id} has been placed.`);
+        try {
+          confetti({ particleCount: 75, spread: 60, origin: { y: 0.7 } });
+        } catch {
+          // ignore
+        }
+      }
+      return saved;
+    } catch (err) {
+      reportFailure('Booking Failed', err, 'Your request could not be submitted. Please try again.');
+      throw err;
     }
-
-    return newId;
   };
 
-  const updateRequestStatus = (id: string, status: RequestStatus, actor: string, notes?: string) => {
-    const now = new Date();
-    const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
-      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    setRequests((prev) =>
-      prev.map((req) => {
-        if (req.id !== id) return req;
-        const updatedTimeline = [
-          ...req.timeline,
-          {
-            status,
-            label: `Status updated to ${status}`,
-            timestamp: formattedTimestamp,
-            actor,
-            notes,
-          },
-        ];
-        return {
-          ...req,
-          status,
-          timeline: updatedTimeline,
-        };
-      })
-    );
-
-    logAudit(actor, currentRole, `Updated status to ${status}`, id, notes);
-    addToast('info', 'Status Updated', `${id} is now ${status}`);
-
-    // Persist to PostgreSQL backend via REST API
-    requestService.updateStatus(id, status, actor, notes).then((updated) => {
-      setRequests((prev) => prev.map((r) => r.id === id ? updated : r));
-      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
-      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
-    }).catch(console.error);
-  };
+  const updateRequestStatus = (id: string, status: RequestStatus, actor: string, notes?: string) =>
+    mutateRequest(id, () => requestService.updateStatus(id, status, actor, notes), {
+      errorTitle: 'Status Update Failed',
+      success: ['info', 'Status Updated', `${id} is now ${status}`],
+    });
 
   const assignEmployee = (requestId: string, employeeId: string) => {
     const employee = employees.find((e) => e.id === employeeId);
-    if (!employee) return;
-
-    // Persist to PostgreSQL backend via REST API
-    requestService.assignTechnician(requestId, employeeId).then((updated) => {
-      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
-      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
-      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
-    }).catch(console.error);
-
-    const now = new Date();
-    const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
-      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    setRequests((prev) =>
-      prev.map((req) => {
-        if (req.id !== requestId) return req;
-        return {
-          ...req,
-          status: 'Employee Assigned',
-          assignedEmployeeId: employee.id,
-          assignedEmployeeName: employee.name,
-          timeline: [
-            ...req.timeline,
-            {
-              status: 'Employee Assigned',
-              label: `Assigned to ${employee.name} (${employee.role})`,
-              timestamp: formattedTimestamp,
-              actor: 'Admin',
-              notes: 'Notification sent to employee mobile portal.',
-            },
-          ],
-        };
-      })
-    );
-
-    logAudit('Admin', 'ADMIN', `Assigned ${employee.name}`, requestId);
-    addToast('success', 'Employee Assigned', `${employee.name} assigned to ${requestId}`);
+    return mutateRequest(requestId, () => requestService.assignTechnician(requestId, employeeId), {
+      errorTitle: 'Assignment Failed',
+      success: ['success', 'Employee Assigned', `${employee?.name || 'Employee'} assigned to ${requestId}`],
+    });
   };
 
   const recordPickupCondition = (
@@ -687,420 +840,99 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     condition: BatConditionAtPickup,
     notes: string,
     photos: string[]
-  ) => {
-    // Persist to PostgreSQL backend via REST API
-    requestService.recordPickupCondition(requestId, condition, notes, photos).then((updated) => {
-      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
-      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
-      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
-    }).catch(console.error);
+  ) =>
+    mutateRequest(requestId, () => requestService.recordPickupCondition(requestId, condition, notes, photos), {
+      errorTitle: 'Pickup Not Recorded',
+      success: ['success', 'Pickup Recorded', `Bat for ${requestId} collected and logged.`],
+    });
 
-    const now = new Date();
-    const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
-      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    setRequests((prev) =>
-      prev.map((req) => {
-        if (req.id !== requestId) return req;
-        return {
-          ...req,
-          status: 'Bat Picked Up',
-          pickupDate: now.toISOString(),
-          pickupCondition: {
-            condition,
-            notes,
-            photos,
-            collectedAt: now.toISOString(),
-            collectedBy: req.assignedEmployeeName || 'Amit Verma',
-          },
-          timeline: [
-            ...req.timeline,
-            {
-              status: 'Bat Picked Up',
-              label: `Bat Collected at Doorstep (Condition: ${condition})`,
-              timestamp: formattedTimestamp,
-              actor: req.assignedEmployeeName || 'Field Agent',
-              notes: notes || 'Verified with customer signature / confirmation.',
-            },
-          ],
-        };
-      })
-    );
-
-    logAudit(currentRole === 'EMPLOYEE' ? 'Field Agent' : 'Staff', 'EMPLOYEE', `Recorded pickup condition: ${condition}`, requestId, notes);
-    addToast('success', 'Pickup Recorded', `Bat for ${requestId} collected and logged.`);
-  };
-
-  const createRepairEstimate = (requestId: string, estimate: RepairEstimate) => {
-    // Persist to PostgreSQL backend via REST API
-    requestService.createRepairEstimate(requestId, estimate).then((updated) => {
-      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
-      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
-      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
-    }).catch(console.error);
-
-    const now = new Date();
-    const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
-      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    setRequests((prev) =>
-      prev.map((req) => {
-        if (req.id !== requestId) return req;
-        const total = estimate.totalEstimate;
-        return {
-          ...req,
-          status: 'Awaiting Customer Approval',
-          repairEstimate: estimate,
-          serviceCharge: estimate.labourCharge + estimate.materialsCharge + estimate.additionalCharges,
-          totalAmount: total + req.pickupDeliveryCharge,
-          timeline: [
-            ...req.timeline,
-            {
-              status: 'Inspection',
-              label: 'Workshop Technical Inspection Completed',
-              timestamp: formattedTimestamp,
-              actor: 'Technician',
-              notes: estimate.inspectionNotes,
-            },
-            {
-              status: 'Awaiting Customer Approval',
-              label: `Repair Estimate ₹${total} Generated. Awaiting Customer Approval`,
-              timestamp: formattedTimestamp,
-              actor: 'Technician',
-              notes: 'Customer notified via Email. Repair locked until customer approves.',
-            },
-          ],
-        };
-      })
-    );
-
-    logAudit('Technician', 'EMPLOYEE', `Created repair estimate ₹${estimate.totalEstimate}`, requestId, estimate.inspectionNotes);
-    addToast('info', 'Estimate Created', `Estimate ₹${estimate.totalEstimate} sent to customer for approval.`);
-  };
+  const createRepairEstimate = (requestId: string, estimate: RepairEstimate) =>
+    mutateRequest(requestId, () => requestService.createRepairEstimate(requestId, estimate), {
+      errorTitle: 'Estimate Not Saved',
+      success: ['info', 'Estimate Created', `Estimate ₹${estimate.totalEstimate} sent to customer for approval.`],
+    });
 
   const approveRepairEstimate = (requestId: string) => {
-    // Persist to PostgreSQL backend via REST API
-    requestService.approveRepairEstimate(requestId).then((updated) => {
-      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
-      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
-      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
-    }).catch(console.error);
-
-    const now = new Date();
-    const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
-      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    setRequests((prev) =>
-      prev.map((req) => {
-        if (req.id !== requestId) return req;
-        const approvedAmount = req.repairEstimate?.totalEstimate || req.totalAmount;
-        return {
-          ...req,
-          status: 'Repair Approved',
-          serviceCharge: approvedAmount - req.pickupDeliveryCharge,
-          totalAmount: approvedAmount,
-          timeline: [
-            ...req.timeline,
-            {
-              status: 'Repair Approved',
-              label: `Customer Approved Estimate of ₹${approvedAmount}`,
-              timestamp: formattedTimestamp,
-              actor: 'Customer (' + req.customerName + ')',
-              notes: 'Repair authorized to proceed.',
-            },
-          ],
-        };
-      })
-    );
-
-    logAudit('Customer', 'CUSTOMER', 'Approved repair estimate', requestId);
-    addToast('success', 'Estimate Approved!', `Repair authorized for ${requestId}. Technicians will now begin.`);
     setRepairEstimateModalOpen(false);
     setRevisedEstimateModalOpen(false);
+    return mutateRequest(requestId, () => requestService.approveRepairEstimate(requestId), {
+      errorTitle: 'Approval Failed',
+      success: ['success', 'Estimate Approved!', `Repair authorized for ${requestId}. Technicians will now begin.`],
+    });
   };
 
   const declineRepairEstimate = (requestId: string) => {
-    // Persist to PostgreSQL backend via REST API
-    requestService.declineRepairEstimate(requestId).then((updated) => {
-      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
-      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
-      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
-    }).catch(console.error);
-
-    const now = new Date();
-    const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
-      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    setRequests((prev) =>
-      prev.map((req) => {
-        if (req.id !== requestId) return req;
-        return {
-          ...req,
-          status: 'Repair Declined',
-          serviceCharge: 0,
-          totalAmount: req.pickupDeliveryCharge, // Only delivery charge if applicable
-          timeline: [
-            ...req.timeline,
-            {
-              status: 'Repair Declined',
-              label: 'Customer Declined Repair Estimate',
-              timestamp: formattedTimestamp,
-              actor: 'Customer (' + req.customerName + ')',
-              notes: 'Arranging return delivery of unrepaired bat.',
-            },
-          ],
-        };
-      })
-    );
-
-    logAudit('Customer', 'CUSTOMER', 'Declined repair estimate', requestId);
-    addToast('warning', 'Estimate Declined', `${requestId} marked as declined. Unrepaired bat will be returned.`);
     setRepairEstimateModalOpen(false);
     setRevisedEstimateModalOpen(false);
+    return mutateRequest(requestId, () => requestService.declineRepairEstimate(requestId), {
+      errorTitle: 'Decline Failed',
+      success: ['warning', 'Estimate Declined', `${requestId} marked as declined. Unrepaired bat will be returned.`],
+    });
   };
 
-  const requestPriceRevision = (
-    requestId: string,
-    additionalAmount: number,
-    newTotal: number,
-    reason: string
-  ) => {
-    // Persist to PostgreSQL backend via REST API
-    requestService.requestPriceRevision(requestId, additionalAmount, newTotal, reason).then((updated) => {
-      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
-      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
-      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
-    }).catch(console.error);
-
-    const now = new Date();
-    const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
-      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    setRequests((prev) =>
-      prev.map((req) => {
-        if (req.id !== requestId) return req;
-        const oldEstimate = req.repairEstimate || {
-          labourCharge: 300,
-          materialsCharge: 100,
-          additionalCharges: 0,
-          pickupDeliveryCharge: req.pickupDeliveryCharge,
-          discount: 0,
-          totalEstimate: 400,
-          expectedCompletionDate: '2026-10-05',
-          inspectionNotes: 'Initial estimate',
-        };
-
-        const revised: RepairEstimate = {
-          ...oldEstimate,
-          additionalCharges: (oldEstimate.additionalCharges || 0) + additionalAmount,
-          totalEstimate: newTotal,
-          isRevised: true,
-          originalEstimate: oldEstimate.totalEstimate,
-          revisionReason: reason,
-        };
-
-        return {
-          ...req,
-          status: 'Awaiting Customer Approval',
-          repairEstimate: revised,
-          previousEstimate: oldEstimate,
-          serviceCharge: newTotal - req.pickupDeliveryCharge,
-          totalAmount: newTotal,
-          timeline: [
-            ...req.timeline,
-            {
-              status: 'Awaiting Customer Approval',
-              label: `Revised Estimate ₹${newTotal} sent (Reason: ${reason})`,
-              timestamp: formattedTimestamp,
-              actor: 'Technician',
-              notes: `Original: ₹${oldEstimate.totalEstimate} + Additional: ₹${additionalAmount} = ₹${newTotal}. Work paused until customer approval.`,
-            },
-          ],
-        };
-      })
+  const requestPriceRevision = (requestId: string, additionalAmount: number, newTotal: number, reason: string) =>
+    mutateRequest(
+      requestId,
+      () => requestService.requestPriceRevision(requestId, additionalAmount, newTotal, reason),
+      {
+        errorTitle: 'Revision Not Sent',
+        success: [
+          'warning',
+          'Revised Estimate Sent',
+          `Customer must approve revised price ₹${newTotal} before repair continues.`,
+        ],
+      }
     );
 
-    logAudit('Technician', 'EMPLOYEE', `Requested price revision to ₹${newTotal}`, requestId, reason);
-    addToast('warning', 'Revised Estimate Sent', `Customer must approve revised price ₹${newTotal} before repair continues.`);
-  };
-
-  const completeGettingJob = (requestId: string, notes?: string) => {
-    // Persist to PostgreSQL backend via REST API
-    requestService.updateStatus(requestId, 'Getting Completed', 'Stringer', notes).then((updated) => {
-      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
-      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
-      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
-    }).catch(console.error);
-
-    const now = new Date();
-    const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
-      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    setRequests((prev) =>
-      prev.map((req) => {
-        if (req.id !== requestId) return req;
-        return {
-          ...req,
-          status: 'Getting Completed',
-          timeline: [
-            ...req.timeline,
-            {
-              status: 'Getting Completed',
-              label: 'Bat Getting / Stringing Completed',
-              timestamp: formattedTimestamp,
-              actor: req.assignedEmployeeName || 'Stringer',
-              notes: notes || 'Tension calibrated and checked on digital tester.',
-            },
-          ],
-        };
-      })
+  const startDelivery = (requestId: string) =>
+    mutateRequest(
+      requestId,
+      () =>
+        requestService.updateStatus(
+          requestId,
+          'Out for Delivery',
+          userName || 'Logistics Agent',
+          'Dispatched for doorstep delivery.'
+        ),
+      {
+        errorTitle: 'Dispatch Failed',
+        success: ['info', 'Out for Delivery', `${requestId} is out for doorstep delivery.`],
+      }
     );
-
-    logAudit('Stringer', 'EMPLOYEE', 'Completed bat getting', requestId, notes);
-    addToast('success', 'Getting Completed', `${requestId} is ready for delivery.`);
-  };
-
-  const completeRepairJob = (requestId: string, notes?: string) => {
-    // Persist to PostgreSQL backend via REST API
-    requestService.updateStatus(requestId, 'Repair Completed', 'Technician', notes).then((updated) => {
-      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
-      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
-      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
-    }).catch(console.error);
-
-    const now = new Date();
-    const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
-      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    setRequests((prev) =>
-      prev.map((req) => {
-        if (req.id !== requestId) return req;
-        return {
-          ...req,
-          status: 'Repair Completed',
-          timeline: [
-            ...req.timeline,
-            {
-              status: 'Repair Completed',
-              label: 'Carbon Composite Repair Completed & Cured',
-              timestamp: formattedTimestamp,
-              actor: req.assignedEmployeeName || 'Technician',
-              notes: notes || 'Structural load tests passed. Ready for dispatch.',
-            },
-          ],
-        };
-      })
-    );
-
-    logAudit('Technician', 'EMPLOYEE', 'Completed bat repair', requestId, notes);
-    addToast('success', 'Repair Completed', `${requestId} is ready for delivery.`);
-  };
-
-  const startDelivery = (requestId: string) => {
-    // Persist to PostgreSQL backend via REST API
-    requestService.updateStatus(requestId, 'Out for Delivery', 'Logistics Agent', 'Dispatched for doorstep delivery.').then((updated) => {
-      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
-      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
-      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
-    }).catch(console.error);
-
-    const now = new Date();
-    const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
-      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    setRequests((prev) =>
-      prev.map((req) => {
-        if (req.id !== requestId) return req;
-        return {
-          ...req,
-          status: 'Out for Delivery',
-          timeline: [
-            ...req.timeline,
-            {
-              status: 'Out for Delivery',
-              label: 'Out for Delivery to Customer Address',
-              timestamp: formattedTimestamp,
-              actor: 'Logistics Agent',
-              notes: 'Customer notified. Payment to be collected upon doorstep delivery.',
-            },
-          ],
-        };
-      })
-    );
-
-    logAudit('Logistics Agent', 'EMPLOYEE', 'Dispatched bat for delivery', requestId);
-    addToast('info', 'Out for Delivery', `${requestId} is out for doorstep delivery.`);
-  };
 
   const recordManualPayment = (
     requestId: string,
     amount: number,
     method: PaymentMethod,
-    notes?: string
-  ) => {
-    // Persist to PostgreSQL backend via REST API
-    requestService.recordPayment(requestId, amount, method, notes).then((updated) => {
-      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
-      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
-      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
-    }).catch(console.error);
+    notes?: string,
+    collectedBy?: string
+  ) =>
+    mutateRequest(requestId, () => requestService.recordPayment(requestId, amount, method, notes, collectedBy), {
+      errorTitle: 'Payment Not Recorded',
+      success: [
+        'success',
+        'Payment Recorded!',
+        `₹${amount.toLocaleString('en-IN')} collected via ${method}. Request ${requestId} completed.`,
+      ],
+      onSuccess: () => {
+        try {
+          confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+        } catch {
+          // ignore
+        }
+      },
+    });
 
-    const now = new Date();
-    const formattedTimestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
-      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const submitReview = (requestId: string, review: Review) =>
+    mutateRequest(requestId, () => requestService.submitReview(requestId, review), {
+      errorTitle: 'Review Not Submitted',
+      success: ['success', 'Review Submitted!', `Thank you for your ${review.rating}-star feedback.`],
+    });
 
-    setRequests((prev) =>
-      prev.map((req) => {
-        if (req.id !== requestId) return req;
-        return {
-          ...req,
-          status: 'Completed',
-          paymentStatus: 'Paid',
-          paymentRecord: {
-            amount,
-            method,
-            collectedAt: now.toISOString(),
-            collectedBy: req.assignedEmployeeName || 'Amit Verma',
-            transactionNotes: notes,
-          },
-          timeline: [
-            ...req.timeline,
-            {
-              status: 'Delivered',
-              label: 'Delivered to Customer',
-              timestamp: formattedTimestamp,
-              actor: 'Delivery Agent',
-            },
-            {
-              status: 'Payment Collected',
-              label: `Manual Payment of ₹${amount} Collected (${method})`,
-              timestamp: formattedTimestamp,
-              actor: req.assignedEmployeeName || 'Delivery Agent',
-              notes: notes || `Payment recorded manually. Method: ${method}`,
-            },
-            {
-              status: 'Completed',
-              label: 'Service Request Completed',
-              timestamp: formattedTimestamp,
-              actor: 'System',
-              notes: 'Receipt sent to customer email.',
-            },
-          ],
-        };
-      })
-    );
-
-    logAudit('Delivery Agent', 'EMPLOYEE', `Recorded manual payment of ₹${amount} via ${method}`, requestId, notes);
-    addToast('success', 'Payment Recorded!', `₹${amount} collected via ${method}. Request ${requestId} marked COMPLETED.`);
-
-    try {
-      confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
-    } catch (e) {
-      // ignore
-    }
-  };
-
-  const updateDistanceConfig = (newConfig: DistancePricingConfig) => {
+  // -------------------------------------------------------------------------
+  // Admin configuration (server first; local state follows the server result)
+  // -------------------------------------------------------------------------
+  const updateDistanceConfig = async (newConfig: DistancePricingConfig): Promise<boolean> => {
     let updatedSlabs = newConfig.slabs;
     if (updatedSlabs && updatedSlabs.length > 0) {
       updatedSlabs = updatedSlabs.map((s, idx) => {
@@ -1113,115 +945,147 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return s;
       });
     }
+    const finalizedConfig: DistancePricingConfig = { ...newConfig, slabs: updatedSlabs };
 
-    const finalizedConfig: DistancePricingConfig = {
-      ...newConfig,
-      slabs: updatedSlabs,
-    };
-
-    setDistanceConfig(finalizedConfig);
-    pricingService.updateDistanceConfig(finalizedConfig).catch(console.error);
     try {
-      localStorage.setItem('shuttlecraft_dist_config', JSON.stringify(finalizedConfig));
-    } catch (e) {}
-    logAudit(
-      'Admin',
-      'ADMIN',
-      'Updated distance pricing rules',
-      'SYSTEM',
-      `Free radius: ${finalizedConfig.freeRadiusKm} KM, Method: ${finalizedConfig.pricingMethod}, Rate/KM: ₹${finalizedConfig.perKmRateBeyondFree}`
-    );
-    addToast(
-      'success',
-      'Logistics Pricing Updated',
-      `Free delivery radius set to ${finalizedConfig.freeRadiusKm} KM. Pickups beyond ${finalizedConfig.freeRadiusKm} KM will be charged ₹${finalizedConfig.perKmRateBeyondFree}/KM.`
-    );
+      const saved = await pricingService.updateDistanceConfig(finalizedConfig);
+      const next = saved && typeof saved === 'object' && 'freeRadiusKm' in saved ? saved : finalizedConfig;
+      setDistanceConfig(next);
+      writeCache(DIST_CONFIG_KEY, next);
+      refreshSideData();
+      addToast(
+        'success',
+        'Logistics Pricing Updated',
+        `Free delivery radius set to ${next.freeRadiusKm} KM. Pickups beyond ${next.freeRadiusKm} KM will be charged ₹${next.perKmRateBeyondFree}/KM.`
+      );
+      return true;
+    } catch (err) {
+      reportFailure('Pricing Not Saved', err);
+      return false;
+    }
   };
 
-  const updateGettingService = (id: string, updated: Partial<GettingServiceTier>) => {
-    pricingService.updateGettingService(id, updated).catch(console.error);
-    setGettingServices((prev) => {
-      const next = prev.map((item) => (item.id === id ? { ...item, ...updated } : item));
-      try {
-        localStorage.setItem('shuttlecraft_getting_services', JSON.stringify(next));
-      } catch (e) {}
-      return next;
-    });
-    logAudit('Admin', 'ADMIN', `Updated getting package (${id})`, 'SYSTEM', JSON.stringify(updated));
-    addToast('success', 'Service Price Updated', `Getting package ${id} updated.`);
-  };
-
-  const updateRepairCategory = (id: string, updated: Partial<RepairCategoryTier>) => {
-    pricingService.updateRepairCategory(id, updated).catch(console.error);
-    setRepairCategories((prev) => {
-      const next = prev.map((item) => (item.id === id ? { ...item, ...updated } : item));
-      try {
-        localStorage.setItem('shuttlecraft_repair_categories', JSON.stringify(next));
-      } catch (e) {}
-      return next;
-    });
-    logAudit('Admin', 'ADMIN', `Updated repair category (${id})`, 'SYSTEM', JSON.stringify(updated));
-    addToast('success', 'Service Price Updated', `Repair category ${id} base price/SLA updated.`);
-  };
-
-  const addGettingService = (newTier: Omit<GettingServiceTier, 'id'>) => {
-    const id = 'tier_' + Date.now().toString().slice(-4);
-    const created: GettingServiceTier = { ...newTier, id };
-    pricingService.addGettingService(newTier).catch(console.error);
-    setGettingServices((prev) => {
-      const next = [...prev, created];
-      try {
-        localStorage.setItem('shuttlecraft_getting_services', JSON.stringify(next));
-      } catch (e) {}
-      return next;
-    });
-    logAudit('Admin', 'ADMIN', `Added getting package ${created.name}`, 'SYSTEM');
-    addToast('success', 'Package Added', `${created.name} added at ₹${created.price}.`);
-  };
-
-  const addRepairCategory = (newCategory: Omit<RepairCategoryTier, 'id'>) => {
-    const id = 'rep_' + Date.now().toString().slice(-4);
-    const created: RepairCategoryTier = { ...newCategory, id };
-    pricingService.addRepairCategory(newCategory).catch(console.error);
-    setRepairCategories((prev) => {
-      const next = [...prev, created];
-      try {
-        localStorage.setItem('shuttlecraft_repair_categories', JSON.stringify(next));
-      } catch (e) {}
-      return next;
-    });
-    logAudit('Admin', 'ADMIN', `Added repair category ${created.name}`, 'SYSTEM');
-    addToast('success', 'Category Added', `${created.name} added with base ₹${created.basePrice}.`);
-  };
-
-  const resetPricingToDefaults = () => {
-    setDistanceConfig(initialDistanceConfig);
-    setGettingServices(gettingTypesData);
-    setRepairCategories(repairCategoriesData);
-    pricingService.updateDistanceConfig(initialDistanceConfig).catch(console.error);
+  const updateGettingService = async (id: string, updated: Partial<GettingServiceTier>): Promise<boolean> => {
     try {
-      localStorage.removeItem('shuttlecraft_dist_config');
-      localStorage.removeItem('shuttlecraft_getting_services');
-      localStorage.removeItem('shuttlecraft_repair_categories');
-    } catch (e) {}
-    logAudit('Admin', 'ADMIN', 'Reset pricing and distance configuration', 'SYSTEM');
+      const saved = await pricingService.updateGettingService(id, updated);
+      setGettingServices((prev) => {
+        const next = prev.map((item) => (item.id === id ? { ...item, ...updated, ...(saved || {}) } : item));
+        writeCache(GETTING_SERVICES_KEY, next);
+        return next;
+      });
+      refreshSideData();
+      addToast('success', 'Service Price Updated', `Getting package ${id} updated.`);
+      return true;
+    } catch (err) {
+      reportFailure('Package Not Saved', err);
+      return false;
+    }
+  };
+
+  const updateRepairCategory = async (id: string, updated: Partial<RepairCategoryTier>): Promise<boolean> => {
+    try {
+      const saved = await pricingService.updateRepairCategory(id, updated);
+      setRepairCategories((prev) => {
+        const next = prev.map((item) => (item.id === id ? { ...item, ...updated, ...(saved || {}) } : item));
+        writeCache(REPAIR_CATEGORIES_KEY, next);
+        return next;
+      });
+      refreshSideData();
+      addToast('success', 'Service Price Updated', `Repair category ${id} base price/SLA updated.`);
+      return true;
+    } catch (err) {
+      reportFailure('Category Not Saved', err);
+      return false;
+    }
+  };
+
+  const addGettingService = async (newTier: Omit<GettingServiceTier, 'id'>): Promise<boolean> => {
+    try {
+      const created = await pricingService.addGettingService(newTier);
+      setGettingServices((prev) => {
+        const next = [...prev.filter((t) => t.id !== created.id), created];
+        writeCache(GETTING_SERVICES_KEY, next);
+        return next;
+      });
+      refreshSideData();
+      addToast('success', 'Package Added', `${created.name} added at ₹${created.price}.`);
+      return true;
+    } catch (err) {
+      reportFailure('Package Not Added', err);
+      return false;
+    }
+  };
+
+  const addRepairCategory = async (newCategory: Omit<RepairCategoryTier, 'id'>): Promise<boolean> => {
+    try {
+      const created = await pricingService.addRepairCategory(newCategory);
+      setRepairCategories((prev) => {
+        const next = [...prev.filter((c) => c.id !== created.id), created];
+        writeCache(REPAIR_CATEGORIES_KEY, next);
+        return next;
+      });
+      refreshSideData();
+      addToast('success', 'Category Added', `${created.name} added with base ₹${created.basePrice}.`);
+      return true;
+    } catch (err) {
+      reportFailure('Category Not Added', err);
+      return false;
+    }
+  };
+
+  const resetPricingToDefaults = async (): Promise<boolean> => {
+    const tasks: Promise<unknown>[] = [pricingService.updateDistanceConfig(initialDistanceConfig)];
+    gettingTypesData.forEach((tier) => {
+      if (gettingServices.some((t) => t.id === tier.id)) {
+        tasks.push(pricingService.updateGettingService(tier.id, tier));
+      }
+    });
+    repairCategoriesData.forEach((cat) => {
+      if (repairCategories.some((c) => c.id === cat.id)) {
+        tasks.push(pricingService.updateRepairCategory(cat.id, cat));
+      }
+    });
+    const results = await Promise.allSettled(tasks);
+    const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+
+    // Re-sync with what the server actually holds now.
+    const [dist, getting, repair] = await Promise.allSettled([
+      pricingService.getDistanceConfig(),
+      pricingService.getGettingServices(),
+      pricingService.getRepairCategories(),
+    ]);
+    if (dist.status === 'fulfilled' && dist.value) {
+      setDistanceConfig(dist.value);
+      writeCache(DIST_CONFIG_KEY, dist.value);
+    }
+    if (getting.status === 'fulfilled' && Array.isArray(getting.value)) {
+      setGettingServices(getting.value);
+      writeCache(GETTING_SERVICES_KEY, getting.value);
+    }
+    if (repair.status === 'fulfilled' && Array.isArray(repair.value)) {
+      setRepairCategories(repair.value);
+      writeCache(REPAIR_CATEGORIES_KEY, repair.value);
+    }
+    refreshSideData();
+
+    if (failed.length > 0) {
+      reportFailure('Pricing Reset Incomplete', failed[0].reason);
+      return false;
+    }
     addToast('info', 'Pricing Reset', 'Distance rules and service pricing restored to defaults.');
+    return true;
   };
 
-  const updateEmailTemplate = (id: string, subject: string, body: string) => {
-    emailService.updateTemplate(id, subject, body).catch(console.error);
-    setEmailTemplates((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, subject, body } : t))
-    );
-    logAudit('Admin', 'ADMIN', `Updated email template ${id}`, 'SYSTEM');
-    addToast('success', 'Email Template Saved', `Template updated successfully.`);
-  };
-
+  // -------------------------------------------------------------------------
+  // Notifications
+  // -------------------------------------------------------------------------
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const addNotification = (notif: Omit<AppNotification, 'id' | 'timestamp' | 'isRead'>) => {
     const now = new Date();
-    const timestamp = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
+    const timestamp =
+      now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) +
+      ', ' +
       now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const newNotif: AppNotification = {
       ...notif,
@@ -1233,77 +1097,72 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const markNotificationRead = (id: string) => {
-    notificationService.markAsRead(id).catch(console.error);
-    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
+    const previous = notifications.find((n) => n.id === id);
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+    notificationService.markAsRead(id).catch((err) => {
+      console.warn('Failed to mark notification as read', err);
+      if (previous) setNotifications((prev) => prev.map((n) => (n.id === id ? previous : n)));
+    });
   };
 
   const markAllNotificationsRead = () => {
-    notificationService.markAllRead().catch(console.error);
+    const snapshot = notifications;
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-  };
-
-  const addEmployee = (empData: Omit<Employee, 'id' | 'activeJobsCount' | 'avatar'>) => {
-    const newEmp: Employee = {
-      ...empData,
-      id: 'EMP-' + Date.now().toString().slice(-4),
-      activeJobsCount: 0,
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(empData.name)}&background=3b82f6&color=fff&size=200`,
-      isActive: true,
-    };
-    setEmployees((prev) => [...prev, newEmp]);
-
-    // Persist to PostgreSQL backend via REST API
-    employeeService.createEmployee(empData).then((savedEmp) => {
-      setEmployees((prev) => [...prev.filter((e) => e.id !== newEmp.id && e.id !== savedEmp.id), savedEmp]);
-      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
-      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
-    }).catch((err) => {
-      console.error('Failed to create employee via API:', err);
-    });
-
-    logAudit('Admin', 'ADMIN', `Added ${empData.userRole === 'ADMIN' ? 'admin' : 'employee'}: ${empData.name}`, 'SYSTEM', `Email: ${empData.email} | Credentials Email Dispatched`);
-    addToast('success', `${empData.userRole === 'ADMIN' ? 'Admin' : 'Employee'} Created`, `${empData.name} created! Login credentials dispatched to ${empData.email}.`);
-    addNotification({
-      type: 'system',
-      title: `New ${empData.userRole === 'ADMIN' ? 'Admin' : 'Employee'} Added`,
-      message: `${empData.name} (${empData.email}) added as ${empData.role}. Login credentials dispatched to their email address.`,
-      targetRoles: ['ADMIN'],
+    notificationService.markAllRead().catch((err) => {
+      console.warn('Failed to mark notifications as read', err);
+      setNotifications(snapshot);
     });
   };
 
-  const removeEmployee = (id: string) => {
-    employeeService.deleteEmployee(id).catch(console.error);
-    setEmployees((prev) => {
-      const next = prev.map((e) => e.id === id ? { ...e, isActive: false } : e);
-      try { localStorage.setItem('shuttlecraft_employees', JSON.stringify(next)); } catch (e) {}
-      return next;
-    });
-    addToast('info', 'Employee Deactivated', `Employee account has been deactivated.`);
+  // -------------------------------------------------------------------------
+  // Employees (admin)
+  // -------------------------------------------------------------------------
+  const addEmployee = async (empData: Omit<Employee, 'id' | 'activeJobsCount' | 'avatar'>): Promise<boolean> => {
+    const kind = empData.userRole === 'ADMIN' ? 'Admin' : 'Employee';
+    // A blank password lets the server generate a temporary one.
+    const payload = { ...empData };
+    if (!payload.password || !payload.password.trim()) delete payload.password;
+    try {
+      const created = (await employeeService.createEmployee(payload)) as Employee & {
+        temporaryPassword?: string | null;
+      };
+      const { temporaryPassword, ...savedEmp } = created;
+      setEmployees((prev) => [...prev.filter((e) => e.id !== savedEmp.id), savedEmp as Employee]);
+      refreshSideData();
+      const who = savedEmp.name || empData.name;
+      const loginMobile = formatMobile(savedEmp.phone || empData.phone);
+      addToast(
+        'success',
+        `${kind} Created`,
+        `${who} signs in with mobile ${loginMobile} and a password. Credentials are not sent automatically — hand them over in person.`
+      );
+      if (temporaryPassword) {
+        // Shown once — the server never returns it again.
+        addToast(
+          'warning',
+          `Temporary password for ${who}`,
+          `${temporaryPassword} — give it to ${who} in person (login: ${formatMobile(savedEmp.phone || empData.phone)}). It won't be shown again — note it down before closing this message.`,
+          { durationMs: 0 }
+        );
+      }
+      return true;
+    } catch (err) {
+      reportFailure(`${kind} Not Created`, err);
+      return false;
+    }
   };
 
-  const submitReview = (requestId: string, review: Review) => {
-    // Persist to PostgreSQL backend via REST API
-    requestService.submitReview(requestId, review).then((updated) => {
-      setRequests((prev) => prev.map((r) => r.id === requestId ? updated : r));
-      notificationService.getNotifications().then((n) => setNotifications(n)).catch(() => {});
-      auditService.getAuditLogs().then((a) => setAuditLogs(a)).catch(() => {});
-    }).catch(console.error);
-
-    setRequests((prev) =>
-      prev.map((req) => {
-        if (req.id !== requestId) return req;
-        return { ...req, review };
-      })
-    );
-    logAudit(userName || 'Customer', 'CUSTOMER', `Submitted review (${review.rating}★) for ${requestId}`, requestId, review.comment);
-    addToast('success', 'Review Submitted!', `Thank you for your ${review.rating}-star feedback.`);
-    addNotification({
-      type: 'system',
-      title: 'New Customer Review',
-      message: `${userName || 'Customer'} left a ${review.rating}★ review for ${requestId}: "${review.comment.slice(0, 60)}..."`,
-      requestId,
-      targetRoles: ['ADMIN', 'EMPLOYEE'],
-    });
+  const removeEmployee = async (id: string): Promise<boolean> => {
+    try {
+      await employeeService.deleteEmployee(id);
+      setEmployees((prev) => prev.map((e) => (e.id === id ? { ...e, isActive: false } : e)));
+      refreshSideData();
+      addToast('info', 'Employee Deactivated', 'Employee account has been deactivated.');
+      return true;
+    } catch (err) {
+      reportFailure('Deactivation Failed', err);
+      return false;
+    }
   };
 
   const openRequestDetail = (id: string) => {
@@ -1334,8 +1193,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAdminSubView,
         selectedRequestId,
         setSelectedRequestId,
-        deviceViewport,
-        setDeviceViewport,
 
         authModalOpen,
         setAuthModalOpen,
@@ -1352,12 +1209,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setModalTargetRequestId,
 
         isLoggedIn,
-        userEmail,
+        isAuthChecking: sessionStatus === 'validating',
         userName,
         userMobile,
         userTitle,
-        loginWithEmailOtp,
-        loginAsRole,
+        completeLogin,
         logout,
         loginRoleTab,
         setLoginRoleTab,
@@ -1375,10 +1231,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateUserProfile,
 
         requests,
+        isDataLoading,
+        dataLoaded,
+        refreshData,
         distanceConfig,
         savedAddresses,
         auditLogs,
-        emailTemplates,
         toasts,
         addToast,
         removeToast,
@@ -1391,13 +1249,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         approveRepairEstimate,
         declineRepairEstimate,
         requestPriceRevision,
-        completeGettingJob,
-        completeRepairJob,
         startDelivery,
         recordManualPayment,
 
         updateDistanceConfig,
-        updateEmailTemplate,
         calculateDistanceCharge,
         gettingServices,
         repairCategories,

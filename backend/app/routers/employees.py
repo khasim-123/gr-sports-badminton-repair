@@ -1,12 +1,26 @@
+import secrets
 import urllib.parse
+import uuid
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import EmployeeModel, ServiceRequestModel
+from pydantic import BaseModel
 from app.schemas import EmployeeSchema, EmployeeCreate
+from app.security import CurrentUser, hash_password, require_admin, require_staff, validate_new_password
+from app.services.sms_service import require_phone
 from app.services.notification_service import create_notification, log_audit
+
+
+class EmployeeCreatedSchema(EmployeeSchema):
+    # Only returned once, when the server generated the password itself.
+    temporaryPassword: Optional[str] = None
+
+
+class PasswordReset(BaseModel):
+    newPassword: Optional[str] = None
 
 router = APIRouter(prefix="/employees", tags=["Employees & Team Management"])
 
@@ -14,7 +28,8 @@ router = APIRouter(prefix="/employees", tags=["Employees & Team Management"])
 def get_employees(
     includeInactive: bool = Query(False),
     userRole: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _staff: CurrentUser = Depends(require_staff)
 ):
     query = db.query(EmployeeModel)
     if not includeInactive:
@@ -25,33 +40,43 @@ def get_employees(
 
 
 @router.get("/{employee_id}", response_model=EmployeeSchema)
-def get_employee_by_id(employee_id: str, db: Session = Depends(get_db)):
+def get_employee_by_id(employee_id: str, db: Session = Depends(get_db),
+    _staff: CurrentUser = Depends(require_staff)):
     emp = db.query(EmployeeModel).filter(EmployeeModel.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     return emp
 
 
-@router.post("", response_model=EmployeeSchema, status_code=status.HTTP_201_CREATED)
-def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db)):
-    # Check if email already registered
-    existing = db.query(EmployeeModel).filter(EmployeeModel.email.ilike(payload.email.strip())).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Employee or Admin with this email already exists")
+@router.post("", response_model=EmployeeCreatedSchema, status_code=status.HTTP_201_CREATED)
+def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db), admin: CurrentUser = Depends(require_admin)):
+    phone = require_phone(payload.phone)
+    if db.query(EmployeeModel).filter(EmployeeModel.phone == phone).first():
+        raise HTTPException(status_code=400, detail="A staff member with this mobile number already exists")
+    email = (payload.email or "").strip().lower() or None
+    if email and db.query(EmployeeModel).filter(EmployeeModel.email.ilike(email)).first():
+        raise HTTPException(status_code=400, detail="A staff member with this email already exists")
 
-    emp_id = f"EMP-{int(datetime.now().timestamp() * 1000) % 10000:04d}"
+    emp_id = f"EMP-{uuid.uuid4().hex[:8]}"
+    chosen_password = (payload.password or "").strip()
+    generated_password = None
+    if chosen_password:
+        validate_new_password(chosen_password)
+    else:
+        generated_password = secrets.token_urlsafe(9)
+        chosen_password = generated_password
     avatar_url = f"https://ui-avatars.com/api/?name={urllib.parse.quote(payload.name)}&background=3b82f6&color=fff&size=200"
 
     new_emp = EmployeeModel(
         id=emp_id,
         name=payload.name,
-        email=payload.email.lower().strip(),
-        phone=payload.phone.strip(),
+        email=email,
+        phone=phone,
         role=payload.role or ("Platform Admin" if payload.userRole == "ADMIN" else "Technician"),
         userRole=payload.userRole,
         activeJobsCount=0,
         avatar=avatar_url,
-        password=payload.password,
+        password=hash_password(chosen_password),
         isActive=True
     )
 
@@ -60,69 +85,66 @@ def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db)):
     db.refresh(new_emp)
 
     role_label = "Admin" if payload.userRole == "ADMIN" else "Employee"
-    temp_password = payload.password.strip() if (payload.password and payload.password.strip()) else "Emp@2026"
-    new_emp.password = temp_password
-    db.commit()
-
-    portal_url = "https://badminton-service-platform.onrender.com"
-    email_subject = f"Welcome to GR Sports - Your {role_label} Account Credentials"
-    email_body = f"""Hello {new_emp.name},
-
-Welcome to the GR Sports Team! Your official {role_label} account has been created by the Administrator.
-
-Here are your account credentials to access the platform:
---------------------------------------------------
-Official Portal: {portal_url}
-Registered Email: {new_emp.email}
-Initial Password / PIN: {temp_password}
-Role / Designation: {new_emp.role} ({role_label})
---------------------------------------------------
-
-Instructions:
-1. Navigate to the portal link above.
-2. Sign in using your registered email and temporary password under the '{'Master Admin' if payload.userRole == 'ADMIN' else 'Operations Staff'}' tab.
-3. For your security, please update your password after your first login.
-
-Best regards,
-GR Sports Operations & Management Team
-"""
-
-    from app.services.notification_service import send_email_via_smtp
-    smtp_sent = send_email_via_smtp(new_emp.email, email_subject, email_body)
 
     log_audit(
         db=db,
-        user="Admin",
+        user=admin.label,
         role="ADMIN",
-        action=f"Created {role_label} & Dispatched Credentials Email: {payload.name}",
+        action=f"Created {role_label}: {payload.name}",
         request_id="SYSTEM",
-        details=f"Email: {payload.email} | Phone: {payload.phone} | SMTP Delivered: {smtp_sent}"
+        details=f"Mobile: {phone}"
     )
 
     create_notification(
         db=db,
         type_="system",
         title=f"New {role_label} Created",
-        message=f"{payload.name} ({new_emp.email}) added as {payload.role}. Login credentials {'delivered via SMTP' if smtp_sent else 'simulated'} to {new_emp.email}.",
+        message=f"{payload.name} ({new_emp.phone}) added as {new_emp.role}. They sign in with their mobile number and the password you set.",
         request_id="SYSTEM",
         target_roles=["ADMIN"]
     )
 
-    return new_emp
+    result = EmployeeCreatedSchema.model_validate(new_emp)
+    result.temporaryPassword = generated_password
+    return result
+
+
+@router.put("/{employee_id}/password")
+def reset_employee_password(
+    employee_id: str,
+    payload: PasswordReset,
+    db: Session = Depends(get_db),
+    admin: CurrentUser = Depends(require_admin),
+):
+    emp = db.query(EmployeeModel).filter(EmployeeModel.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    new_password = (payload.newPassword or "").strip()
+    generated = None
+    if new_password:
+        validate_new_password(new_password)
+    else:
+        generated = new_password = secrets.token_urlsafe(9)
+    emp.password = hash_password(new_password)
+    db.commit()
+    log_audit(db, admin.label, "ADMIN", f"Reset password for {emp.name}", "SYSTEM")
+    return {"success": True, "temporaryPassword": generated}
 
 
 @router.delete("/{employee_id}")
-def deactivate_employee(employee_id: str, db: Session = Depends(get_db)):
+def deactivate_employee(employee_id: str, db: Session = Depends(get_db), admin: CurrentUser = Depends(require_admin)):
     emp = db.query(EmployeeModel).filter(EmployeeModel.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
 
+    if emp.phone == admin.phone:
+        raise HTTPException(status_code=400, detail="You can't deactivate your own account")
     emp.isActive = False
     db.commit()
 
     log_audit(
         db=db,
-        user="Admin",
+        user=admin.label,
         role="ADMIN",
         action=f"Deactivated Employee: {emp.name}",
         request_id="SYSTEM",
@@ -133,7 +155,8 @@ def deactivate_employee(employee_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/{employee_id}/workload")
-def get_employee_workload(employee_id: str, db: Session = Depends(get_db)):
+def get_employee_workload(employee_id: str, db: Session = Depends(get_db),
+    _staff: CurrentUser = Depends(require_staff)):
     emp = db.query(EmployeeModel).filter(EmployeeModel.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")

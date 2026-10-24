@@ -33,12 +33,46 @@ export class ApiError extends Error {
   }
 }
 
+/** localStorage key holding the signed-in user's AuthSession (incl. JWT). */
+export const AUTH_SESSION_STORAGE_KEY = 'shuttlecraft_auth_session';
+
+/**
+ * Fired on `window` when an authenticated request comes back 401
+ * (token missing/expired/invalid). AppContext listens and logs the user out.
+ */
+export const SESSION_EXPIRED_EVENT = 'gr:session-expired';
+
+/**
+ * Endpoints whose 401 means "bad credentials", not "session expired".
+ * They must never trigger the global session-expired logout.
+ */
+const NON_SESSION_ENDPOINTS = ['/auth/login', '/auth/otp/request', '/auth/logout'];
+
+const isNonSessionEndpoint = (endpoint: string): boolean =>
+  NON_SESSION_ENDPOINTS.some((p) => endpoint === p || endpoint.startsWith(`${p}?`) || endpoint.endsWith(p));
+
+/**
+ * Clears the stored session and notifies the app — at most once per token,
+ * so parallel requests failing with the same expired token don't loop/spam.
+ */
+const handleUnauthorized = (usedToken: string) => {
+  if (getAuthToken() !== usedToken) return; // already handled (or a new session replaced it)
+  try {
+    localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+  }
+};
+
 export const getAuthToken = (): string | null => {
   try {
-    const session = localStorage.getItem('shuttlecraft_auth_session');
+    const session = localStorage.getItem(AUTH_SESSION_STORAGE_KEY);
     if (session) {
       const parsed = JSON.parse(session);
-      return parsed.token || 'mock_jwt_token_shuttlecraft';
+      return parsed.token || null;
     }
   } catch {
     // fallback
@@ -88,17 +122,29 @@ export const apiClient: ApiClient = {
         } catch {
           // ignore
         }
+        const detail = Array.isArray(errorData?.detail)
+          ? errorData.detail.map((d: any) => d?.msg).filter(Boolean).join('; ')
+          : errorData?.detail;
+        if (response.status === 401 && token && !isNonSessionEndpoint(endpoint)) {
+          handleUnauthorized(token);
+        }
         throw new ApiError(
-          errorData?.message || `HTTP Request failed with status ${response.status}`,
+          (typeof detail === 'string' && detail) || errorData?.message || `HTTP Request failed with status ${response.status}`,
           response.status,
           errorData
         );
       }
 
+      if (response.status === 204) return undefined as T;
       return (await response.json()) as T;
     } catch (error: any) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError(error.message || 'Network connection failed', 0);
+      throw new ApiError(
+        error instanceof TypeError
+          ? 'Unable to reach the GR Sports server. Please check your connection and try again.'
+          : error?.message || 'Network connection failed',
+        0
+      );
     }
   },
 

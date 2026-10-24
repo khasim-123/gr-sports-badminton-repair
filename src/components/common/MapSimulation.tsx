@@ -1,33 +1,34 @@
 import React from 'react';
-import { MapPin, Navigation, Compass, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Navigation, Compass, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { formatINR } from '../../utils/format';
+import { localityOf, useShopSettings } from '../../hooks/useShopSettings';
 
 interface MapSimulationProps {
   distanceKm: number;
-  onDistanceChange?: (newDistance: number) => void;
-  addressLabel?: string;
-  readOnly?: boolean;
+  /** e.g. "From your location" / "Entered by you" — shown under the distance. */
+  sourceLabel?: string;
 }
 
-export const MapSimulation: React.FC<MapSimulationProps> = ({
-  distanceKm,
-  onDistanceChange,
-  addressLabel = 'Customer Doorstep Location',
-  readOnly = false,
-}) => {
+/** Read-only diagram of the pickup distance and the resulting pickup & delivery charge. */
+export const MapSimulation: React.FC<MapSimulationProps> = ({ distanceKm, sourceLabel }) => {
   const { distanceConfig, calculateDistanceCharge } = useApp();
+  const shop = useShopSettings();
   const calculation = calculateDistanceCharge(distanceKm);
+  const maxServiceKm = distanceConfig.maxServiceDistanceKm || 0;
+  // Let customers pick a little beyond the pickup area so they see the "outside our area" message.
+  const outsideArea = maxServiceKm > 0 && distanceKm > maxServiceKm;
+  const isSlab = distanceConfig.pricingMethod === 'SLAB';
 
-  // Scaled coordinates for SVG map simulation
-  // Center is workshop (200, 150)
-  // 15 KM circle has radius ~90px
-  // Distance scale: 1 km = 6 px
+  // Diagram coordinates: the shop is the centre (200, 150).
   const center = { x: 200, y: 150 };
-  const freeRadiusPx = distanceConfig.freeRadiusKm * 6; // 90px
+  // Scale so the free-pickup circle is always clearly visible (diagram, not to scale).
+  const pxPerKm = 70 / Math.max(1, distanceConfig.freeRadiusKm);
+  const freeRadiusPx = distanceConfig.freeRadiusKm * pxPerKm;
   
   // Angle for customer pin
   const angle = 0.85; // ~48 degrees
-  const customerDistancePx = Math.min(180, distanceKm * 6);
+  const customerDistancePx = Math.min(130, Math.max(18, distanceKm * pxPerKm));
   const customerPin = {
     x: center.x + Math.cos(angle) * customerDistancePx,
     y: center.y - Math.sin(angle) * customerDistancePx,
@@ -40,24 +41,28 @@ export const MapSimulation: React.FC<MapSimulationProps> = ({
         <div className="flex items-center gap-2">
           <Compass className="w-4 h-4 text-emerald-400 animate-spin-slow" />
           <span className="text-xs font-semibold text-slate-200">
-            Smart Service Radius & Distance Calculator
+            Pickup distance &amp; charge
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {calculation.isFree ? (
+          {outsideArea ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+              <AlertCircle className="w-3.5 h-3.5" /> Outside our {maxServiceKm} KM pickup area
+            </span>
+          ) : calculation.isFree ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              <CheckCircle2 className="w-3.5 h-3.5" /> FREE WITHIN {distanceConfig.freeRadiusKm} KM
+              <CheckCircle2 className="w-3.5 h-3.5" /> Free within {distanceConfig.freeRadiusKm} KM
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-              <AlertCircle className="w-3.5 h-3.5" /> DISTANCE CHARGE APPLIES (+{calculation.chargeableKm} KM)
+              <AlertCircle className="w-3.5 h-3.5" /> Pickup charge {formatINR(calculation.charge)}
             </span>
           )}
         </div>
       </div>
 
       {/* SVG Canvas Map Display */}
-      <div className="relative h-64 sm:h-72 w-full bg-[#0b1329] overflow-hidden select-none">
+      <div className="relative h-52 sm:h-60 w-full bg-[#0b1329] overflow-hidden select-none">
         {/* Subtle grid lines */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b15_1px,transparent_1px),linear-gradient(to_bottom,#1e293b15_1px,transparent_1px)] bg-[size:24px_24px]" />
 
@@ -74,7 +79,7 @@ export const MapSimulation: React.FC<MapSimulationProps> = ({
             </linearGradient>
           </defs>
 
-          {/* 15 KM Boundary Circle */}
+          {/* Free-pickup boundary */}
           <circle
             cx={center.x}
             cy={center.y}
@@ -85,7 +90,7 @@ export const MapSimulation: React.FC<MapSimulationProps> = ({
             strokeDasharray="4 3"
           />
 
-          {/* 15 KM Zone Tag */}
+          {/* Free-pickup label */}
           <text
             x={center.x}
             y={center.y + freeRadiusPx + 14}
@@ -95,7 +100,7 @@ export const MapSimulation: React.FC<MapSimulationProps> = ({
             fontWeight="600"
             letterSpacing="0.05em"
           >
-            {distanceConfig.freeRadiusKm} KM FREE PICKUP & DELIVERY ZONE
+            {distanceConfig.freeRadiusKm} KM FREE PICKUP ZONE
           </text>
 
           {/* Route Connection Path */}
@@ -120,13 +125,13 @@ export const MapSimulation: React.FC<MapSimulationProps> = ({
           </g>
           <text
             x={center.x}
-            y={center.y - 28}
+            y={center.y + 16}
             textAnchor="middle"
             fill="#93c5fd"
             fontSize="10"
             fontWeight="bold"
           >
-            GR Sports Hub (Indiranagar)
+            {shop.name} ({localityOf(shop)})
           </text>
 
           {/* Customer Location Pin */}
@@ -151,78 +156,61 @@ export const MapSimulation: React.FC<MapSimulationProps> = ({
             fontSize="10"
             fontWeight="bold"
           >
-            Customer ({distanceKm} KM)
+            You ({distanceKm} KM)
           </text>
         </svg>
 
+        <span className="absolute bottom-2 right-3 text-[10px] text-slate-500">Diagram, not to scale</span>
+
         {/* Floating Distance Badge on map */}
-        <div className="absolute bottom-3 left-3 bg-slate-950/85 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-700/80 text-xs">
-          <p className="text-[11px] text-slate-400">Calculated Straight-Route</p>
+        <div className="absolute top-3 left-3 bg-slate-950/85 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-700/80 text-xs">
+          <p className="text-[11px] text-slate-400">About</p>
           <p className="text-base font-extrabold text-white mt-0.5 flex items-center gap-1.5">
             <Navigation className="w-4 h-4 text-emerald-400 rotate-45" />
             {distanceKm} KM
           </p>
+          {sourceLabel && <p className="text-[10px] text-slate-400 mt-0.5">{sourceLabel}</p>}
         </div>
       </div>
 
-      {/* Interactive Distance Slider & Breakdown */}
+      {/* Charge breakdown */}
       <div className="p-4 bg-slate-900/90 border-t border-slate-800">
-        {!readOnly && onDistanceChange && (
-          <div className="mb-4">
-            <div className="flex justify-between items-center text-xs mb-1.5">
-              <span className="text-slate-300 font-medium">Simulate Customer Distance:</span>
-              <span className="text-white font-bold">{distanceKm} KM</span>
-            </div>
-            <input
-              type="range"
-              min="2"
-              max="35"
-              step="0.5"
-              value={distanceKm}
-              onChange={(e) => onDistanceChange(parseFloat(e.target.value))}
-              className="w-full accent-blue-500 cursor-pointer h-2 bg-slate-700 rounded-lg"
-            />
-            <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-              <span>0 KM (Hub)</span>
-              <span className="text-emerald-400 font-bold">{distanceConfig.freeRadiusKm} KM (Free Threshold)</span>
-              <span>25 KM</span>
-              <span>35 KM (Max Serviceable)</span>
-            </div>
-          </div>
-        )}
-
         {/* Pricing Breakdown Card */}
         <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 text-xs space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-slate-400">Total Distance:</span>
+            <span className="text-slate-400">Distance:</span>
             <span className="font-semibold text-white">{distanceKm} KM</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-slate-400">Free Radius:</span>
-            <span className="font-semibold text-emerald-400">{distanceConfig.freeRadiusKm.toFixed(1)} KM (Free)</span>
+            <span className="text-slate-400">Free radius:</span>
+            <span className="font-semibold text-emerald-400">{distanceConfig.freeRadiusKm} KM</span>
           </div>
 
           {calculation.isFree ? (
             <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-emerald-400 font-bold">
               <span>Doorstep Pickup & Delivery:</span>
-              <span className="text-sm">₹0 (100% FREE)</span>
+              <span className="text-sm">Free</span>
             </div>
           ) : (
             <>
               <div className="flex justify-between items-center">
-                <span className="text-slate-400">Chargeable Distance:</span>
+                <span className="text-slate-400">Beyond the free radius:</span>
                 <span className="font-semibold text-amber-400">
-                  {calculation.chargeableKm} KM ({distanceKm} - {distanceConfig.freeRadiusKm} KM)
+                  {calculation.chargeableKm} KM
                 </span>
               </div>
-              <div className="flex justify-between items-center text-slate-300 text-[11px]">
-                <span>Rate per chargeable KM:</span>
-                <span>₹{distanceConfig.perKmRateBeyondFree} / KM</span>
-              </div>
-              <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-amber-300 font-bold">
-                <span>Pickup & Delivery Charge:</span>
-                <span className="text-sm">
-                  {calculation.chargeableKm} KM × ₹{distanceConfig.perKmRateBeyondFree} = ₹{calculation.charge}
+              {!isSlab && (
+                <div className="flex justify-between items-center text-slate-300 text-[11px]">
+                  <span>Rate beyond the free radius:</span>
+                  <span>{formatINR(distanceConfig.perKmRateBeyondFree)} / KM</span>
+                </div>
+              )}
+              <div className="pt-2 border-t border-slate-800 flex justify-between items-center gap-3 text-amber-300 font-bold">
+                <span>Pickup &amp; delivery charge:</span>
+                <span className="text-sm text-right">
+                  {isSlab
+                    ? formatINR(calculation.charge)
+                    : `${calculation.chargeableKm} KM × ${formatINR(distanceConfig.perKmRateBeyondFree)} = ${formatINR(calculation.charge)}`}
                 </span>
               </div>
             </>

@@ -1,24 +1,53 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { StatusBadge } from '../common/Badge';
-import { Timeline } from '../common/Timeline';
 import { Button } from '../common/Button';
+import { RequestProgress } from './RequestProgress';
+import { phoneDisplay, telHref, useShopSettings } from '../../hooks/useShopSettings';
 import {
   ArrowLeft,
   Wrench,
-  Truck,
   MapPin,
-  Calendar,
-  AlertTriangle,
-  CheckCircle2,
-  Phone,
-  Mail,
-  User,
+  CalendarDays,
   ShieldAlert,
   Star,
+  User,
+  Phone,
+  Wallet,
+  CheckCircle2,
+  ClipboardCheck,
+  AlertCircle,
 } from 'lucide-react';
+import { formatDate, formatDateTime, formatINR } from '../../utils/format';
+import { ServiceTypeTile, declinedRepairFeeOf, gettingTierName, isRepairDeclined, realPhotos, splitNotes } from './requestDisplay';
+
+const REVIEW_MIN = 10;
+const REVIEW_MAX = 1500;
+
+const Row: React.FC<{ label: string; children: React.ReactNode; strong?: boolean }> = ({ label, children, strong }) => (
+  <div className="flex justify-between items-baseline gap-4 py-2">
+    <span className={strong ? 'font-bold text-slate-900' : 'text-slate-600'}>{label}</span>
+    <span className={`text-right ${strong ? 'text-base font-extrabold text-blue-800' : 'font-semibold text-slate-900'}`}>{children}</span>
+  </div>
+);
+
+const Card: React.FC<{ title: string; icon?: React.ReactNode; children: React.ReactNode; className?: string }> = ({
+  title,
+  icon,
+  children,
+  className = '',
+}) => (
+  <section className={`bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-2xs ${className}`}>
+    <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3">
+      {icon}
+      {title}
+    </h2>
+    {children}
+  </section>
+);
 
 export const RequestDetailView: React.FC = () => {
+  const shop = useShopSettings();
   const {
     selectedRequestId,
     requests,
@@ -28,20 +57,30 @@ export const RequestDetailView: React.FC = () => {
     setModalTargetRequestId,
     distanceConfig,
     submitReview,
+    isDataLoading,
+    dataLoaded,
+    gettingServices,
+    repairCategories,
   } = useApp();
 
-  const [reviewRating, setReviewRating] = React.useState<number>(5);
+  const [reviewRating, setReviewRating] = React.useState<number>(0);
   const [reviewComment, setReviewComment] = React.useState<string>('');
   const [hoverRating, setHoverRating] = React.useState<number>(0);
+  const [reviewError, setReviewError] = React.useState<string | null>(null);
+  const [reviewSubmitting, setReviewSubmitting] = React.useState(false);
 
   const request = requests.find((r) => r.id === selectedRequestId);
 
+  if (!request && isDataLoading && !dataLoaded) {
+    return <div className="p-8 text-center text-sm text-slate-500">Loading your request…</div>;
+  }
+
   if (!request) {
     return (
-      <div className="p-8 text-center">
-        <p className="text-slate-600 mb-4">Request not found.</p>
-        <Button onClick={() => setCustomerSubView('requests')} variant="outline">
-          Back to Requests
+      <div className="max-w-md mx-auto p-8 text-center space-y-4">
+        <p className="text-slate-600">We couldn&apos;t find that request.</p>
+        <Button onClick={() => setCustomerSubView('requests')} variant="outline" className="min-h-[44px]">
+          Back to My Requests
         </Button>
       </div>
     );
@@ -49,355 +88,383 @@ export const RequestDetailView: React.FC = () => {
 
   const isRepair = request.serviceType === 'REPAIR';
   const isAwaitingApproval = request.status === 'Awaiting Customer Approval';
-  const isRevised = request.repairEstimate?.isRevised;
+  const est = request.repairEstimate;
+  const isRevised = !!est?.isRevised;
+  const { slot, notes } = splitNotes(request.additionalNotes);
+  const photos = realPhotos(request.batPhotos);
+  const pickupPhotos = realPhotos(request.pickupCondition?.photos);
+  const address = request.pickupAddress;
+  const addressLine = [address?.houseFlat, address?.street, address?.area, address?.city].filter(Boolean).join(', ');
+  const deliveryCharge = request.pickupDeliveryCharge || 0;
+  const isPaid = request.paymentStatus === 'Paid';
+  const repairPriced = !isRepair || !!est;
+  const declined = isRepairDeclined(request);
 
   const handleOpenApprovalModal = () => {
     setModalTargetRequestId(request.id);
-    if (isRevised) {
-      setRevisedEstimateModalOpen(true);
-    } else {
-      setRepairEstimateModalOpen(true);
-    }
+    if (isRevised) setRevisedEstimateModalOpen(true);
+    else setRepairEstimateModalOpen(true);
   };
 
+  const handleSubmitReview = async () => {
+    if (!reviewRating) {
+      setReviewError('Please choose a star rating.');
+      return;
+    }
+    if (reviewComment.trim().length < REVIEW_MIN) {
+      setReviewError(`Please write at least ${REVIEW_MIN} characters about your experience.`);
+      return;
+    }
+    setReviewError(null);
+    setReviewSubmitting(true);
+    await submitReview(request.id, {
+      rating: reviewRating,
+      comment: reviewComment.trim(),
+      createdAt: new Date().toISOString(),
+    });
+    setReviewSubmitting(false);
+  };
+
+  const shownRating = hoverRating || reviewRating;
+
   return (
-    <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-      {/* Top Bar Navigation */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200">
+    <div className="max-w-6xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <button
+          type="button"
           onClick={() => setCustomerSubView('requests')}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-blue-600 transition-colors"
+          className="inline-flex items-center gap-2 min-h-[40px] pr-3 text-sm font-semibold text-slate-600 hover:text-blue-700"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to My Requests
+          <ArrowLeft className="w-4 h-4" /> My Requests
         </button>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500 font-medium">Request Reference:</span>
-          <span className="font-mono text-sm font-extrabold text-blue-900 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
-            {request.id}
-          </span>
-        </div>
+        <span className="text-xs text-slate-500">
+          Booked {formatDateTime(request.createdAt)}
+        </span>
       </div>
 
-      {/* ACTION BANNER: ESTIMATE READY / REVISED ESTIMATE */}
+      {/* Header */}
+      <section className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <ServiceTypeTile type={request.serviceType} />
+          <div className="min-w-0">
+            <p className="text-xs text-slate-500">
+              {isRepair ? 'Racket repair' : 'Racket stringing'} ·{' '}
+              <span className="font-mono font-bold text-blue-900">{request.id}</span>
+            </p>
+            <h1 className="text-xl font-black text-slate-900 truncate">
+              {request.batBrand} {request.batModel}
+            </h1>
+          </div>
+        </div>
+        <StatusBadge status={request.status} size="lg" />
+      </section>
+
+      {/* Action needed: estimate approval */}
       {isAwaitingApproval && (
-        <div className={`p-5 rounded-3xl border-2 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg animate-in slide-in-from-top-2 ${
-          isRevised
-            ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-300'
-            : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300'
-        }`}>
+        <section
+          className={`p-4 sm:p-5 rounded-3xl border-2 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+            isRevised ? 'bg-amber-50 border-amber-300' : 'bg-blue-50 border-blue-300'
+          }`}
+        >
           <div className="flex items-start gap-3">
             <div className={`p-2.5 rounded-2xl text-white shrink-0 ${isRevised ? 'bg-amber-600' : 'bg-blue-600'}`}>
-              {isRevised ? <ShieldAlert className="w-6 h-6" /> : <Wrench className="w-6 h-6" />}
+              {isRevised ? <ShieldAlert className="w-5 h-5" /> : <Wrench className="w-5 h-5" />}
             </div>
             <div>
-              <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                isRevised ? 'bg-amber-200 text-amber-900' : 'bg-blue-200 text-blue-900'
-              }`}>
-                ACTION REQUIRED
-              </span>
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 mt-1">
-                {isRevised
-                  ? 'Repair estimate has been updated. Your approval is required before we continue.'
-                  : 'Your repair estimate is ready for approval.'}
-              </h3>
-              <p className="text-xs text-slate-600 mt-0.5">
-                {isRevised
-                  ? `Revised Amount: ₹${request.repairEstimate?.totalEstimate} (Reason: ${request.repairEstimate?.revisionReason})`
-                  : `Technician estimated total repair cost: ₹${request.repairEstimate?.totalEstimate || 400}.`}
-              </p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-600">Your approval is needed</p>
+              <h2 className="text-base font-bold text-slate-900 mt-0.5">
+                {isRevised ? 'We found more damage — the repair estimate has changed.' : 'Your repair estimate is ready.'}
+              </h2>
+              {est && (
+                <p className="text-xs text-slate-700 mt-1">
+                  {isRevised && est.originalEstimate != null
+                    ? `Was ${formatINR(est.originalEstimate)}, now ${formatINR(est.totalEstimate)}.`
+                    : `Repair estimate ${formatINR(est.totalEstimate)}.`}{' '}
+                  Work continues only after you approve.
+                </p>
+              )}
             </div>
           </div>
-
           <Button
             onClick={handleOpenApprovalModal}
             size="lg"
             variant={isRevised ? 'secondary' : 'primary'}
-            className="w-full sm:w-auto shrink-0 shadow-md font-bold"
+            className="w-full md:w-auto shrink-0 font-bold min-h-[48px]"
           >
-            {isRevised ? `Review Updated Estimate (₹${request.repairEstimate?.totalEstimate})` : 'Review & Approve Estimate'}
+            Review estimate
           </Button>
-        </div>
+        </section>
       )}
 
-      {/* Main Grid: Details on Left, Timeline on Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column (2 Cols) */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Main Request Card */}
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-6">
-            {/* Visual Service Banner (Tailored to Service Type) */}
-            <div className="relative h-44 sm:h-52 w-full rounded-2xl overflow-hidden border border-slate-200">
-              <img
-                src={request.serviceType === 'GETTING' ? '/images/stringing-machine.jpg' : '/images/racket-repair.jpg'}
-                alt={request.serviceType === 'GETTING' ? 'Stringing Machine' : 'Carbon Repair Fixture'}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent" />
-              
-              <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-xs text-white text-[11px] font-bold px-3 py-1 rounded-xl border border-white/20">
-                {request.serviceType === 'GETTING' ? '⚡ ELECTRONIC STRINGING CALIBRATION' : '🛡️ CARBON SPLICE & RESIN BONDING'}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
+        {/* Left: what was booked, pickup, charges */}
+        <div className="lg:col-span-3 space-y-5">
+          <Card title="What you booked" icon={<ClipboardCheck className="w-4 h-4 text-blue-600" />}>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+              <div>
+                <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Racket</dt>
+                <dd className="font-semibold text-slate-900">
+                  {request.batBrand} {request.batModel}
+                </dd>
+                {request.batType && <dd className="text-xs text-slate-500">{request.batType}</dd>}
               </div>
-
-              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs">
+              {isRepair ? (
                 <div>
-                  <p className="text-[11px] text-emerald-400 font-bold uppercase tracking-wider">
-                    {request.batBrand} {request.batModel}
-                  </p>
-                  <p className="text-sm font-extrabold text-white">
-                    {request.serviceType === 'GETTING'
-                      ? `${request.gettingType} • Target: ${request.stringTensionLbs || 26} LBS`
-                      : `Structural Repair: ${request.repairIssue}`}
-                  </p>
+                  <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Problem</dt>
+                  <dd className="font-semibold text-slate-900">{request.repairIssue || '—'}</dd>
+                  {request.repairDescription && <dd className="text-xs text-slate-600 mt-0.5 whitespace-pre-line">{request.repairDescription}</dd>}
                 </div>
-                <span className="text-[10px] font-bold bg-white/20 backdrop-blur-xs px-2.5 py-1 rounded-xl">
-                  {request.serviceType === 'GETTING' ? '24–48h SLA' : '7-Day SLA'}
-                </span>
-              </div>
-            </div>
+              ) : (
+                <>
+                  <div>
+                    <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Package</dt>
+                    <dd className="font-semibold text-slate-900">{gettingTierName(request, gettingServices)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">String</dt>
+                    <dd className="font-semibold text-slate-900">{request.stringPreference || request.stringType || "Technician's choice"}</dd>
+                    {request.colour && <dd className="text-xs text-slate-600">Colour: {request.colour}</dd>}
+                  </div>
+                  <div>
+                    <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Tension</dt>
+                    <dd className="font-semibold text-slate-900">{request.stringTensionLbs ? `${request.stringTensionLbs} lbs` : '—'}</dd>
+                  </div>
+                </>
+              )}
+            </dl>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
-              <div>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Service Category
-                </span>
-                <h2 className="text-xl font-bold text-slate-900">
-                  {request.serviceType === 'GETTING' ? 'Badminton Bat Getting' : 'Badminton Bat Structural Repair'}
-                </h2>
-              </div>
-              <StatusBadge status={request.status} size="lg" />
-            </div>
-
-            {/* Bat Information */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Bat Brand & Model</p>
-                <p className="text-base font-bold text-slate-900">{request.batBrand} {request.batModel}</p>
-                <p className="text-xs text-slate-600 mt-0.5">{request.batType}</p>
-              </div>
-
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-                  {request.serviceType === 'GETTING' ? 'Getting Setup' : 'Reported Damage'}
-                </p>
-                {request.serviceType === 'GETTING' ? (
-                  <>
-                    <p className="text-sm font-bold text-slate-900">{request.gettingType}</p>
-                    <p className="text-xs text-slate-600 mt-0.5">
-                      String: {request.stringType} ({request.stringTensionLbs} lbs)
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm font-bold text-slate-900">{request.repairIssue}</p>
-                    <p className="text-xs text-slate-600 mt-0.5 line-clamp-2">
-                      {request.repairDescription}
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Bat Photos */}
-            {request.batPhotos && request.batPhotos.length > 0 && (
-              <div>
-                <p className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  Bat Condition Photos
-                </p>
-                <div className="flex gap-3 overflow-x-auto pb-1">
-                  {request.batPhotos.map((photo, i) => (
-                    <img
-                      key={i}
-                      src={photo}
-                      alt="Bat condition"
-                      className="w-24 h-24 object-cover rounded-xl border border-slate-200 shrink-0"
-                    />
+            {photos.length > 0 && (
+              <div className="mt-4">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Your photos</p>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {photos.map((photo, i) => (
+                    <a key={i} href={photo} target="_blank" rel="noreferrer" className="shrink-0">
+                      <img src={photo} alt={`Photo ${i + 1} of your racket`} className="w-24 h-24 object-cover rounded-xl border border-slate-200" />
+                    </a>
                   ))}
                 </div>
               </div>
             )}
+          </Card>
 
-            {/* Pickup & Delivery Location */}
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2 text-xs">
-              <div className="flex items-center justify-between font-bold text-slate-800">
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="w-4 h-4 text-blue-600" /> Doorstep Pickup & Delivery Address
-                </span>
-                <span className="text-blue-700 font-semibold">{request.distanceKm} KM from Workshop</span>
-              </div>
-              <p className="text-slate-700">
-                {request.pickupAddress.houseFlat}, {request.pickupAddress.street}, {request.pickupAddress.area}, {request.pickupAddress.city} - {request.pickupAddress.pincode}
+          <Card title="Pickup & delivery" icon={<MapPin className="w-4 h-4 text-blue-600" />}>
+            <div className="space-y-2 text-sm">
+              <p className="text-slate-800">
+                {addressLine || 'Address not recorded'}
+                {address?.pincode ? ` – ${address.pincode}` : ''}
               </p>
-              <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-500">
-                <span>Landmark: {request.pickupAddress.landmark || 'N/A'}</span>
-                <span>•</span>
-                <span className={request.isFreeDelivery ? 'text-emerald-700 font-bold' : 'text-slate-600'}>
-                  {request.isFreeDelivery ? `100% Free Pickup & Delivery (Within ${distanceConfig.freeRadiusKm} KM)` : `Delivery Surcharge: ₹${request.pickupDeliveryCharge}`}
-                </span>
-              </div>
-            </div>
-
-            {/* Financial Summary */}
-            <div className="bg-slate-50 rounded-2xl p-4 divide-y divide-slate-200 text-xs space-y-2">
-              <div className="flex justify-between items-center text-slate-700 pb-1">
-                <span>Service Charge:</span>
-                <span className="font-semibold text-slate-900">
-                  {request.serviceCharge > 0 ? `₹${request.serviceCharge}` : 'To be confirmed after inspection'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-slate-700 pt-2">
-                <span>Doorstep Pickup & Delivery:</span>
-                <span className={`font-semibold ${request.isFreeDelivery ? 'text-emerald-700' : 'text-slate-900'}`}>
-                  {request.isFreeDelivery ? `₹0 (FREE within ${distanceConfig.freeRadiusKm} KM)` : `₹${request.pickupDeliveryCharge}`}
-                </span>
-              </div>
-              <div className="flex justify-between items-center pt-2 text-sm font-bold text-slate-900">
-                <span>Total Payable on Delivery:</span>
-                <span className="text-lg text-blue-800 font-extrabold">₹{request.totalAmount}</span>
-              </div>
-            </div>
-
-            {/* Payment Notice */}
-            <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-900 flex items-center gap-2.5">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-              <span>
-                <b>Payment Status: {request.paymentStatus}</b>. Payment is collected in-person after service completion and doorstep delivery (Cash or UPI).
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Live Status & Chronological Timeline */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs">
-            <h3 className="text-base font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center justify-between">
-              <span>Service Lifecycle</span>
-              <span className="text-xs text-slate-500 font-normal">Live Tracking</span>
-            </h3>
-
-            <Timeline request={request} />
-          </div>
-
-          {/* Assigned Technician Card if assigned */}
-          {request.assignedEmployeeName && (
-            <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                Assigned Workshop Specialist
+              {address?.landmark && <p className="text-xs text-slate-500">Landmark: {address.landmark}</p>}
+              <p className="text-xs text-slate-500">
+                About {request.distanceKm} KM from our shop
+                {address?.distanceSource === 'staff'
+                  ? ' (corrected by our team)'
+                  : address?.distanceSource === 'customer' && !isPaid
+                  ? ' (as you entered it — we check it at pickup)'
+                  : ''}
               </p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center">
-                  <User className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900">{request.assignedEmployeeName}</h4>
-                  <p className="text-xs text-slate-500">Certified Badminton Technician</p>
-                </div>
+              <div className="flex items-start gap-2 pt-2 text-slate-800">
+                <CalendarDays className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                <span>
+                  {request.pickupDate ? (
+                    <>
+                      Pickup on <b>{formatDate(request.pickupDate)}</b>
+                      {slot ? <>, <b>{slot}</b></> : null}
+                    </>
+                  ) : (
+                    'Pickup date to be confirmed by our team'
+                  )}
+                </span>
               </div>
+              {notes && (
+                <p className="text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-xl p-2.5 whitespace-pre-line">
+                  Your note: {notes}
+                </p>
+              )}
             </div>
-          )}
 
-          {/* Customer Review Section (Only for Completed requests or can review anytime) */}
-          {request.status === 'Completed' && (
-            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                  Service Review & Rating
-                </h3>
-                {request.review && (
-                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                    Reviewed ✓
-                  </span>
+            {request.pickupCondition && (
+              <div className="mt-4 pt-4 border-t border-slate-100 text-sm space-y-1">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Condition when we collected it</p>
+                <p className="font-semibold text-slate-900">{request.pickupCondition.condition}</p>
+                {request.pickupCondition.notes && <p className="text-xs text-slate-600">{request.pickupCondition.notes}</p>}
+                <p className="text-[11px] text-slate-500">
+                  {[request.pickupCondition.collectedBy && `Collected by ${request.pickupCondition.collectedBy}`, request.pickupCondition.collectedAt && formatDateTime(request.pickupCondition.collectedAt)]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+                {pickupPhotos.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto pt-1">
+                    {pickupPhotos.map((photo, i) => (
+                      <img key={i} src={photo} alt={`Pickup photo ${i + 1}`} className="w-20 h-20 object-cover rounded-xl border border-slate-200 shrink-0" />
+                    ))}
+                  </div>
                 )}
               </div>
+            )}
+          </Card>
 
+          <Card title="Charges" icon={<Wallet className="w-4 h-4 text-blue-600" />}>
+            <div className="text-sm divide-y divide-slate-100">
+              {isRepair ? (
+                <Row label={isAwaitingApproval ? 'Repair (estimate)' : 'Repair'}>
+                  {declined ? (
+                    <span className="text-slate-500">Declined — not charged</span>
+                  ) : est ? (
+                    formatINR(est.totalEstimate)
+                  ) : (
+                    <span className="text-amber-700">After inspection</span>
+                  )}
+                </Row>
+              ) : (
+                <Row label={gettingTierName(request, gettingServices)}>{formatINR(request.serviceCharge)}</Row>
+              )}
+              <Row label="Pickup & delivery">
+                {request.isFreeDelivery || deliveryCharge === 0 ? (
+                  <span className="text-emerald-700">Free (within {distanceConfig.freeRadiusKm} KM)</span>
+                ) : (
+                  formatINR(deliveryCharge)
+                )}
+              </Row>
+              {declined && declinedRepairFeeOf(request) > 0 && (
+                <Row label="Declined-repair fee">{formatINR(declinedRepairFeeOf(request))}</Row>
+              )}
+              {request.discount > 0 && <Row label="Discount">−{formatINR(request.discount)}</Row>}
+              <Row label={isPaid ? 'Total' : 'Total to pay after delivery'} strong>
+                {declined
+                  ? formatINR(deliveryCharge + declinedRepairFeeOf(request))
+                  : repairPriced
+                  ? formatINR(request.totalAmount)
+                  : `${formatINR(deliveryCharge)} + repair`}
+              </Row>
+            </div>
+            <div
+              className={`mt-3 p-3 rounded-2xl text-xs flex items-start gap-2 ${
+                isPaid ? 'bg-emerald-50 border border-emerald-200 text-emerald-900' : 'bg-slate-50 border border-slate-200 text-slate-700'
+              }`}
+            >
+              <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${isPaid ? 'text-emerald-600' : 'text-slate-400'}`} />
+              {isPaid ? (
+                <span>
+                  Paid{request.paymentRecord ? ` ${formatINR(request.paymentRecord.amount)}` : ''}
+                  {request.paymentRecord?.method ? ` by ${request.paymentRecord.method}` : ''}
+                  {request.paymentRecord?.collectedAt ? ` on ${formatDate(request.paymentRecord.collectedAt)}` : ''}. Thank you!
+                </span>
+              ) : request.status === 'Cancelled' ? (
+                <span>This request was cancelled — nothing to pay.</span>
+              ) : (
+                <span>Nothing to pay now. You pay our agent by cash or UPI when your racket is delivered back.</span>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        {/* Right: progress, technician, review */}
+        <div className="lg:col-span-2 space-y-5">
+          <Card title="Progress">
+            <RequestProgress request={request} gettingServices={gettingServices} repairCategories={repairCategories} />
+          </Card>
+
+          {request.assignedEmployeeName && (
+            <section className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-2xs flex items-center gap-3">
+              <span className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                <User className="w-5 h-5" />
+              </span>
+              <span>
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">Handled by</span>
+                <span className="block text-sm font-bold text-slate-900">{request.assignedEmployeeName}</span>
+              </span>
+            </section>
+          )}
+
+          {request.status === 'Completed' && (
+            <Card title="Your review" icon={<Star className="w-4 h-4 text-amber-500 fill-amber-500" />}>
               {request.review ? (
-                <div className="space-y-2 bg-amber-50/50 p-4 rounded-2xl border border-amber-200/60">
-                  <div className="flex items-center gap-1">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1" aria-label={`${request.review.rating} out of 5 stars`}>
                     {[1, 2, 3, 4, 5].map((s) => (
-                      <Star
-                        key={s}
-                        className={`w-5 h-5 ${
-                          s <= request.review!.rating
-                            ? 'text-amber-500 fill-amber-500'
-                            : 'text-slate-300'
-                        }`}
-                      />
+                      <Star key={s} className={`w-5 h-5 ${s <= request.review!.rating ? 'text-amber-500 fill-amber-500' : 'text-slate-300'}`} />
                     ))}
-                    <span className="ml-2 text-sm font-bold text-slate-900">
-                      {request.review.rating} / 5 Stars
-                    </span>
+                    <span className="ml-2 text-sm font-bold text-slate-900">{request.review.rating} / 5</span>
                   </div>
-                  <p className="text-xs text-slate-700 italic">"{request.review.comment}"</p>
-                  <p className="text-[10px] text-slate-400">
-                    Submitted on {new Date(request.review.createdAt).toLocaleDateString()}
+                  <p className="text-sm text-slate-700 whitespace-pre-line">“{request.review.comment}”</p>
+                  <p className="text-[11px] text-slate-500">
+                    Sent {formatDate(request.review.createdAt)}. Thank you! Reviews are checked by the shop before they appear on our
+                    website.
                   </p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-xs text-slate-600">
-                    How was your experience with our stringing / repair craftsmanship?
-                  </p>
-                  {/* Star selector */}
-                  <div className="flex items-center gap-1.5">
+                  <p className="text-xs text-slate-600">How was the {isRepair ? 'repair' : 'stringing'} and the pickup & delivery?</p>
+                  <div className="flex items-center gap-1" role="radiogroup" aria-label="Star rating">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         key={star}
                         type="button"
-                        onClick={() => setReviewRating(star)}
+                        role="radio"
+                        aria-checked={reviewRating === star}
+                        aria-label={`${star} star${star > 1 ? 's' : ''}`}
+                        onClick={() => {
+                          setReviewRating(star);
+                          setReviewError(null);
+                        }}
                         onMouseEnter={() => setHoverRating(star)}
                         onMouseLeave={() => setHoverRating(0)}
-                        className="p-1 hover:scale-110 transition-transform"
+                        className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-amber-50"
                       >
-                        <Star
-                          className={`w-6 h-6 transition-colors ${
-                            star <= (hoverRating || reviewRating)
-                              ? 'text-amber-500 fill-amber-500'
-                              : 'text-slate-300'
-                          }`}
-                        />
+                        <Star className={`w-6 h-6 ${star <= shownRating ? 'text-amber-500 fill-amber-500' : 'text-slate-300'}`} />
                       </button>
                     ))}
-                    <span className="text-xs font-bold text-slate-700 ml-2">
-                      {hoverRating || reviewRating} Stars
-                    </span>
+                    {shownRating > 0 && <span className="text-xs font-bold text-slate-700 ml-1">{shownRating} / 5</span>}
                   </div>
-
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Your Comments
+                    <label htmlFor="review-comment" className="block text-xs font-semibold text-slate-700 mb-1">
+                      Your comments
                     </label>
                     <textarea
-                      rows={2}
+                      id="review-comment"
+                      rows={3}
+                      maxLength={REVIEW_MAX}
                       value={reviewComment}
-                      onChange={(e) => setReviewComment(e.target.value)}
-                      placeholder="Share your thoughts on tension accuracy, repair strength, delivery speed..."
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                      onChange={(e) => {
+                        setReviewComment(e.target.value);
+                        if (reviewError) setReviewError(null);
+                      }}
+                      placeholder="e.g. tension felt right, pickup was on time…"
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                   </div>
-
+                  {reviewError && (
+                    <p className="text-xs text-rose-700 flex items-center gap-1.5" role="alert">
+                      <AlertCircle className="w-4 h-4 shrink-0" /> {reviewError}
+                    </p>
+                  )}
                   <Button
-                    onClick={() => {
-                      if (!reviewComment.trim()) {
-                        alert('Please add a short comment for your review.');
-                        return;
-                      }
-                      submitReview(request.id, {
-                        rating: reviewRating,
-                        comment: reviewComment,
-                        createdAt: new Date().toISOString(),
-                      });
-                    }}
+                    onClick={handleSubmitReview}
                     variant="primary"
-                    size="sm"
-                    className="w-full"
-                    leftIcon={<Star className="w-3.5 h-3.5" />}
+                    size="md"
+                    isLoading={reviewSubmitting}
+                    disabled={reviewSubmitting}
+                    className="w-full min-h-[44px]"
+                    leftIcon={<Star className="w-4 h-4" />}
                   >
-                    Submit Customer Review
+                    Send review
                   </Button>
+                  <p className="text-[11px] text-slate-500">The shop checks reviews before they appear on our website.</p>
                 </div>
               )}
-            </div>
+            </Card>
           )}
+
+          <section className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 flex items-center gap-3">
+            <Phone className="w-4 h-4 text-slate-500 shrink-0" />
+            <span>
+              Questions about this request? Call{' '}
+              <a href={telHref(shop.phone)} className="font-bold text-blue-700 underline whitespace-nowrap">
+                {phoneDisplay(shop.phone)}
+              </a>{' '}
+              and quote <span className="font-mono font-bold">{request.id}</span>.
+            </span>
+          </section>
         </div>
       </div>
     </div>

@@ -2,7 +2,7 @@
 export default {
   content: [
     "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
+    "./src/**/*.{js,ts,jsx,tsx,html}",
   ],
   theme: {
     extend: {
@@ -31,10 +31,26 @@ export default {
           lime: '#84CC16',
           dark: '#064E3B',
           light: '#ECFDF5'
-        }
+        },
+        // Public homepage palette: deep ink/navy, warm paper, one warm accent (brandYellow).
+        ink: {
+          DEFAULT: '#0F1B2B',
+          soft: '#3A4757',
+          muted: '#5C6878',
+        },
+        paper: {
+          DEFAULT: '#F6F4EF',
+          deep: '#EDEAE2',
+        },
+        line: '#E3DFD6',
+        accent: {
+          DEFAULT: '#FCD116',
+          hover: '#F2C200',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'Manrope', 'system-ui', 'sans-serif'],
+        display: ['"Barlow Condensed"', 'Inter', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         'card': '14px',
