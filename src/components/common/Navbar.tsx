@@ -16,12 +16,14 @@ import { formatINR } from '../../utils/format';
 /** Server messages contain raw amounts like "₹450.0" or "₹1836" — show "₹450" / "₹1,836". */
 const tidyRupees = (text: string) => text.replace(/₹\s?(\d+(?:\.\d+)?)/g, (_m, n: string) => formatINR(n));
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { CartButton } from '../shop/CartButton';
 import { useStaffJobs } from '../employee/useStaffJobs';
 
 const CUSTOMER_TABS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'wizard', label: 'Book Service' },
   { id: 'requests', label: 'My Requests' },
+  { id: 'orders', label: 'Orders' },
   { id: 'addresses', label: 'Saved Addresses' },
   { id: 'profile', label: 'Profile' },
 ];
@@ -97,6 +99,20 @@ export const Navbar: React.FC = () => {
       setEmployeeSubView('detail');
     } else {
       openRequestDetail(requestId);
+    }
+  };
+
+  /** Shop orders ("ORD-…") open in the customer's Orders screen or the admin Orders page. */
+  const isOrderId = (id?: string | null): id is string => !!id && id.startsWith('ORD-');
+  const canOpenOrder = currentRole === 'CUSTOMER' || currentRole === 'ADMIN';
+  const openOrderFromNotification = (orderId: string) => {
+    setSelectedRequestId(orderId);
+    if (currentRole === 'CUSTOMER') {
+      setActiveView('customer_portal');
+      setCustomerSubView('orders');
+    } else if (currentRole === 'ADMIN') {
+      setActiveView('admin_portal');
+      setAdminSubView('orders');
     }
   };
 
@@ -281,6 +297,7 @@ export const Navbar: React.FC = () => {
           {!isLoggedIn ? (
             /* Unauthenticated: User Login Icon */
             <div className="flex items-center gap-1.5">
+              <CartButton />
               {activeView === 'login' ? (
                 <button
                   onClick={() => {
@@ -308,6 +325,8 @@ export const Navbar: React.FC = () => {
           ) : (
             /* Authenticated Portal View: Role-Specific Notification Bell + QR + User Identity + Logout */
             <div className="flex items-center gap-2">
+              {/* Shopping cart: customers only (staff and admins don't shop from the app). */}
+              {currentRole === 'CUSTOMER' && <CartButton />}
               {/* Notification Bell Dropdown (Authenticated Users Only) */}
               <div className="relative" ref={bellRef}>
                 <button
@@ -363,7 +382,10 @@ export const Navbar: React.FC = () => {
                             key={notif.id}
                             onClick={() => {
                               markNotificationRead(notif.id);
-                              if (notif.requestId && requests.some((r) => r.id === notif.requestId)) {
+                              if (isOrderId(notif.requestId) && canOpenOrder) {
+                                openOrderFromNotification(notif.requestId);
+                                setNotificationsOpen(false);
+                              } else if (notif.requestId && requests.some((r) => r.id === notif.requestId)) {
                                 openFromNotification(notif.requestId);
                                 setNotificationsOpen(false);
                               }
@@ -385,7 +407,7 @@ export const Navbar: React.FC = () => {
                             <p className="text-slate-600 mt-1 text-[11px] leading-relaxed">
                               {tidyRupees(notif.message.replace(/\+91\d{10}\b/g, (m) => formatMobile(m)))}
                             </p>
-                            {notif.requestId && requests.some((r) => r.id === notif.requestId) && (
+                            {notif.requestId && (requests.some((r) => r.id === notif.requestId) || (isOrderId(notif.requestId) && canOpenOrder)) && (
                               <span className="inline-block mt-1 text-[10px] font-mono font-bold text-ink bg-white px-1.5 py-0.2 rounded border border-line">
                                 View {notif.requestId} →
                               </span>

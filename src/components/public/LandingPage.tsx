@@ -30,7 +30,7 @@ const BANNER_DEFAULT_LABEL: Record<Exclude<BannerCtaTarget, 'none'>, string> = {
   repair: 'Book a repair',
   strings: 'See our strings',
   rackets: 'See rackets',
-  tshirts: 'Ask about T-shirts',
+  tshirts: 'See T-shirts',
   courts: 'Get in touch',
   tournaments: 'See events',
   url: 'Find out more',
@@ -204,6 +204,10 @@ export const LandingPage: React.FC = () => {
     window.scrollTo({ top: 0 });
   };
   const onStaffLogin = (role: 'EMPLOYEE' | 'ADMIN') => appRef.current.openAuthModal(role);
+  const openTshirts = () => {
+    appRef.current.setActiveView('apparel');
+    window.scrollTo({ top: 0 });
+  };
 
   // ---------------------------------------------------------------------------
   // Events
@@ -301,6 +305,8 @@ export const LandingPage: React.FC = () => {
         if (href) primary = { label, href, external: true };
       } else if (target === 'stringing' || target === 'repair') {
         primary = { label, onClick: () => startBooking(target) };
+      } else if (target === 'tshirts') {
+        primary = { label, onClick: () => appRef.current.setActiveView('apparel') };
       } else if (target !== 'none') {
         const id =
           target === 'strings'
@@ -311,7 +317,7 @@ export const LandingPage: React.FC = () => {
                 : SECTION_IDS.contact
               : target === 'tournaments'
                 ? SECTION_IDS.events
-                : SECTION_IDS.contact; // tshirts, courts
+                : SECTION_IDS.contact; // courts
         primary = { label, onClick: () => navigate(id) };
       }
       return {
@@ -344,6 +350,7 @@ export const LandingPage: React.FC = () => {
         onStaffLogin={onStaffLogin}
         onNavigate={navigate}
         showStaffLinks={!isLoggedIn}
+        onOpenTshirts={openTshirts}
       />
 
       <div id="content">
@@ -380,7 +387,14 @@ export const LandingPage: React.FC = () => {
         <ContactSection availability={availability} documents={content?.documents || []} />
       </div>
 
-      <SiteFooter nav={nav} onNavigate={navigate} onBook={startBooking} onStaffLogin={onStaffLogin} showStaffLinks={!isLoggedIn} />
+      <SiteFooter
+        nav={nav}
+        onNavigate={navigate}
+        onBook={startBooking}
+        onStaffLogin={onStaffLogin}
+        showStaffLinks={!isLoggedIn}
+        onOpenTshirts={openTshirts}
+      />
 
       <EventDialog
         event={dialogEvent}

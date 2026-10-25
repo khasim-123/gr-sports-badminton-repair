@@ -9,6 +9,7 @@ import { RepairEstimateModal } from './components/customer/RepairEstimateModal';
 import { RevisedEstimateModal } from './components/customer/RevisedEstimateModal';
 import { Footer } from './components/common/Footer';
 import { analyticsService } from './services/analyticsService';
+import { CartAddedNotice, CartDrawer } from './components/shop/CartDrawer';
 
 // Views
 import { LandingPage } from './components/public/LandingPage';
@@ -17,6 +18,7 @@ import { CentralLogin } from './components/public/CentralLogin';
 const CustomerPortal = lazy(() => import('./components/customer/CustomerPortal').then((m) => ({ default: m.CustomerPortal })));
 const EmployeePortal = lazy(() => import('./components/employee/EmployeePortal').then((m) => ({ default: m.EmployeePortal })));
 const AdminPortal = lazy(() => import('./components/admin/AdminPortal').then((m) => ({ default: m.AdminPortal })));
+const ApparelStore = lazy(() => import('./components/shop/ApparelStore').then((m) => ({ default: m.ApparelStore })));
 
 const PortalLoading: React.FC = () => (
   <div className="flex items-center justify-center gap-2 py-24 text-sm text-slate-500" role="status">
@@ -25,7 +27,7 @@ const PortalLoading: React.FC = () => (
   </div>
 );
 
-const KNOWN_VIEWS = ['landing', 'login', 'customer_portal', 'employee_portal', 'admin_portal'];
+const KNOWN_VIEWS = ['landing', 'apparel', 'login', 'customer_portal', 'employee_portal', 'admin_portal'];
 
 export const App: React.FC = () => {
   const { activeView, setActiveView, isLoggedIn, currentRole, isAuthChecking, customerSubView } = useApp();
@@ -81,7 +83,8 @@ export const App: React.FC = () => {
     return <LandingPage />;
   };
 
-  const isStandaloneLanding = activeView === 'landing';
+  // The homepage and the T-shirt store (/tshirts) render their own header, main and footer.
+  const isStandaloneLanding = activeView === 'landing' || activeView === 'apparel';
   // Admin console uses an app layout on desktop: fixed top bar + sidebar, only the main area scrolls.
   const isAdminShell = !isAuthChecking && isLoggedIn && activeView === 'admin_portal' && currentRole === 'ADMIN';
   // Customer screens (portal + login) and the staff portal keep their top bar on screen while the
@@ -131,7 +134,11 @@ export const App: React.FC = () => {
 
       {/* View Router */}
       {/* The homepage renders its own header, main and footer landmarks. */}
-      {isStandaloneLanding ? (
+      {activeView === 'apparel' ? (
+        <Suspense fallback={<PortalLoading />}>
+          <ApparelStore />
+        </Suspense>
+      ) : isStandaloneLanding ? (
         <LandingPage />
       ) : (
         <main className={isAdminShell ? 'flex-1 lg:min-h-0' : 'flex-1'}>
@@ -151,6 +158,8 @@ export const App: React.FC = () => {
       <RepairEstimateModal />
       <RevisedEstimateModal />
       <ToastContainer />
+      <CartDrawer />
+      <CartAddedNotice />
     </div>
   );
 };

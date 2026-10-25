@@ -114,7 +114,11 @@ export const Stars: React.FC<{ rating: number; className?: string }> = ({ rating
 };
 
 /** Small shop wordmark (name + tagline from the shop settings) used in the header and footer. */
-export const Wordmark: React.FC<{ tone?: 'light' | 'dark'; subline?: boolean }> = ({ tone = 'light', subline = true }) => {
+export const Wordmark: React.FC<{ tone?: 'light' | 'dark'; subline?: boolean; sublineText?: string }> = ({
+  tone = 'light',
+  subline = true,
+  sublineText,
+}) => {
   const shop = useShopSettings();
   return (
   <span className="inline-flex items-center gap-2.5">
@@ -136,9 +140,9 @@ export const Wordmark: React.FC<{ tone?: 'light' | 'dark'; subline?: boolean }> 
       <span className={cx('block font-display font-bold text-[25px] tracking-[0.01em]', tone === 'dark' ? 'text-white' : 'text-ink')}>
         {shop.name}
       </span>
-      {subline && shop.tagline && (
+      {subline && (sublineText || shop.tagline) && (
         <span className={cx('mt-1 block text-[12px] font-medium', tone === 'dark' ? 'text-white/60' : 'text-ink-muted')}>
-          {shop.tagline}
+          {sublineText || shop.tagline}
         </span>
       )}
     </span>

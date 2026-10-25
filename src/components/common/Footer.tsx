@@ -104,6 +104,11 @@ export const Footer: React.FC = () => {
                 </button>
               </li>
               <li>
+                <button type="button" onClick={() => goToPortal('orders')} className={linkClass}>
+                  My shop orders
+                </button>
+              </li>
+              <li>
                 <button type="button" onClick={() => setQrModalOpen(true)} className={linkClass}>
                   <QrCode className="w-3.5 h-3.5" /> Share our booking link (QR)
                 </button>
@@ -118,7 +123,7 @@ export const Footer: React.FC = () => {
               {[
                 { label: 'Rackets', view: 'rackets' },
                 { label: 'String catalogue', view: 'strings' },
-                { label: 'T-Shirts', view: 'tshirts' },
+                { label: 'T-shirts & team wear', view: 'tshirts' },
                 { label: 'Store home page', view: 'home' },
               ].map((item) => (
                 <li key={item.view}>

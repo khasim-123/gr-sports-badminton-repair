@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Float, Boolean, Text, JSON, LargeBinary, ForeignKey
+from sqlalchemy import Column, String, Integer, Float, Boolean, Text, JSON, LargeBinary, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -372,3 +372,75 @@ class VisitModel(Base):
     customerPhone = Column(String, nullable=True, index=True)
     day = Column(String, nullable=False, index=True)  # YYYY-MM-DD in IST
     createdAt = Column(String, nullable=False, index=True)  # ISO UTC
+
+
+# ---------------- Shop: apparel catalogue & online orders ----------------
+
+class ApparelProductModel(Base):
+    """T-shirts, jerseys and other clothing sold in the shop (admin managed)."""
+    __tablename__ = "apparel_products"
+
+    id = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    category = Column(String, nullable=False, default="t-shirt")  # t-shirt | jersey | shorts | track | accessory
+    description = Column(Text, nullable=True)
+    fabric = Column(String, nullable=True)
+    fit = Column(String, nullable=True)
+    price = Column(Float, nullable=False)  # rupees per piece
+    images = Column(JSON, default=list)  # photo URLs, first = main (max 6)
+    customisable = Column(Boolean, default=False)  # name / number printing on request
+    isFeatured = Column(Boolean, default=False)
+    isActive = Column(Boolean, default=True)
+    sortOrder = Column(Integer, default=0, index=True)
+    createdAt = Column(String, nullable=False)
+
+    variants = relationship(
+        "ApparelVariantModel",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        order_by="ApparelVariantModel.sortOrder",
+    )
+
+
+class ApparelVariantModel(Base):
+    """One size + colour of an apparel product, with the units on hand."""
+    __tablename__ = "apparel_variants"
+    __table_args__ = (UniqueConstraint("productId", "size", "colour", name="uq_apparel_variants_size_colour"),)
+
+    id = Column(String, primary_key=True)
+    productId = Column(String, ForeignKey("apparel_products.id", ondelete="CASCADE"), nullable=False, index=True)
+    size = Column(String, nullable=False)
+    colour = Column(String, nullable=False)
+    colourHex = Column(String, nullable=True)
+    stock = Column(Integer, nullable=False, default=0)
+    sku = Column(String, nullable=True)
+    sortOrder = Column(Integer, default=0)
+
+    product = relationship("ApparelProductModel", back_populates="variants")
+
+
+class OrderModel(Base):
+    """An online shop order (apparel, rackets, string sets). Item names, details, prices and
+    photos are snapshots taken when the order was placed, so later catalogue edits (or a
+    deleted product) don't change past orders."""
+    __tablename__ = "orders"
+
+    id = Column(String, primary_key=True)  # ORD-12345
+    customerName = Column(String, nullable=False)
+    customerMobile = Column(String, nullable=False, index=True)  # +91XXXXXXXXXX
+    createdAt = Column(String, nullable=False, index=True)  # ISO UTC
+    status = Column(String, nullable=False, index=True)
+    fulfilment = Column(String, nullable=False)  # delivery | pickup
+    address = Column(JSON, nullable=True)  # delivery only
+    distanceKm = Column(Float, nullable=True)
+    items = Column(JSON, default=list)
+    subtotal = Column(Float, nullable=False, default=0.0)
+    deliveryCharge = Column(Float, nullable=False, default=0.0)
+    total = Column(Float, nullable=False, default=0.0)
+    paymentStatus = Column(String, nullable=False, default="Pending")  # Pending | Paid
+    paymentMethod = Column(String, nullable=True)  # Cash | UPI | Other
+    paidAmount = Column(Float, nullable=True)
+    paidAt = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)  # customer's note
+    cancelReason = Column(Text, nullable=True)
+    timeline = Column(JSON, default=list)

@@ -14,6 +14,7 @@ import {
   priceLabel,
   serviceSummary,
 } from './requestDisplay';
+import { YourOrdersBlock } from '../shop/MyOrders';
 
 export const CustomerDashboard: React.FC = () => {
   const {
@@ -97,6 +98,9 @@ export const CustomerDashboard: React.FC = () => {
           </button>
         </div>
       </section>
+
+      {/* Shop orders (only when there are any) */}
+      <YourOrdersBlock />
 
       {/* Things that need the customer's attention */}
       {(approvals.length > 0 || reviewable.length > 0) && (

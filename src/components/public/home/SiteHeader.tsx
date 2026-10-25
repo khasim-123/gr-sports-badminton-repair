@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Clock, MapPin, Menu, Phone, Truck, X } from 'lucide-react';
+import { Clock, MapPin, Menu, Phone, Shirt, Truck, X } from 'lucide-react';
+import { CartButton } from '../../shop/CartButton';
 import { useModalBehavior } from './Dialog';
 import { useShop } from './shop';
 import { WhatsAppIcon, Wordmark, btn, container, cx } from './ui';
@@ -19,6 +20,8 @@ interface SiteHeaderProps {
   onStaffLogin: (role: 'EMPLOYEE' | 'ADMIN') => void;
   onNavigate: (id: string) => void;
   showStaffLinks: boolean;
+  /** Opens the T-shirt store (/tshirts). */
+  onOpenTshirts: () => void;
 }
 
 /** Highlights the nav item whose section is in the middle of the viewport. */
@@ -66,6 +69,7 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
   onStaffLogin,
   onNavigate,
   showStaffLinks,
+  onOpenTshirts,
 }) => {
   const SHOP = useShop();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -105,6 +109,17 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
             <a href={SHOP.phoneTel} className="hidden md:inline-flex items-center gap-1.5 hover:text-white">
               <Phone className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
               {SHOP.phoneDisplay}
+            </a>
+            <a
+              href="/tshirts"
+              onClick={(e) => {
+                e.preventDefault();
+                onOpenTshirts();
+              }}
+              className="lg:hidden inline-flex min-h-[36px] shrink-0 items-center gap-1.5 font-semibold text-white hover:text-accent"
+            >
+              <Shirt className="h-4 w-4 text-accent" aria-hidden="true" />
+              T-shirts
             </a>
           </div>
         </div>
@@ -152,24 +167,38 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
                   </a>
                 </li>
               ))}
+              <li className="ml-1 border-l border-line pl-1.5">
+                <a
+                  href="/tshirts"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onOpenTshirts();
+                  }}
+                  className="inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 xl:px-3 text-[15px] font-medium text-ink hover:text-sportsBlue focus-visible:outline focus-visible:outline-2 focus-visible:outline-sportsBlue"
+                >
+                  <Shirt className="h-[18px] w-[18px]" aria-hidden="true" />
+                  T-shirts
+                </a>
+              </li>
             </ul>
           </nav>
 
           <div className="flex items-center gap-2">
-            <a href={SHOP.phoneTel} className={cx(btn.base, btn.secondary, 'hidden sm:inline-flex px-4')}>
+            <a href={SHOP.phoneTel} className={cx(btn.base, btn.secondary, 'hidden sm:inline-flex lg:hidden 2xl:inline-flex px-4')}>
               <Phone className="h-4 w-4" aria-hidden="true" />
               Call
             </a>
-            <button type="button" onClick={onAccount} className={cx(btn.base, btn.primary, 'hidden sm:inline-flex px-4')}>
+            <button type="button" onClick={onAccount} className={cx(btn.base, btn.primary, 'hidden sm:inline-flex whitespace-nowrap px-4')}>
               {accountLabel}
             </button>
             <a
               href={SHOP.phoneTel}
-              className="sm:hidden inline-flex h-11 w-11 items-center justify-center rounded-xl border border-line text-ink"
+              className="sm:hidden lg:inline-flex 2xl:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line text-ink"
               aria-label={`Call ${SHOP.name}, ${SHOP.phoneDisplay}`}
             >
               <Phone className="h-5 w-5" aria-hidden="true" />
             </a>
+            <CartButton />
             <button
               type="button"
               onClick={() => setMenuOpen(true)}
@@ -205,6 +234,10 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
           onStaffLogin(role);
         }}
         showStaffLinks={showStaffLinks}
+        onOpenTshirts={() => {
+          setMenuOpen(false);
+          onOpenTshirts();
+        }}
       />
     </>
   );
@@ -221,6 +254,7 @@ interface MenuSheetProps {
   onNavigate: (id: string) => void;
   onStaffLogin: (role: 'EMPLOYEE' | 'ADMIN') => void;
   showStaffLinks: boolean;
+  onOpenTshirts: () => void;
 }
 
 const MenuSheet: React.FC<MenuSheetProps> = ({
@@ -234,6 +268,7 @@ const MenuSheet: React.FC<MenuSheetProps> = ({
   onNavigate,
   onStaffLogin,
   showStaffLinks,
+  onOpenTshirts,
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -284,6 +319,19 @@ const MenuSheet: React.FC<MenuSheetProps> = ({
                 </a>
               </li>
             ))}
+            <li className="mt-2 border-t border-line pt-2">
+              <a
+                href="/tshirts"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onOpenTshirts();
+                }}
+                className="flex min-h-[52px] items-center gap-3 rounded-xl px-3 font-display text-[24px] font-semibold text-ink hover:bg-paper"
+              >
+                <Shirt className="h-6 w-6 text-ink-soft" aria-hidden="true" />
+                T-shirts &amp; team wear
+              </a>
+            </li>
           </ul>
         </nav>
 

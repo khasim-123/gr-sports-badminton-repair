@@ -43,9 +43,10 @@ export function safeHex(value: string | null | undefined): string | null {
  */
 export function siteSrcSet(url: string | null | undefined): string | undefined {
   if (!url) return undefined;
-  const m = /^(\/images\/site\/.+?)(-sm)?\.webp$/.exec(url);
+  const m = /^(\/images\/(site|apparel)\/.+?)(-sm)?\.webp$/.exec(url);
   if (!m) return undefined;
-  return `${m[1]}-sm.webp 800w, ${m[1]}.webp 1920w`;
+  // Site photos are 1920 px wide, the apparel photos 1600 px.
+  return `${m[1]}-sm.webp 800w, ${m[1]}.webp ${m[2] === 'site' ? 1920 : 1600}w`;
 }
 
 /** ₹ with Indian digit grouping, e.g. ₹1,49,990. */

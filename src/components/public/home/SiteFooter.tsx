@@ -10,12 +10,13 @@ interface SiteFooterProps {
   onBook: (service: 'stringing' | 'repair') => void;
   onStaffLogin: (role: 'EMPLOYEE' | 'ADMIN') => void;
   showStaffLinks: boolean;
+  onOpenTshirts?: () => void;
 }
 
 const linkClass =
   'inline-flex min-h-[44px] items-center text-white/75 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white rounded';
 
-export const SiteFooter: React.FC<SiteFooterProps> = ({ nav, onNavigate, onBook, onStaffLogin, showStaffLinks }) => {
+export const SiteFooter: React.FC<SiteFooterProps> = ({ nav, onNavigate, onBook, onStaffLogin, showStaffLinks, onOpenTshirts }) => {
   const SHOP = useShop();
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const year = new Date().getFullYear();
@@ -63,6 +64,20 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({ nav, onNavigate, onBook,
                 Racket repair
               </button>
             </li>
+            {onOpenTshirts && (
+              <li>
+                <a
+                  href="/tshirts"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onOpenTshirts();
+                  }}
+                  className={linkClass}
+                >
+                  T-shirts &amp; team wear
+                </a>
+              </li>
+            )}
           </ul>
         </div>
 

@@ -4,23 +4,25 @@
  * input in one tab survives switching to another.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { CalendarClock, FileText, Images, Layers, Medal, Star, Trophy } from 'lucide-react';
+import { CalendarClock, FileText, Images, Layers, Medal, Shirt, Star, Trophy } from 'lucide-react';
 import { contentService } from '../../../services/contentService';
 import { EventsManager } from './EventsManager';
 import { BannersManager } from './BannersManager';
 import { StringsManager } from './StringsManager';
 import { RacketsManager } from './RacketsManager';
+import { ApparelManager } from './ApparelManager';
 import { ReviewsManager } from './ReviewsManager';
 import { DocumentsManager } from './DocumentsManager';
 import { AvailabilityManager } from './AvailabilityManager';
 
-type TabId = 'events' | 'banners' | 'strings' | 'rackets' | 'reviews' | 'documents' | 'availability';
+type TabId = 'events' | 'banners' | 'strings' | 'rackets' | 'apparel' | 'reviews' | 'documents' | 'availability';
 
 const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'events', label: 'Events', icon: Medal },
   { id: 'banners', label: 'Banners', icon: Images },
   { id: 'strings', label: 'Strings & Stock', icon: Layers },
   { id: 'rackets', label: 'Rackets', icon: Trophy },
+  { id: 'apparel', label: 'T-shirts & Apparel', icon: Shirt },
   { id: 'reviews', label: 'Reviews', icon: Star },
   { id: 'documents', label: 'Documents', icon: FileText },
   { id: 'availability', label: 'Pickup Availability', icon: CalendarClock },
@@ -84,14 +86,14 @@ export const WebsiteContentPanel: React.FC = () => {
       <div>
         <h2 className="font-display tracking-[0.01em] text-3xl sm:text-4xl font-bold text-slate-900">Website Content</h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Manage what customers see on the GR Sports website — events, banners, string stock, rackets, reviews, documents and pickup days.
+          Manage what customers see on the GR Sports website — events, banners, string stock, rackets, T-shirts & apparel, reviews, documents and pickup days.
         </p>
       </div>
 
       <div
         role="tablist"
         aria-label="Website content sections"
-        className="flex gap-1 p-1 bg-white rounded-2xl border border-line shadow-2xs overflow-x-auto max-w-full"
+        className="flex gap-1 p-1 bg-white rounded-2xl border border-line shadow-2xs overflow-x-auto max-w-full lg:flex-wrap lg:overflow-visible"
       >
         {TABS.map((tab, i) => {
           const Icon = tab.icon;
@@ -141,6 +143,7 @@ export const WebsiteContentPanel: React.FC = () => {
             {tab.id === 'banners' && <BannersManager />}
             {tab.id === 'strings' && <StringsManager />}
             {tab.id === 'rackets' && <RacketsManager />}
+            {tab.id === 'apparel' && <ApparelManager />}
             {tab.id === 'reviews' && <ReviewsManager onPendingCountChange={handlePendingCount} />}
             {tab.id === 'documents' && <DocumentsManager />}
             {tab.id === 'availability' && <AvailabilityManager />}

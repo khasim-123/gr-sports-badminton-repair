@@ -20,6 +20,8 @@ from app.models import (
     RacketModel,
     AppMetaModel,
     EventModel,
+    ApparelProductModel,
+    ApparelVariantModel,
 )
 
 def seed_database(db: Session):
@@ -497,6 +499,11 @@ def seed_database(db: Session):
     if seed_demo and not db.query(EventModel).first():
         db.add_all(demo_events(business_today()))
 
+    # 10. Sample T-shirts so a local preview shows the shop (real photos in /images/apparel/).
+    # Demo branch only: production starts with no products; the admin adds the real ones.
+    if seed_demo and not db.query(ApparelProductModel).first():
+        db.add_all(demo_apparel())
+
     db.commit()
 
     seed_string_catalogue(db)
@@ -759,3 +766,62 @@ def demo_events(today: date) -> list:
             createdAt=now_iso(),
         ),
     ]
+
+
+# (name, category, price, images, customisable, featured, [(size, colour, hex, stock)])
+_DEMO_APPAREL = [
+    (
+        "Dry-fit round neck T-shirt", "t-shirt", 349,
+        ["/images/apparel/tee-white.webp", "/images/apparel/model-white.webp"], False, True,
+        [
+            (size, colour, hex_code, stock)
+            for colour, hex_code, stocks in (
+                ("White", "#FFFFFF", (4, 8, 6, 3, 0)),
+                ("Black", "#111111", (2, 6, 0, 5, 2)),
+                ("Navy", "#1F2A44", (0, 3, 4, 2, 1)),
+            )
+            for size, stock in zip(("S", "M", "L", "XL", "XXL"), stocks)
+        ],
+    ),
+    (
+        "Cotton crew neck T-shirt", "t-shirt", 299,
+        ["/images/apparel/tee-black.webp"], False, False,
+        [(size, "Black", "#111111", stock) for size, stock in zip(("S", "M", "L", "XL", "XXL"), (3, 7, 5, 0, 2))],
+    ),
+    (
+        "Sports polo T-shirt", "t-shirt", 449,
+        ["/images/apparel/polo.webp"], False, True,
+        [
+            (size, colour, hex_code, stock)
+            for colour, hex_code, stocks in (
+                ("Coral", "#F26B5B", (2, 4, 3, 0)),
+                ("Green", "#2E7D32", (1, 3, 0, 2)),
+                ("Grey", "#8A8F98", (3, 5, 4, 2)),
+            )
+            for size, stock in zip(("S", "M", "L", "XL"), stocks)
+        ],
+    ),
+    (
+        "Custom team jersey (name & number)", "jersey", 599,
+        ["/images/apparel/team.webp"], True, False,
+        [(size, "Red", "#C62828", stock) for size, stock in zip(("S", "M", "L", "XL"), (10, 15, 15, 10))],
+    ),
+]
+
+
+def demo_apparel() -> list:
+    """Local-development sample apparel (SEED_DEMO_DATA). Plain names, no descriptions:
+    the admin writes the real product details."""
+    products = []
+    for order, (name, category, price, images, customisable, featured, variants) in enumerate(_DEMO_APPAREL):
+        product = ApparelProductModel(
+            id=new_id("APP"), name=name, category=category, description=None, fabric=None, fit=None,
+            price=float(price), images=images, customisable=customisable, isFeatured=featured,
+            isActive=True, sortOrder=order, createdAt=now_iso(),
+        )
+        for v_order, (size, colour, hex_code, stock) in enumerate(variants):
+            product.variants.append(ApparelVariantModel(
+                id=new_id("AVR"), size=size, colour=colour, colourHex=hex_code, stock=stock, sku=None, sortOrder=v_order,
+            ))
+        products.append(product)
+    return products

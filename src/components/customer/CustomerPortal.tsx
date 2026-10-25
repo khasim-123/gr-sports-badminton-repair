@@ -4,6 +4,8 @@ import { CustomerDashboard } from './CustomerDashboard';
 import { NewServiceWizard } from './NewServiceWizard';
 import { MyRequests } from './MyRequests';
 import { RequestDetailView } from './RequestDetailView';
+import { Checkout } from '../shop/Checkout';
+import { MyOrders } from '../shop/MyOrders';
 import { User, Phone, ShieldCheck, PlusCircle, Trash2, X, Save, CheckCircle2, AlertCircle, Smartphone, LogOut } from 'lucide-react';
 import { Button } from '../common/Button';
 import { formatMobile } from '../../utils/phone';
@@ -17,6 +19,7 @@ const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'wizard', label: '+ Book' },
   { id: 'requests', label: 'Requests' },
+  { id: 'orders', label: 'Orders' },
   { id: 'addresses', label: 'Addresses' },
   { id: 'profile', label: 'Profile' },
 ];
@@ -171,6 +174,8 @@ export const CustomerPortal: React.FC = () => {
       {customerSubView === 'wizard' && <NewServiceWizard />}
       {customerSubView === 'requests' && <MyRequests />}
       {customerSubView === 'detail' && <RequestDetailView />}
+      {customerSubView === 'checkout' && <Checkout />}
+      {customerSubView === 'orders' && <MyOrders />}
 
       {/* Saved addresses */}
       {customerSubView === 'addresses' && (

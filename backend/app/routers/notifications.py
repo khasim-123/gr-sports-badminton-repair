@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import NotificationModel, ServiceRequestModel
+from app.models import NotificationModel, OrderModel, ServiceRequestModel
 from app.schemas import AppNotificationSchema, NotificationCreate
 from app.security import CurrentUser, get_current_user, require_admin, require_staff
 from app.services.notification_service import create_notification
@@ -12,7 +12,8 @@ router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 def _visible_notifications(db: Session, user: CurrentUser, unread_only: bool = False) -> List[NotificationModel]:
     """Staff see notifications targeted at their role. Customers only see customer-targeted
-    notifications about their own requests."""
+    notifications about their own service requests and shop orders (an order notification's
+    requestId is the order id)."""
     query = db.query(NotificationModel)
     if unread_only:
         query = query.filter(NotificationModel.isRead == False)  # noqa: E712
@@ -26,6 +27,9 @@ def _visible_notifications(db: Session, user: CurrentUser, unread_only: bool = F
             rid for (rid,) in db.query(ServiceRequestModel.id)
             .filter(ServiceRequestModel.customerMobile == user.phone)
             .all()
+        }
+        own_request_ids |= {
+            oid for (oid,) in db.query(OrderModel.id).filter(OrderModel.customerMobile == user.phone).all()
         }
     elif not user.is_admin:
         # Employees: general notices plus ones about their own jobs / new unassigned bookings.

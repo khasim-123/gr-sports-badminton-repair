@@ -269,6 +269,12 @@ const errorMessage = (err: unknown, fallback: string): string => {
 /** 401s are handled globally (session-expired logout + toast). */
 const isSessionExpiredError = (err: unknown) => err instanceof ApiError && err.status === 401;
 
+/** The T-shirt store view and its URL path (the rest of the app lives at "/"). */
+const APPAREL_VIEW = 'apparel';
+const APPAREL_PATH = '/tshirts';
+const isApparelPath = () =>
+  typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '').toLowerCase() === APPAREL_PATH;
+
 const portalForRole = (role: UserRole) =>
   role === 'ADMIN' ? 'admin_portal' : role === 'EMPLOYEE' ? 'employee_portal' : 'customer_portal';
 
@@ -288,9 +294,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Navigation & Role
   const [currentRole, setCurrentRole] = useState<UserRole>(initialSession?.role || 'CUSTOMER');
   const [activeView, setActiveView] = useState<string>(() => {
+    // The T-shirt store has its own address (/tshirts) and opens from a direct link for anyone.
+    if (isApparelPath()) return 'apparel';
     if (!initialSession) return 'landing';
     const view = initialSession.activeView;
-    return view && view !== 'login' ? view : portalForRole(initialSession.role);
+    return view && view !== 'login' && view !== APPAREL_VIEW ? view : portalForRole(initialSession.role);
   });
   const [customerSubView, setCustomerSubView] = useState<string>(() => {
     const sub = initialSession?.customerSubView || 'dashboard';
@@ -348,6 +356,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [reloadNonce, setReloadNonce] = useState<number>(0);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
+  const currentRoleRef = useRef<UserRole>(currentRole);
+  currentRoleRef.current = currentRole;
   /** Synchronously-updated login flag (state updates are async). */
   const isLoggedInRef = useRef<boolean>(!!initialSession);
   /** Incremented whenever user data must be (re)loaded or discarded; stale responses are ignored. */
@@ -539,6 +549,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the address bar in step with the T-shirt store view: entering it pushes /tshirts, leaving
+  // it pushes /, and the browser's back / forward buttons switch the view.
+  const activeViewRef = useRef(activeView);
+  activeViewRef.current = activeView;
+  const lastAppViewRef = useRef<string | null>(activeView === APPAREL_VIEW ? null : activeView);
+  const viewFromHistoryRef = useRef(false);
+  useEffect(() => {
+    if (activeView !== APPAREL_VIEW) lastAppViewRef.current = activeView;
+    if (viewFromHistoryRef.current) {
+      viewFromHistoryRef.current = false;
+      return;
+    }
+    const onApparelPath = isApparelPath();
+    try {
+      if (activeView === APPAREL_VIEW && !onApparelPath) {
+        window.history.pushState({ grView: APPAREL_VIEW }, '', APPAREL_PATH);
+      } else if (activeView !== APPAREL_VIEW && onApparelPath) {
+        window.history.pushState({ grView: activeView }, '', '/');
+      }
+    } catch {
+      // history API unavailable (sandboxed frame): the view still changes
+    }
+  }, [activeView]);
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      let target: string;
+      if (isApparelPath()) target = APPAREL_VIEW;
+      else {
+        const fromState = e.state && typeof e.state.grView === 'string' ? (e.state.grView as string) : '';
+        target =
+          fromState && fromState !== APPAREL_VIEW
+            ? fromState
+            : lastAppViewRef.current || (isLoggedInRef.current ? portalForRole(currentRoleRef.current) : 'landing');
+        if (!isLoggedInRef.current && target !== 'login') target = 'landing';
+      }
+      if (target === activeViewRef.current) return;
+      viewFromHistoryRef.current = true;
+      setActiveView(target);
+      window.scrollTo({ top: 0 });
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
   }, []);
 
   // Persist navigation state into the stored session (merging — the token is preserved).

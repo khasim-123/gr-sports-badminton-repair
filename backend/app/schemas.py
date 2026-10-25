@@ -808,3 +808,223 @@ class CustomerRequestSummarySchema(BaseModel):
 class CustomerDetailSchema(BaseModel):
     customer: CustomerSummarySchema
     requests: List[CustomerRequestSummarySchema] = []
+
+
+# ---------------- Shop: apparel catalogue, cart quotes and orders ----------------
+# Mirrors src/types/shop.ts. Lengths here are generous hard caps; app/routers/shop.py applies
+# the tighter limits with readable error messages.
+
+ApparelCategory = Literal['t-shirt', 'jersey', 'shorts', 'track', 'accessory']
+FulfilmentMethod = Literal['delivery', 'pickup']
+OrderStatus = Literal[
+    'Placed',
+    'Confirmed',
+    'Packed',
+    'Out for Delivery',
+    'Ready for Pickup',
+    'Delivered',
+    'Picked Up',
+    'Cancelled',
+]
+
+
+class ApparelVariantCreate(BaseModel):
+    model_config = FINITE
+    size: str = Field(max_length=200)
+    colour: str = Field(max_length=200)
+    colourHex: Optional[str] = Field(default=None, max_length=20)
+    stock: int = 0
+    sku: Optional[str] = Field(default=None, max_length=200)
+    sortOrder: Optional[int] = None
+
+
+class ApparelVariantUpdate(BaseModel):
+    model_config = FINITE
+    size: Optional[str] = Field(default=None, max_length=200)
+    colour: Optional[str] = Field(default=None, max_length=200)
+    colourHex: Optional[str] = Field(default=None, max_length=20)
+    stock: Optional[int] = None
+    sku: Optional[str] = Field(default=None, max_length=200)
+    sortOrder: Optional[int] = None
+
+
+class ApparelVariantSchema(OrmModel):
+    id: str
+    productId: str
+    size: str
+    colour: str
+    colourHex: Optional[str] = None
+    stock: int = 0
+    sku: Optional[str] = None
+    sortOrder: int = 0
+
+
+class ApparelColourOption(BaseModel):
+    colour: str
+    colourHex: Optional[str] = None
+
+
+class ApparelProductCreate(BaseModel):
+    model_config = FINITE
+    name: str = Field(max_length=500)
+    category: ApparelCategory = 't-shirt'
+    description: Optional[str] = Field(default=None, max_length=5000)
+    fabric: Optional[str] = Field(default=None, max_length=500)
+    fit: Optional[str] = Field(default=None, max_length=500)
+    price: float
+    images: List[str] = Field(default_factory=list, max_length=50)
+    customisable: bool = False
+    isFeatured: bool = False
+    isActive: bool = True
+    sortOrder: Optional[int] = None
+
+
+class ApparelProductUpdate(BaseModel):
+    model_config = FINITE
+    name: Optional[str] = Field(default=None, max_length=500)
+    category: Optional[ApparelCategory] = None
+    description: Optional[str] = Field(default=None, max_length=5000)
+    fabric: Optional[str] = Field(default=None, max_length=500)
+    fit: Optional[str] = Field(default=None, max_length=500)
+    price: Optional[float] = None
+    images: Optional[List[str]] = Field(default=None, max_length=50)
+    customisable: Optional[bool] = None
+    isFeatured: Optional[bool] = None
+    isActive: Optional[bool] = None
+    sortOrder: Optional[int] = None
+
+
+class ApparelProductSchema(BaseModel):
+    id: str
+    name: str
+    category: ApparelCategory
+    description: Optional[str] = None
+    fabric: Optional[str] = None
+    fit: Optional[str] = None
+    price: float
+    images: List[str] = []
+    customisable: bool = False
+    isFeatured: bool = False
+    isActive: bool = True
+    sortOrder: int = 0
+    createdAt: str
+    variants: List[ApparelVariantSchema] = []
+    # Computed by the server
+    inStock: bool = False
+    sizes: List[str] = []
+    colours: List[ApparelColourOption] = []
+
+
+class OrderAddressSchema(BaseModel):
+    """Delivery address (same shape as Address in src/types/index.ts). Every field has a
+    default so a half-filled address can still be quoted; placing an order checks the
+    required parts (house / flat, area, 6-digit pincode)."""
+    model_config = FINITE
+    id: Optional[str] = Field(default=None, max_length=60)
+    label: Literal['Home', 'Office', 'Other'] = 'Home'
+    houseFlat: str = Field(default="", max_length=200)
+    street: str = Field(default="", max_length=200)
+    area: str = Field(default="", max_length=120)
+    city: str = Field(default='Visakhapatnam', max_length=80)
+    state: str = Field(default='Andhra Pradesh', max_length=80)
+    pincode: str = Field(default="", max_length=12)
+    landmark: Optional[str] = Field(default=None, max_length=200)
+    distanceKm: float = 0.0
+    isDefault: Optional[bool] = False
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    distanceSource: Optional[Literal['location', 'customer', 'staff']] = None
+
+
+class CartLineInput(BaseModel):
+    model_config = FINITE
+    kind: str = Field(max_length=20)  # 'apparel' | 'racket' | 'string'; anything else is reported as unavailable
+    productId: str = Field(min_length=1, max_length=80)
+    variantId: Optional[str] = Field(default=None, max_length=80)
+    quantity: int
+
+
+class QuoteInput(BaseModel):
+    model_config = FINITE
+    items: List[CartLineInput] = Field(default_factory=list, max_length=100)
+    fulfilment: FulfilmentMethod = 'pickup'
+    address: Optional[OrderAddressSchema] = None
+
+
+class PlaceOrderInput(QuoteInput):
+    notes: Optional[str] = Field(default=None, max_length=300)
+
+
+class OrderLineSchema(BaseModel):
+    kind: str
+    productId: str
+    variantId: Optional[str] = None
+    name: str
+    detail: Optional[str] = None
+    unitPrice: float
+    quantity: int
+    lineTotal: float
+    image: Optional[str] = None
+
+
+class UnavailableLineSchema(BaseModel):
+    kind: str
+    productId: str
+    variantId: Optional[str] = None
+    name: Optional[str] = None
+    reason: str
+
+
+class OrderQuoteSchema(BaseModel):
+    items: List[OrderLineSchema] = []
+    unavailable: List[UnavailableLineSchema] = []
+    subtotal: float = 0.0
+    deliveryCharge: float = 0.0
+    distanceKm: Optional[float] = None
+    total: float = 0.0
+    outsideDeliveryArea: bool = False
+
+
+class OrderTimelineEntrySchema(BaseModel):
+    status: str
+    label: str
+    timestamp: str
+    actor: str
+    notes: Optional[str] = None
+
+
+class ShopOrderSchema(OrmModel):
+    id: str
+    customerName: str
+    customerMobile: str
+    createdAt: str
+    status: OrderStatus
+    fulfilment: FulfilmentMethod
+    address: Optional[OrderAddressSchema] = None
+    distanceKm: Optional[float] = None
+    items: List[OrderLineSchema] = []
+    subtotal: float = 0.0
+    deliveryCharge: float = 0.0
+    total: float = 0.0
+    paymentStatus: Literal['Pending', 'Paid'] = 'Pending'
+    paymentMethod: Optional[PaymentMethod] = None
+    paidAt: Optional[str] = None
+    notes: Optional[str] = None
+    cancelReason: Optional[str] = None
+    timeline: List[OrderTimelineEntrySchema] = []
+
+
+class OrderStatusUpdate(BaseModel):
+    status: OrderStatus
+    notes: Optional[str] = Field(default=None, max_length=300)
+
+
+class OrderPaymentInput(BaseModel):
+    model_config = FINITE
+    amount: float = Field(le=MAX_AMOUNT)
+    method: PaymentMethod
+    notes: Optional[str] = Field(default=None, max_length=300)
+
+
+class OrderCancelInput(BaseModel):
+    reason: Optional[str] = Field(default=None, max_length=300)

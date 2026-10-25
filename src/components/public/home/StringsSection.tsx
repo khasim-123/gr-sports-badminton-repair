@@ -1,6 +1,7 @@
 import React, { useId, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import type { StringProduct, StringVariant } from '../../../types/content';
+import { useCart } from '../../../context/CartContext';
 import { formatInr, hasPrice, inStockCount, productLabel, safeHex, safeImageUrl, sortedVariants } from './format';
 import { SECTION_IDS, useShop } from './shop';
 import { SectionHeader, btn, container, cx, fieldControl } from './ui';
@@ -193,6 +194,7 @@ function listText(items: string[]): string {
 // ---------------------------------------------------------------------------
 
 const StringCard: React.FC<{ product: StringProduct; onUse: (label: string, colour?: string) => void }> = ({ product: p, onUse }) => {
+  const cart = useCart();
   const label = productLabel(p);
   const variants = sortedVariants(p);
   const available = variants.filter((v) => v.inStock);
@@ -264,6 +266,26 @@ const StringCard: React.FC<{ product: StringProduct; onUse: (label: string, colo
 
       <div className="mt-auto pt-4">
         {hasPrice(p.price) && <p className="mb-2 text-[15px] font-semibold text-ink">{formatInr(p.price)}</p>}
+        {hasPrice(p.price) && selected?.inStock && (
+          <button
+            type="button"
+            onClick={() =>
+              cart.add({
+                kind: 'string',
+                productId: p.id,
+                variantId: selected.id,
+                name: label,
+                detail: selected.colour,
+                unitPrice: p.price as number,
+                image: safeImageUrl(selected.imageUrl) || image,
+              })
+            }
+            className={cx(btn.base, btn.primary, 'mb-2 w-full px-4 text-[14px]')}
+            aria-label={`Add a ${label} string set in ${selected.colour} to the cart`}
+          >
+            Add string set to cart
+          </button>
+        )}
         <button
           type="button"
           disabled={!stock}

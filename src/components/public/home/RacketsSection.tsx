@@ -1,5 +1,6 @@
 import React, { useId, useMemo, useState } from 'react';
 import type { Racket } from '../../../types/content';
+import { useCart } from '../../../context/CartContext';
 import { formatInr, hasPrice, productLabel, safeImageUrl } from './format';
 import { Photo } from './Photo';
 import { SECTION_IDS, useShop } from './shop';
@@ -118,6 +119,7 @@ export const RacketsSection: React.FC<RacketsSectionProps> = ({ rackets, expande
 
 const RacketCard: React.FC<{ racket: Racket }> = ({ racket: r }) => {
   const SHOP = useShop();
+  const cart = useCart();
   const label = productLabel(r);
   const photos = racketPhotos(r);
   const [photoIndex, setPhotoIndex] = useState(0);
@@ -201,16 +203,49 @@ const RacketCard: React.FC<{ racket: Racket }> = ({ racket: r }) => {
             </span>
             {!inStock && <span className="text-[14px] font-medium text-flameRed">Out of stock</span>}
           </p>
-          <a
-            href={SHOP.whatsAppLink(message)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cx(btn.base, btn.secondary, 'mt-3 w-full text-[14px]')}
-            aria-label={`Ask about the ${label} on WhatsApp`}
-          >
-            <WhatsAppIcon className="h-4 w-4 text-[#128C4B]" />
-            {inStock ? 'Ask on WhatsApp' : 'Ask when it’s back'}
-          </a>
+          {priced && inStock ? (
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  cart.add({
+                    kind: 'racket',
+                    productId: r.id,
+                    variantId: null,
+                    name: label,
+                    detail: null,
+                    unitPrice: r.price as number,
+                    image: photos[0] || null,
+                  })
+                }
+                className={cx(btn.base, btn.primary, 'flex-1 px-3 text-[14px]')}
+                aria-label={`Add the ${label} to the cart`}
+              >
+                Add to cart
+              </button>
+              <a
+                href={SHOP.whatsAppLink(message)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cx(btn.base, btn.secondary, 'w-11 shrink-0 px-0')}
+                aria-label={`Ask about the ${label} on WhatsApp`}
+                title="Ask on WhatsApp"
+              >
+                <WhatsAppIcon className="h-5 w-5 text-[#128C4B]" />
+              </a>
+            </div>
+          ) : (
+            <a
+              href={SHOP.whatsAppLink(message)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cx(btn.base, btn.secondary, 'mt-3 w-full text-[14px]')}
+              aria-label={`Ask about the ${label} on WhatsApp`}
+            >
+              <WhatsAppIcon className="h-4 w-4 text-[#128C4B]" />
+              {inStock ? 'Ask on WhatsApp' : 'Ask when it’s back'}
+            </a>
+          )}
         </div>
       </div>
     </article>

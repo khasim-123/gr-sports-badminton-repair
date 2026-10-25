@@ -38,10 +38,12 @@ import {
   Save,
   Trash2,
   Users,
+  ShoppingBag,
 } from 'lucide-react';
 import { WebsiteContentPanel } from './content/WebsiteContentPanel';
 import { ShopSettingsForm } from './ShopSettingsForm';
 import { CustomersPanel } from './CustomersPanel';
+import { OrdersPanel, orderSummary, useAdminOrders } from './OrdersPanel';
 import { NewBookingDialog, NewBookingPrefill } from './NewBookingDialog';
 import { requestService } from '../../services/requestService';
 import { MobileInput } from '../common/MobileInput';
@@ -311,6 +313,11 @@ export const AdminPortal: React.FC = () => {
     refreshData,
   } = useApp();
 
+  // Online shop orders: one list for the sidebar badge, the dashboard card and the Orders page.
+  const shopOrders = useAdminOrders();
+  const shopSummary = orderSummary(shopOrders.orders);
+  const [ordersPreset, setOrdersPreset] = useState<{ status: string; n: number } | null>(null);
+
   // New booking (phone / walk-in) dialog + customers list refresh
   const [newBooking, setNewBooking] = useState<NewBookingPrefill | null>(null);
   const [customersRefresh, setCustomersRefresh] = useState(0);
@@ -519,6 +526,17 @@ export const AdminPortal: React.FC = () => {
     }
   }, [selectedRequestId, requests, setSelectedRequestId]);
 
+  // A notification for a shop order (id "ORD-…") opens the Orders page; the panel opens the order.
+  useEffect(() => {
+    if (selectedRequestId && selectedRequestId.startsWith('ORD-') && adminSubView !== 'orders') setAdminSubView('orders');
+  }, [selectedRequestId, adminSubView, setAdminSubView]);
+
+  // Fresh order numbers whenever the Orders page or the dashboard is opened.
+  const reloadShopOrders = shopOrders.reload;
+  useEffect(() => {
+    if (adminSubView === 'orders' || adminSubView === 'dashboard') reloadShopOrders();
+  }, [adminSubView, reloadShopOrders]);
+
   // Mobile: keep the active section visible in the horizontal section scroller.
   useEffect(() => {
     const nav = navRef.current;
@@ -686,6 +704,13 @@ export const AdminPortal: React.FC = () => {
   const navItems: { id: string; label: string; icon: React.ElementType; badge?: number; badgeTitle?: string; alert?: boolean }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'requests', label: 'Service Requests', icon: FileSpreadsheet, badge: openRequests.length, badgeTitle: 'Open requests' },
+    {
+      id: 'orders',
+      label: 'Orders',
+      icon: ShoppingBag,
+      badge: shopOrders.loaded && !shopOrders.unavailable && !(shopOrders.error && shopOrders.orders.length === 0) ? shopSummary.open : undefined,
+      badgeTitle: 'Open shop orders (not delivered, picked up or cancelled)',
+    },
     { id: 'customers', label: 'Customers', icon: Users },
     {
       id: 'sla_monitor',
@@ -860,6 +885,69 @@ export const AdminPortal: React.FC = () => {
                 </p>
               </button>
             </div>
+
+            {/* Online shop orders (real numbers only; hidden until the server has orders) */}
+            {shopOrders.loaded && !shopOrders.unavailable && (
+              <div className={`${cardCls} p-5 sm:p-6 space-y-3`}>
+                <div className="flex justify-between items-start gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <ShoppingBag className="w-4 h-4 text-ink" /> Online orders
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      {shopOrders.error && shopOrders.orders.length === 0
+                        ? "Couldn't load the shop orders."
+                        : `${shopSummary.open} open ${shopSummary.open === 1 ? 'order' : 'orders'} · tap a stage to see them.`}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => goTo('orders')}
+                    className="text-xs text-ink font-bold hover:underline min-h-[40px] px-2 shrink-0"
+                  >
+                    Open orders
+                  </button>
+                </div>
+                {!(shopOrders.error && shopOrders.orders.length === 0) && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
+                    {[
+                      { status: 'Placed', label: 'To confirm', count: shopSummary.placed, dot: 'bg-amber-500' },
+                      { status: 'Confirmed', label: 'To pack', count: shopSummary.confirmed, dot: 'bg-ink' },
+                      { status: 'Packed', label: 'Packed', count: shopSummary.packed, dot: 'bg-violet-500' },
+                      { status: 'Out for Delivery', label: 'Out for delivery', count: shopSummary.outForDelivery, dot: 'bg-teal-500' },
+                      { status: 'Ready for Pickup', label: 'Ready for pickup', count: shopSummary.readyForPickup, dot: 'bg-teal-500' },
+                    ].map((s) => (
+                      <button
+                        key={s.status}
+                        type="button"
+                        onClick={() => {
+                          setOrdersPreset((p) => ({ status: s.status, n: (p?.n || 0) + 1 }));
+                          goTo('orders');
+                        }}
+                        className="min-h-[56px] text-left p-2.5 rounded-xl border border-line hover:bg-paper transition-colors min-w-0"
+                      >
+                        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 truncate">
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${s.dot}`} />
+                          {s.label}
+                        </span>
+                        <span className="block text-lg font-black text-slate-900">{s.count}</span>
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOrdersPreset((p) => ({ status: 'UNPAID', n: (p?.n || 0) + 1 }));
+                        goTo('orders');
+                      }}
+                      className="min-h-[56px] text-left p-2.5 rounded-xl border border-amber-200 bg-amber-50/50 hover:bg-amber-50 transition-colors min-w-0"
+                    >
+                      <span className="block text-[11px] font-semibold text-slate-600 truncate">Unpaid (to collect)</span>
+                      <span className="block text-lg font-black text-amber-600">{formatINR(shopSummary.unpaidTotal)}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
               {/* Work queue by stage */}
@@ -1229,6 +1317,11 @@ export const AdminPortal: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* ------------------------------------------------------------------ */}
+        {/* SHOP ORDERS                                                        */}
+        {/* ------------------------------------------------------------------ */}
+        {adminSubView === 'orders' && <OrdersPanel data={shopOrders} preset={ordersPreset} onPresetUsed={() => setOrdersPreset(null)} />}
 
         {/* ------------------------------------------------------------------ */}
         {/* REPAIR SLA MONITOR                                                 */}

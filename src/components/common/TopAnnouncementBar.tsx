@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Truck } from 'lucide-react';
+import { MapPin, Shirt, Truck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { openStoreSection } from '../../utils/storeNavigation';
 import { fullAddress, localityOf, useShopSettings } from '../../hooks/useShopSettings';
@@ -39,12 +39,25 @@ export const TopAnnouncementBar: React.FC = () => {
             </button>
           ))}
         </div>
-        <p className="flex items-center gap-2 min-w-0 py-1.5 mx-auto md:mx-0">
-          <Truck className="w-4 h-4 shrink-0 text-accent" />
-          <span className="truncate">
-            Free pickup and delivery within {distanceConfig.freeRadiusKm} km · Pay when it comes back
-          </span>
-        </p>
+        <div className="flex items-center gap-4 min-w-0 flex-1 md:flex-none justify-between md:justify-end">
+          <p className="flex items-center gap-2 min-w-0 py-1.5">
+            <Truck className="w-4 h-4 shrink-0 text-accent" />
+            <span className="truncate">
+              Free pickup and delivery within {distanceConfig.freeRadiusKm} km<span className="hidden sm:inline"> · Pay when it comes back</span>
+            </span>
+          </p>
+          <a
+            href="/tshirts"
+            onClick={(e) => {
+              e.preventDefault();
+              openStoreSection(setActiveView, 'tshirts');
+            }}
+            className="inline-flex min-h-[36px] shrink-0 items-center gap-1.5 font-semibold text-white hover:text-accent"
+          >
+            <Shirt className="w-4 h-4 text-accent" aria-hidden="true" />
+            T-shirts
+          </a>
+        </div>
       </div>
     </div>
   );
