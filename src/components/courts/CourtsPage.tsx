@@ -4,7 +4,9 @@ import { useApp } from '../../context/AppContext';
 import { courtService } from '../../services/courtService';
 import type { CourtAvailability, CourtBooking, CourtVenue, VenueAvailability } from '../../types/courts';
 import { openStoreSection } from '../../utils/storeNavigation';
+import { AccountButton } from '../public/home/AccountButton';
 import { Photo } from '../public/home/Photo';
+import { CartButton } from '../shop/CartButton';
 import { scrollToSection, useShop } from '../public/home/shop';
 import { WhatsAppIcon, Wordmark, btn, container, cx } from '../public/home/ui';
 import { AvailabilityGrid, type SlotSelection } from './AvailabilityGrid';
@@ -297,16 +299,8 @@ export const CourtsPage: React.FC = () => {
           </nav>
 
           <div className="flex shrink-0 items-center gap-2">
-            <a
-              href={SHOP.phoneTel}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-line text-ink sm:hidden"
-              aria-label={`Call ${SHOP.name}, ${SHOP.phoneDisplay}`}
-            >
-              <Phone className="h-5 w-5" aria-hidden="true" />
-            </a>
-            <button type="button" onClick={onAccount} className={cx(btn.base, isLoggedIn ? btn.secondary : btn.primary, 'whitespace-nowrap px-4')}>
-              {accountLabel}
-            </button>
+            <CartButton />
+            <AccountButton label={accountLabel} onClick={onAccount} />
           </div>
         </div>
       </header>

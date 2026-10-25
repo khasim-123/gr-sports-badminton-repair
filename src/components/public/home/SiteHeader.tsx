@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CalendarClock, Clock, MapPin, Menu, Phone, Shirt, Truck, X } from 'lucide-react';
+import { ChevronDown, Clock, MapPin, Menu, Phone, Shirt, Truck, UserRound, X } from 'lucide-react';
 import { CartButton } from '../../shop/CartButton';
 import { useModalBehavior } from './Dialog';
+import { AccountButton } from './AccountButton';
 import { useShop } from './shop';
 import { WhatsAppIcon, Wordmark, btn, container, cx } from './ui';
 
@@ -25,6 +26,118 @@ interface SiteHeaderProps {
   /** Opens court booking (/courts). */
   onOpenCourts: () => void;
 }
+
+/** Menu groups: badminton services & gear, and courts & events. Items whose section isn't on the
+ * page (e.g. no rackets listed) are left out. */
+const BADMINTON_ITEMS: { id: string; note: string }[] = [
+  { id: 'stringing', note: 'Restringing at the tension you choose' },
+  { id: 'repairs', note: 'Frame, shaft, joint, handle and grip' },
+  { id: 'strings', note: 'Strings and colours we stock' },
+  { id: 'rackets', note: 'Rackets at the shop' },
+];
+
+interface GroupLink {
+  key: string;
+  label: string;
+  note: string;
+  href: string;
+  onSelect: () => void;
+  current?: boolean;
+}
+
+/** Desktop dropdown: opens on click or hover, closes on outside click, Esc or after choosing. */
+const NavGroup: React.FC<{
+  id: string;
+  label: string;
+  links: GroupLink[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  current: boolean;
+}> = ({ id, label, links, open, onOpenChange, current }) => {
+  const ref = useRef<HTMLLIElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const hoverTimer = useRef<number | undefined>(undefined);
+  const panelId = `navgroup-${id}`;
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onOpenChange(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onOpenChange(false);
+        buttonRef.current?.focus();
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open, onOpenChange]);
+
+  useEffect(() => () => window.clearTimeout(hoverTimer.current), []);
+
+  // Hover opens it for mouse users; touch and keyboard use the button.
+  const hover = (next: boolean) => (e: React.PointerEvent) => {
+    if (e.pointerType !== 'mouse') return;
+    window.clearTimeout(hoverTimer.current);
+    hoverTimer.current = window.setTimeout(() => onOpenChange(next), next ? 60 : 180);
+  };
+
+  if (links.length === 0) return null;
+  return (
+    <li ref={ref} className="relative" onPointerEnter={hover(true)} onPointerLeave={hover(false)}>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => onOpenChange(!open)}
+        aria-expanded={open}
+        aria-controls={panelId}
+        className={cx(
+          'relative inline-flex h-11 items-center gap-1 whitespace-nowrap rounded-lg px-3 text-[15px] font-medium transition-colors',
+          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-sportsBlue',
+          open || current ? 'text-ink' : 'text-ink-soft hover:text-ink',
+        )}
+      >
+        {label}
+        <ChevronDown className={cx('h-4 w-4 transition-transform', open && 'rotate-180')} aria-hidden="true" />
+        <span
+          aria-hidden="true"
+          className={cx('absolute inset-x-3 bottom-1.5 h-[2px] rounded-full bg-accent transition-opacity', current ? 'opacity-100' : 'opacity-0')}
+        />
+      </button>
+      {open && (
+        <div id={panelId} className="absolute left-0 top-full z-50 pt-2">
+          <ul className="w-72 rounded-xl border border-line bg-white p-1.5 shadow-lg shadow-ink/10">
+            {links.map((l) => (
+              <li key={l.key}>
+                <a
+                  href={l.href}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onOpenChange(false);
+                    l.onSelect();
+                  }}
+                  aria-current={l.current ? 'true' : undefined}
+                  className={cx(
+                    'block rounded-lg px-3 py-2.5 transition-colors hover:bg-paper focus-visible:bg-paper focus-visible:outline-none',
+                    l.current && 'bg-paper',
+                  )}
+                >
+                  <span className="block text-[15px] font-semibold text-ink">{l.label}</span>
+                  <span className="block text-[13px] text-ink-muted">{l.note}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </li>
+  );
+};
 
 /** Highlights the nav item whose section is in the middle of the viewport. */
 function useActiveSection(ids: string[]): string | null {
@@ -84,6 +197,19 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
     onNavigate(id);
   };
 
+  const [openGroup, setOpenGroup] = useState<'badminton' | 'play' | null>(null);
+  const badmintonLinks: GroupLink[] = BADMINTON_ITEMS.flatMap(({ id, note }) => {
+    const item = nav.find((n) => n.id === id);
+    return item ? [{ key: id, label: item.label, note, href: `#${id}`, onSelect: () => onNavigate(id), current: active === id }] : [];
+  });
+  const eventsItem = nav.find((n) => n.id === 'events');
+  const playLinks: GroupLink[] = [
+    { key: 'courts', label: 'Book a court', note: 'Pick a court and a time', href: '/courts', onSelect: onOpenCourts },
+    ...(eventsItem
+      ? [{ key: 'events', label: eventsItem.label, note: 'Tournaments and coaching camps', href: '#events', onSelect: () => onNavigate('events'), current: active === 'events' }]
+      : []),
+  ];
+
   return (
     <>
       {/* Info bar (scrolls away) */}
@@ -137,85 +263,51 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
             className="inline-flex min-h-[44px] shrink-0 items-center rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sportsBlue"
             aria-label={`${SHOP.name}, back to top`}
           >
-            {/* The tagline needs room the nav uses below 1536 px (Courts + T-shirts links). */}
-            <span className="2xl:hidden">
+            <span className="sm:hidden">
               <Wordmark subline={false} />
             </span>
-            <span className="hidden 2xl:inline">
+            <span className="hidden sm:inline">
               <Wordmark />
             </span>
           </a>
 
           <nav aria-label="Main" className="hidden lg:block">
-            <ul className="flex items-center gap-0.5">
-              {nav.map((item) => (
-                <li key={item.id}>
-                  <a
-                    href={`#${item.id}`}
-                    onClick={(e) => go(e, item.id)}
-                    aria-current={active === item.id ? 'true' : undefined}
-                    className={cx(
-                      'relative inline-flex h-11 items-center rounded-lg px-2.5 xl:px-3 text-[15px] font-medium transition-colors',
-                      'focus-visible:outline focus-visible:outline-2 focus-visible:outline-sportsBlue',
-                      active === item.id ? 'text-ink' : 'text-ink-soft hover:text-ink',
-                    )}
-                  >
-                    {item.label}
-                    <span
-                      aria-hidden="true"
-                      className={cx(
-                        'absolute inset-x-2.5 xl:inset-x-3 bottom-1.5 h-[2px] rounded-full bg-accent transition-opacity',
-                        active === item.id ? 'opacity-100' : 'opacity-0',
-                      )}
-                    />
-                  </a>
-                </li>
-              ))}
-              <li className="ml-1 border-l border-line pl-1.5">
+            <ul className="flex items-center gap-1">
+              <NavGroup
+                id="badminton"
+                label="Badminton"
+                links={badmintonLinks}
+                open={openGroup === 'badminton'}
+                onOpenChange={(o) => setOpenGroup(o ? 'badminton' : null)}
+                current={badmintonLinks.some((l) => l.current)}
+              />
+              <NavGroup
+                id="play"
+                label="Courts & events"
+                links={playLinks}
+                open={openGroup === 'play'}
+                onOpenChange={(o) => setOpenGroup(o ? 'play' : null)}
+                current={playLinks.some((l) => l.current)}
+              />
+              <li>
                 <a
                   href="/tshirts"
                   onClick={(e) => {
                     e.preventDefault();
                     onOpenTshirts();
                   }}
-                  className="inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 xl:px-3 text-[15px] font-medium text-ink hover:text-sportsBlue focus-visible:outline focus-visible:outline-2 focus-visible:outline-sportsBlue"
+                  className="inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-[15px] font-medium text-ink-soft hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-sportsBlue"
                 >
                   <Shirt className="h-[18px] w-[18px]" aria-hidden="true" />
                   T-shirts
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/courts"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onOpenCourts();
-                  }}
-                  className="inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 xl:px-3 text-[15px] font-medium text-ink hover:text-sportsBlue focus-visible:outline focus-visible:outline-2 focus-visible:outline-sportsBlue"
-                >
-                  <CalendarClock className="h-[18px] w-[18px]" aria-hidden="true" />
-                  Courts
                 </a>
               </li>
             </ul>
           </nav>
 
           <div className="flex items-center gap-2">
-            <a href={SHOP.phoneTel} className={cx(btn.base, btn.secondary, 'hidden sm:inline-flex lg:hidden 2xl:inline-flex px-4')}>
-              <Phone className="h-4 w-4" aria-hidden="true" />
-              Call
-            </a>
-            <button type="button" onClick={onAccount} className={cx(btn.base, btn.primary, 'hidden sm:inline-flex whitespace-nowrap px-4')}>
-              {accountLabel}
-            </button>
-            <a
-              href={SHOP.phoneTel}
-              className="sm:hidden lg:inline-flex 2xl:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line text-ink"
-              aria-label={`Call ${SHOP.name}, ${SHOP.phoneDisplay}`}
-            >
-              <Phone className="h-5 w-5" aria-hidden="true" />
-            </a>
             <CartButton />
+            <AccountButton label={accountLabel} onClick={onAccount} />
             <button
               type="button"
               onClick={() => setMenuOpen(true)}
@@ -233,18 +325,13 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
       <MenuSheet
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
-        nav={nav}
-        active={active}
+        badmintonLinks={badmintonLinks.map((l) => ({ ...l, onSelect: () => { setMenuOpen(false); window.setTimeout(l.onSelect, 0); } }))}
+        playLinks={playLinks.map((l) => ({ ...l, onSelect: () => { setMenuOpen(false); window.setTimeout(l.onSelect, 0); } }))}
         pickupLine={pickupLine}
         accountLabel={accountLabel}
         onAccount={() => {
           setMenuOpen(false);
           onAccount();
-        }}
-        onNavigate={(id) => {
-          setMenuOpen(false);
-          // Let the sheet unmount (and the scroll lock lift) before scrolling.
-          window.setTimeout(() => onNavigate(id), 0);
         }}
         onStaffLogin={(role) => {
           setMenuOpen(false);
@@ -255,10 +342,6 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
           setMenuOpen(false);
           onOpenTshirts();
         }}
-        onOpenCourts={() => {
-          setMenuOpen(false);
-          onOpenCourts();
-        }}
       />
     </>
   );
@@ -267,31 +350,27 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
 interface MenuSheetProps {
   open: boolean;
   onClose: () => void;
-  nav: NavItem[];
-  active: string | null;
+  badmintonLinks: GroupLink[];
+  playLinks: GroupLink[];
   pickupLine: string;
   accountLabel: string;
   onAccount: () => void;
-  onNavigate: (id: string) => void;
   onStaffLogin: (role: 'EMPLOYEE' | 'ADMIN') => void;
   showStaffLinks: boolean;
   onOpenTshirts: () => void;
-  onOpenCourts: () => void;
 }
 
 const MenuSheet: React.FC<MenuSheetProps> = ({
   open,
   onClose,
-  nav,
-  active,
+  badmintonLinks,
+  playLinks,
   pickupLine,
   accountLabel,
   onAccount,
-  onNavigate,
   onStaffLogin,
   showStaffLinks,
   onOpenTshirts,
-  onOpenCourts,
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -323,56 +402,54 @@ const MenuSheet: React.FC<MenuSheetProps> = ({
         </div>
 
         <nav aria-label="Main" className="px-2 py-3">
-          <ul>
-            {nav.map((item) => (
-              <li key={item.id}>
-                <a
-                  href={`#${item.id}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onNavigate(item.id);
-                  }}
-                  aria-current={active === item.id ? 'true' : undefined}
-                  className={cx(
-                    'flex min-h-[52px] items-center justify-between rounded-xl px-3 font-display text-[24px] font-semibold',
-                    active === item.id ? 'text-ink bg-paper' : 'text-ink hover:bg-paper',
-                  )}
-                >
-                  {item.label}
-                </a>
-              </li>
-            ))}
-            <li className="mt-2 border-t border-line pt-2">
-              <a
-                href="/tshirts"
-                onClick={(e) => {
-                  e.preventDefault();
-                  onOpenTshirts();
-                }}
-                className="flex min-h-[52px] items-center gap-3 rounded-xl px-3 font-display text-[24px] font-semibold text-ink hover:bg-paper"
-              >
-                <Shirt className="h-6 w-6 text-ink-soft" aria-hidden="true" />
-                T-shirts &amp; team wear
-              </a>
-            </li>
-            <li>
-              <a
-                href="/courts"
-                onClick={(e) => {
-                  e.preventDefault();
-                  onOpenCourts();
-                }}
-                className="flex min-h-[52px] items-center gap-3 rounded-xl px-3 font-display text-[24px] font-semibold text-ink hover:bg-paper"
-              >
-                <CalendarClock className="h-6 w-6 text-ink-soft" aria-hidden="true" />
-                Book a court
-              </a>
-            </li>
-          </ul>
+          {[
+            { heading: 'Badminton', links: badmintonLinks },
+            { heading: 'Courts & events', links: playLinks },
+          ].map((group) =>
+            group.links.length === 0 ? null : (
+              <div key={group.heading} className="mb-2">
+                <p className="px-3 pb-1 pt-2 text-[12px] font-semibold uppercase tracking-wider text-ink-muted">{group.heading}</p>
+                <ul>
+                  {group.links.map((l) => (
+                    <li key={l.key}>
+                      <a
+                        href={l.href}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          l.onSelect();
+                        }}
+                        aria-current={l.current ? 'true' : undefined}
+                        className={cx(
+                          'flex min-h-[52px] items-center rounded-xl px-3 font-display text-[24px] font-semibold text-ink',
+                          l.current ? 'bg-paper' : 'hover:bg-paper',
+                        )}
+                      >
+                        {l.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ),
+          )}
+          <div className="border-t border-line pt-2">
+            <a
+              href="/tshirts"
+              onClick={(e) => {
+                e.preventDefault();
+                onOpenTshirts();
+              }}
+              className="flex min-h-[52px] items-center gap-3 rounded-xl px-3 font-display text-[24px] font-semibold text-ink hover:bg-paper"
+            >
+              <Shirt className="h-6 w-6 text-ink-soft" aria-hidden="true" />
+              T-shirts &amp; team wear
+            </a>
+          </div>
         </nav>
 
         <div className="mt-auto space-y-3 border-t border-line px-4 py-5">
           <button type="button" onClick={onAccount} className={cx(btn.base, btn.primary, 'w-full')}>
+            <UserRound className="h-4 w-4" aria-hidden="true" />
             {accountLabel}
           </button>
           <div className="grid grid-cols-2 gap-3">

@@ -24,6 +24,7 @@ import {
   sizesLabel,
   swatchColour,
 } from './shopFormat';
+import { AccountButton } from '../public/home/AccountButton';
 
 type LoadState = { status: 'loading' | 'ready' | 'error'; products: ApparelProduct[] };
 const ALL = 'all';
@@ -197,10 +198,8 @@ export const ApparelStore: React.FC = () => {
           </nav>
 
           <div className="flex shrink-0 items-center gap-2">
-            <button type="button" onClick={onAccount} className={cx(btn.base, btn.secondary, 'hidden px-4 lg:inline-flex')}>
-              {accountLabel}
-            </button>
-            <CartButton withLabel />
+            <CartButton />
+            <AccountButton label={accountLabel} onClick={onAccount} />
           </div>
         </div>
       </header>
