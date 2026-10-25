@@ -552,7 +552,7 @@ export const PaymentDialog: React.FC<{
         <RupeeInput id="pay-amount" label="Amount received" value={amount} onChange={setAmount} />
         {differs && (
           <p className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 -mt-2">
-            This is different from the amount due ({formatINR(due)}). Add a note explaining why.
+            This is different from the amount due ({formatINR(due)}). Record the amount due — if the customer paid a different amount, ask the admin to record it.
           </p>
         )}
 
@@ -639,7 +639,8 @@ export const DistanceDialog: React.FC<{
   const valid = Number.isFinite(value) && value >= 0 && value <= 200;
   const rounded = valid ? Math.round(value * 10) / 10 : NaN;
   const preview = valid ? chargeFor(rounded) : null;
-  const oldCharge = request.pickupDeliveryCharge || 0;
+  // Charge when the dialog opened: `request` is replaced by the saved one after submit.
+  const [oldCharge] = useState(() => request.pickupDeliveryCharge || 0);
   const source = distanceSourceInfo(request.pickupAddress);
   const maxKm = distanceConfig.maxServiceDistanceKm || 0;
 

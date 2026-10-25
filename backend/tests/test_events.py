@@ -343,8 +343,8 @@ def test_registration_field_validation(client, admin_token, bad):
 
 def test_registration_rate_limited_per_ip(client, admin_token):
     event = create_event(client, admin_token, categories=[])
-    codes = [register(client, event["id"], mobile=f"90000333{i:02d}").status_code for i in range(11)]
-    assert codes[:10] == [201] * 10 and codes[10] == 429
+    codes = [register(client, event["id"], mobile=f"90000333{i:02d}").status_code for i in range(31)]
+    assert codes[:30] == [201] * 30 and codes[30] == 429
     client.delete(f"/api/content/admin/events/{event['id']}", headers=auth(admin_token))
 
 

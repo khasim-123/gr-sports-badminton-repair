@@ -35,7 +35,7 @@ def get_public_reviews(limit: int = Query(12, ge=1, le=50), db: Session = Depend
     "",
     response_model=CustomerReviewSchema,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(rate_limit("review", limit=5, window_seconds=3600))],
+    dependencies=[Depends(rate_limit("review", limit=15, window_seconds=3600))],  # loose: shared mobile IPs
 )
 def submit_review(
     payload: ReviewSubmission,

@@ -11,7 +11,7 @@ type Tab = 'All' | 'Active' | 'Stringing' | 'Repair' | 'Completed' | 'Declined /
 const TABS: Tab[] = ['All', 'Active', 'Stringing', 'Repair', 'Completed', 'Declined / Cancelled'];
 
 export const MyRequests: React.FC = () => {
-  const { requests, openRequestDetail, openWizardWithService, isDataLoading, dataLoaded, gettingServices } = useApp();
+  const { requests, openRequestDetail, openWizardWithService, isDataLoading, dataLoaded, gettingServices, requestsLoadFailed, refreshData } = useApp();
   const showLoading = isDataLoading && !dataLoaded;
   const [activeTab, setActiveTab] = useState<Tab>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -109,7 +109,15 @@ export const MyRequests: React.FC = () => {
           <CardSkeleton />
         </div>
       ) : filteredRequests.length === 0 ? (
-        requests.length === 0 ? (
+        requests.length === 0 && requestsLoadFailed ? (
+          <CustomerEmptyState
+            icon="requests"
+            title="Couldn't load your bookings"
+            description="We couldn't reach GR Sports just now. Check your internet connection and try again."
+            actionText="Try again"
+            onAction={refreshData}
+          />
+        ) : requests.length === 0 ? (
           <CustomerEmptyState
             icon="requests"
             title="No bookings yet"

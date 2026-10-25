@@ -10,7 +10,7 @@ class ServiceRequestModel(Base):
     customerName = Column(String, nullable=False)
     customerEmail = Column(String, nullable=True, index=True)  # legacy; no longer collected
     customerMobile = Column(String, nullable=False, index=True)  # +91XXXXXXXXXX, the customer's identity
-    createdAt = Column(String, nullable=False)
+    createdAt = Column(String, nullable=False, index=True)
     status = Column(String, nullable=False, index=True)
 
     # Bat details
@@ -132,8 +132,8 @@ class NotificationModel(Base):
     type = Column(String, nullable=False)
     title = Column(String, nullable=False)
     message = Column(Text, nullable=False)
-    requestId = Column(String, nullable=True)
-    timestamp = Column(String, nullable=False)
+    requestId = Column(String, nullable=True, index=True)
+    timestamp = Column(String, nullable=False, index=True)
     isRead = Column(Boolean, default=False)
     targetRoles = Column(JSON, default=list)
 
@@ -142,11 +142,11 @@ class AuditLogModel(Base):
     __tablename__ = "audit_logs"
 
     id = Column(String, primary_key=True, index=True)
-    timestamp = Column(String, nullable=False)
+    timestamp = Column(String, nullable=False, index=True)
     user = Column(String, nullable=False)
     role = Column(String, nullable=False)
     action = Column(String, nullable=False)
-    requestId = Column(String, nullable=False)
+    requestId = Column(String, nullable=False, index=True)
     details = Column(Text, nullable=True)
 
 
@@ -371,4 +371,4 @@ class VisitModel(Base):
     browser = Column(String, nullable=True)
     customerPhone = Column(String, nullable=True, index=True)
     day = Column(String, nullable=False, index=True)  # YYYY-MM-DD in IST
-    createdAt = Column(String, nullable=False)  # ISO UTC
+    createdAt = Column(String, nullable=False, index=True)  # ISO UTC

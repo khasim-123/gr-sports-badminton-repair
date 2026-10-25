@@ -6,7 +6,7 @@ Booking counts are computed from service requests by the customer's mobile numbe
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from app.database import get_db
 from app.models import CustomerModel, ServiceRequestModel
@@ -45,7 +45,13 @@ def _summary(c: CustomerModel, reqs: List[ServiceRequestModel]) -> Dict:
 
 
 def _requests_by_mobile(db: Session, mobiles: Optional[List[str]] = None) -> Dict[str, List[ServiceRequestModel]]:
-    q = db.query(ServiceRequestModel)
+    # Only the columns the summaries use: skips photos/timeline JSON (can be MBs per request).
+    q = db.query(ServiceRequestModel).options(load_only(
+        ServiceRequestModel.id, ServiceRequestModel.customerMobile, ServiceRequestModel.createdAt,
+        ServiceRequestModel.status, ServiceRequestModel.paymentStatus, ServiceRequestModel.paymentRecord,
+        ServiceRequestModel.totalAmount, ServiceRequestModel.serviceType, ServiceRequestModel.batBrand,
+        ServiceRequestModel.batModel,
+    ))
     if mobiles is not None:
         if not mobiles:
             return {}

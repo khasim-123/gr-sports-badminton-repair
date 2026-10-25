@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { ServiceRequest } from '../../types';
 import { formatDate, formatINR, parseDate } from '../../utils/format';
 import { splitNotes } from '../customer/requestDisplay';
-import { JobCard } from './JobCard';
+import { JobCard, stringWithColour } from './JobCard';
 import { JobDetail } from './JobDetail';
 import { ConfirmDialog, DistanceDialog, EstimateDialog, PaymentDialog, PickupDialog, ReviseDialog } from './JobDialogs';
 import { requestService } from '../../services/requestService';
@@ -72,6 +72,19 @@ export const EmployeePortal: React.FC = () => {
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [view, selectedRequestId]);
+
+  // New bookings and changes made by the admin appear without pressing Refresh (every minute,
+  // only while the app is on screen and no form is open).
+  const refreshRef = useRef(refreshData);
+  refreshRef.current = refreshData;
+  const dialogOpenRef = useRef(false);
+  dialogOpenRef.current = !!dialog;
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && !dialogOpenRef.current) refreshRef.current();
+    }, 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   // Close an open dialog when its step is no longer valid (e.g. the data was refreshed after an error).
   useEffect(() => {
@@ -208,7 +221,7 @@ export const EmployeePortal: React.FC = () => {
         return confirm(
           'Start stringing?',
           <p>
-            {racket}: {[r.stringType || r.stringPreference, r.stringTensionLbs ? `${r.stringTensionLbs} lbs` : '', r.colour].filter(Boolean).join(', ') || 'string details not given'}.
+            {racket}: {[stringWithColour(r), r.stringTensionLbs ? `${r.stringTensionLbs} lbs` : ''].filter(Boolean).join(', ') || 'string details not given'}.
           </p>,
           'Start stringing',
           () => updateRequestStatus(r.id, 'Getting in Progress', userName)

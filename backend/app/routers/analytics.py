@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from app.config import settings
 from app.database import get_db
@@ -294,13 +294,16 @@ def export_report(
     admin: CurrentUser = Depends(require_admin),
 ):
     start_d, end_d = _date_range(start, end)
+    span = f"{start_d.isoformat()}_to_{end_d.isoformat()}"
+
+    # Downloading customer personal data is recorded in the audit log. Logged before the
+    # rows are loaded: log_audit commits, which would otherwise expire every loaded row and
+    # re-fetch each one with its own query (one query per visit/customer).
+    log_audit(db, admin.label, "ADMIN", f"Downloaded {report} report", "REPORTS", span)
+
     visits = _visits(db, start_d, end_d)
     customers = db.query(CustomerModel).all()
     customers_by_phone = {c.phone: c for c in customers}
-    span = f"{start_d.isoformat()}_to_{end_d.isoformat()}"
-
-    # Downloading customer personal data is recorded in the audit log.
-    log_audit(db, admin.label, "ADMIN", f"Downloaded {report} report", "REPORTS", span)
 
     if report == "visits":
         rows = []
@@ -332,7 +335,13 @@ def export_report(
         s["last"] = v.createdAt
 
     bookings: dict[str, list] = defaultdict(list)
-    for r in db.query(ServiceRequestModel).all():
+    # Only the columns used below (skips photos/timeline JSON).
+    request_cols = load_only(
+        ServiceRequestModel.id, ServiceRequestModel.customerMobile, ServiceRequestModel.customerName,
+        ServiceRequestModel.createdAt, ServiceRequestModel.status, ServiceRequestModel.paymentStatus,
+        ServiceRequestModel.totalAmount,
+    )
+    for r in db.query(ServiceRequestModel).options(request_cols).all():
         bookings[r.customerMobile or ""].append(r)
 
     phones = sorted(set(customers_by_phone) | {p for p in bookings if p})

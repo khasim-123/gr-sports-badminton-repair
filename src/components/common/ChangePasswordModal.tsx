@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Eye, EyeOff, KeyRound, X } from 'lucide-react';
 import { apiClient } from '../../services/apiClient';
+import { authService } from '../../services/authService';
 import { useApp } from '../../context/AppContext';
 
 interface Props {
@@ -46,7 +47,9 @@ export const ChangePasswordModal: React.FC<Props> = ({ open, onClose }) => {
     setSaving(true);
     setError(null);
     try {
-      await apiClient.post('/auth/change-password', { currentPassword: current, newPassword: next });
+      const res = await apiClient.post<{ token?: string }>('/auth/change-password', { currentPassword: current, newPassword: next });
+      // Older sign-ins are revoked when the password changes; this device continues with the new token.
+      if (res?.token) authService.updateStoredSession({ token: res.token });
       addToast('success', 'Password changed', 'Use your new password the next time you sign in.');
       onClose();
     } catch (err: any) {

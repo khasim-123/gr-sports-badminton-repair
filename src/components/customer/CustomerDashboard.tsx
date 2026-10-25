@@ -27,6 +27,8 @@ export const CustomerDashboard: React.FC = () => {
     dataLoaded,
     gettingServices,
     repairCategories,
+    requestsLoadFailed,
+    refreshData,
   } = useApp();
 
   const showLoading = isDataLoading && !dataLoaded;
@@ -47,7 +49,8 @@ export const CustomerDashboard: React.FC = () => {
   const approvals = requests.filter(needsApproval);
   const reviewable = requests.filter(canReview);
   const completed = requests.filter((r) => r.status === 'Completed');
-  const isNewCustomer = !showLoading && requests.length === 0;
+  const isNewCustomer = !showLoading && requests.length === 0 && !requestsLoadFailed;
+  const loadFailed = !showLoading && requests.length === 0 && requestsLoadFailed;
 
   const stats = [
     { label: 'In progress', value: openRequests.length, icon: <Clock className="w-4 h-4 text-blue-600" />, hint: 'Booked, with us or on the way back' },
@@ -262,6 +265,16 @@ export const CustomerDashboard: React.FC = () => {
             <CardSkeleton />
             <CardSkeleton />
           </div>
+        )}
+
+        {loadFailed && (
+          <CustomerEmptyState
+            icon="requests"
+            title="Couldn't load your bookings"
+            description="We couldn't reach GR Sports just now. Check your internet connection and try again."
+            actionText="Try again"
+            onAction={refreshData}
+          />
         )}
 
         {isNewCustomer && (

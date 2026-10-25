@@ -118,6 +118,8 @@ interface AppContextType {
   isDataLoading: boolean;
   /** True once the signed-in user's data has been fetched at least once. */
   dataLoaded: boolean;
+  /** True when the last attempt to load service requests failed (e.g. server unreachable). */
+  requestsLoadFailed: boolean;
   /** Re-fetch the signed-in user's data from the server. */
   refreshData: () => void;
   distanceConfig: DistancePricingConfig;
@@ -342,6 +344,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
   const [isDataLoading, setIsDataLoading] = useState<boolean>(!!initialSession);
   const [dataLoaded, setDataLoaded] = useState<boolean>(false);
+  const [requestsLoadFailed, setRequestsLoadFailed] = useState<boolean>(false);
   const [reloadNonce, setReloadNonce] = useState<number>(0);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -594,6 +597,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (gen !== loadGenRef.current) return; // identity changed or logged out meanwhile
 
       if (reqs.status === 'fulfilled') setRequests(Array.isArray(reqs.value) ? reqs.value : []);
+      setRequestsLoadFailed(reqs.status === 'rejected');
       if (notifs.status === 'fulfilled') setNotifications(Array.isArray(notifs.value) ? notifs.value : []);
       if (isStaff && emps.status === 'fulfilled') setEmployees(Array.isArray(emps.value) ? emps.value : []);
       if (isAdmin && audits.status === 'fulfilled') setAuditLogs(Array.isArray(audits.value) ? audits.value : []);
@@ -1233,6 +1237,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         requests,
         isDataLoading,
         dataLoaded,
+        requestsLoadFailed,
         refreshData,
         distanceConfig,
         savedAddresses,

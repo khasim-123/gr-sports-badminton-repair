@@ -101,13 +101,14 @@ def test_stringing_job_end_to_end(client, admin_token, ravi):
     assert _status(client, tok, rid, "Getting Completed").status_code == 409
     assert client.post(f"/api/requests/{rid}/payment", headers=auth(tok), json={"amount": req["totalAmount"], "method": "Cash"}).status_code == 409
 
-    photo = "data:image/jpeg;base64,/9j/4AAQSkZJRg=="
+    photo = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAoHBwgHBgoICAgLCgoLDhgQDg0NDh0VFhEYIx8lJCIfIiEmKzcvJik0KSEiMEExNDk7Pj4+JS5ESUM8SDc9Pjv/2wBDAQoLCw4NDhwQEBw7KCIoOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozv/wAARCAAIAAgDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDKooor6w+VP//Z"  # a real 8x8 JPEG
     r = client.post(f"/api/requests/{rid}/pickup-condition", headers=auth(tok),
                     json={"condition": "Minor Damage", "notes": "Scuff on the frame", "photos": [photo], "collectedBy": "Fake Name"})
     assert r.status_code == 200, r.text
     assert r.json()["status"] == "Bat Picked Up"
     assert r.json()["pickupCondition"]["collectedBy"] == "Ravi Stringer"
-    assert r.json()["pickupCondition"]["photos"] == [photo]
+    # The photo is moved to the media store; the request keeps a short link.
+    assert len(r.json()["pickupCondition"]["photos"]) == 1 and "/api/media/PHO-" in r.json()["pickupCondition"]["photos"][0]
     # Recording the pickup twice (e.g. from a second phone) is refused.
     r = client.post(f"/api/requests/{rid}/pickup-condition", headers=auth(tok), json={"condition": "Good"})
     assert r.status_code == 409

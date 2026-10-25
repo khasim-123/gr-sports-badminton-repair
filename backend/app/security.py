@@ -1,6 +1,8 @@
 """Authentication helpers: password hashing, signed JWTs, role-based dependencies,
 and a small in-memory rate limiter for public endpoints."""
+import hashlib
 import hmac
+import os
 import threading
 import time
 from collections import defaultdict, deque
@@ -12,8 +14,10 @@ import bcrypt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
+from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.database import get_db
 
 ALGORITHM = "HS256"
 STAFF_ROLES = ("EMPLOYEE", "ADMIN")
@@ -72,10 +76,35 @@ class CurrentUser:
         return self.role == "ADMIN"
 
 
-def create_access_token(user_id: str, phone: str, role: str, name: str = "") -> str:
+def password_version(stored_password: Optional[str]) -> str:
+    """Short keyed fingerprint of a staff member's stored password hash. Staff tokens carry
+    it, so resetting / changing the password revokes every token issued before."""
+    return hmac.new(settings.SECRET_KEY.encode("utf-8"), (stored_password or "").encode("utf-8"), hashlib.sha256).hexdigest()[:16]
+
+
+def create_access_token(user_id: str, phone: str, role: str, name: str = "", pwv: Optional[str] = None) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {"sub": user_id, "phone": phone, "role": role, "name": name, "exp": expire}
+    if pwv is not None:
+        payload["pwv"] = pwv
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITHM)
+
+
+def staff_token_valid(db: Session, payload: dict) -> bool:
+    """A staff token only works while the account is active, still has that role and the
+    password hasn't changed since the token was issued (checked against the database on
+    every request, so deactivating an employee locks them out immediately)."""
+    from app.models import EmployeeModel  # local import: models imports the database layer
+
+    emp = db.query(EmployeeModel).filter(EmployeeModel.id == payload.get("sub", "")).first()
+    if not emp or not emp.isActive or emp.phone != payload.get("phone"):
+        return False
+    role = payload.get("role")
+    if role == "ADMIN" and emp.userRole != "ADMIN":
+        return False
+    if role == "EMPLOYEE" and emp.userRole not in ("EMPLOYEE", "ADMIN"):
+        return False
+    return hmac.compare_digest(str(payload.get("pwv") or ""), password_version(emp.password))
 
 
 _bearer = HTTPBearer(auto_error=False)
@@ -83,6 +112,7 @@ _bearer = HTTPBearer(auto_error=False)
 
 def get_optional_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
+    db: Session = Depends(get_db),
 ) -> Optional[CurrentUser]:
     if not credentials:
         return None
@@ -92,6 +122,8 @@ def get_optional_user(
         return None
     role = payload.get("role")
     if role not in ("CUSTOMER", "EMPLOYEE", "ADMIN") or not payload.get("phone"):
+        return None
+    if role in STAFF_ROLES and not staff_token_valid(db, payload):
         return None
     return CurrentUser(
         id=payload.get("sub", ""),
@@ -150,10 +182,19 @@ class RateLimiter:
 rate_limiter = RateLimiter()
 
 
+# Number of reverse proxies in front of the app that append to X-Forwarded-For (Render: 1).
+# Only entries added by those proxies can be trusted; anything to their left is whatever the
+# client chose to send (uvicorn --forwarded-allow-ips="*" trusts the leftmost entry, so
+# request.client.host is spoofable too).
+TRUSTED_PROXY_HOPS = max(1, int(os.getenv("TRUSTED_PROXY_HOPS", "1") or 1))
+
+
 def client_ip(request: Request) -> str:
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        hops = [h.strip() for h in forwarded.split(",") if h.strip()]
+        if hops:
+            return hops[-min(TRUSTED_PROXY_HOPS, len(hops))]
     return request.client.host if request.client else "unknown"
 
 

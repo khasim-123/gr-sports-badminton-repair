@@ -45,12 +45,39 @@ services:
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
     headers:
+      # Vite build output has content hashes in the file names, so it can be cached forever.
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
       - path: /images/*
         name: Cache-Control
         value: public, max-age=604800
+      # index.html (and every SPA route rewritten to it) must be revalidated, or browsers keep
+      # running an old build that points at deleted /assets files after a deploy.
+      - path: /
+        name: Cache-Control
+        value: no-cache
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache
       - path: /*
         name: X-Content-Type-Options
         value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(self), geolocation=(self), microphone=()
+      # Google Fonts + the API origin for API calls. Images may come from any https host (the admin can
+      # paste image links instead of uploading); request photos are data:/blob: URLs.
+      # wa.me / tel: / maps links are plain navigations and aren't restricted by this policy.
+      - path: /*
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://badminton-service-backend.onrender.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
     routes:
       - type: rewrite
         source: /*

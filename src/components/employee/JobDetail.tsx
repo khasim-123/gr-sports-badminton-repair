@@ -6,6 +6,7 @@ import { formatDate, formatDateTime, formatINR } from '../../utils/format';
 import { formatMobile, mobileTelHref } from '../../utils/phone';
 import { ServiceTypeTile, gettingTierName, realPhotos, splitNotes, tidyRupees } from '../customer/requestDisplay';
 import { StaffDialog } from './StaffDialog';
+import { useRequestPhotos } from '../../hooks/useRequestPhotos';
 import { distanceSourceInfo } from '../../utils/distance';
 import { TimingNote, actionClass, secondaryBtnCls } from './JobCard';
 import {
@@ -81,14 +82,15 @@ export const JobDetail: React.FC<JobDetailProps> = ({
   distanceConfig,
 }) => {
   const [viewPhoto, setViewPhoto] = useState<string | null>(null);
+  const loadedPhotos = useRequestPhotos(r);
   const isRepair = r.serviceType === 'REPAIR';
   const stage = stageOf(r);
   const actions = actionsFor(r, mine);
   const tel = mobileTelHref(r.customerMobile);
   const map = mapsUrl(r.pickupAddress);
   const { slot, notes } = splitNotes(r.additionalNotes);
-  const customerPhotos = realPhotos(r.batPhotos);
-  const pickupPhotos = realPhotos(r.pickupCondition?.photos);
+  const customerPhotos = loadedPhotos.batPhotos;
+  const pickupPhotos = loadedPhotos.pickupPhotos;
   const est = r.repairEstimate;
   const declined = wasDeclined(r);
   const isPaid = r.paymentStatus === 'Paid';

@@ -28,3 +28,8 @@ export const fileToResizedDataUrl = (file: File, maxDim = 900, quality = 0.72): 
     };
     reader.readAsDataURL(file);
   });
+
+/** Only real image sources may be shown or linked: embedded images, https links, site paths
+ * (or http://localhost during local development). */
+export const isSafePhotoSrc = (src: unknown): src is string =>
+  typeof src === 'string' && (/^data:image\/(jpeg|png|webp|gif);base64,/i.test(src) || /^https:\/\//i.test(src) || /^\/(?!\/)/.test(src) || /^http:\/\/(localhost|127\.0\.0\.1)[:/]/i.test(src));

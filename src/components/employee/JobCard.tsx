@@ -28,10 +28,19 @@ export const secondaryBtnCls = `${actionBtnCls} border border-slate-300 bg-white
 export const actionClass = (kind: ActionKind) =>
   kind === 'payment' || kind === 'return_done' ? successBtnCls : primaryBtnCls;
 
+
+/** String name plus colour, without repeating a colour the name already contains. */
+export const stringWithColour = (r: ServiceRequest): string => {
+  const name = (r.stringType || r.stringPreference || '').trim();
+  const colour = (r.colour || '').trim();
+  if (!colour || name.toLowerCase().includes(colour.toLowerCase())) return name;
+  return name ? `${name} (${colour})` : colour;
+};
+
 /** One-line description of what was booked. */
 export const serviceDetail = (r: ServiceRequest, tiers: GettingServiceTier[]): string => {
   if (r.serviceType === 'REPAIR') return r.repairIssue || 'Repair — issue not specified';
-  return [gettingTierName(r, tiers), r.stringType || r.stringPreference, r.stringTensionLbs ? `${r.stringTensionLbs} lbs` : '', r.colour]
+  return [gettingTierName(r, tiers), stringWithColour(r), r.stringTensionLbs ? `${r.stringTensionLbs} lbs` : '']
     .filter(Boolean)
     .join(' · ');
 };

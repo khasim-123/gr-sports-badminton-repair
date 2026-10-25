@@ -1,14 +1,24 @@
 """End-to-end API tests against a throwaway SQLite database.
 
 Run from backend/:  python -m pytest -q
+
+To run the same suite against PostgreSQL (the production database), point
+TEST_DATABASE_URL at an EMPTY, disposable database. Every table in it is dropped at the
+start of the run and the schema is rebuilt with `alembic upgrade head`, as on Render:
+
+    TEST_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5499/grsports_test python -m pytest -q
 """
 import io
 import os
 import tempfile
 from datetime import timedelta
 
-_tmp = tempfile.mkdtemp()
-os.environ["DATABASE_URL"] = f"sqlite:///{_tmp}/test.db"
+_test_db_url = os.environ.get("TEST_DATABASE_URL", "").strip()
+if _test_db_url:
+    os.environ["DATABASE_URL"] = _test_db_url
+else:
+    _tmp = tempfile.mkdtemp()
+    os.environ["DATABASE_URL"] = f"sqlite:///{_tmp}/test.db"
 os.environ["ENVIRONMENT"] = "development"
 os.environ["SEED_DEMO_DATA"] = "true"
 os.environ["ADMIN_PHONE"] = "98480 22338"
@@ -18,6 +28,29 @@ os.environ["EXPOSE_OTP_IN_RESPONSE"] = "true"
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from PIL import Image  # noqa: E402
+
+
+def _reset_external_test_database():
+    """Drop everything in TEST_DATABASE_URL and rebuild it with the Alembic migrations."""
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy import MetaData
+
+    from app.database import engine
+
+    meta = MetaData()
+    meta.reflect(bind=engine)
+    meta.drop_all(bind=engine)
+    with engine.begin() as conn:
+        conn.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
+    backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cfg = Config(os.path.join(backend_dir, "alembic.ini"))
+    cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
+    command.upgrade(cfg, "head")
+
+
+if _test_db_url:
+    _reset_external_test_database()
 
 from app.main import app  # noqa: E402
 from app.security import rate_limiter  # noqa: E402
@@ -348,6 +381,8 @@ def test_public_reviews_need_approval(client, admin_token):
 def test_completed_request_review_is_verified_and_moderated(client, admin_token):
     token = customer_token(client, "9000000006", "Priya")
     req = client.post("/api/requests", headers=auth(token), json=booking()).json()
+    # Reviews are only accepted once the service is finished.
+    assert client.patch(f"/api/requests/{req['id']}/status", headers=auth(admin_token), json={"status": "Completed"}).status_code == 200
     r = client.post(f"/api/requests/{req['id']}/review", headers=auth(token), json={"rating": 4, "comment": "Good job overall"})
     assert r.status_code == 200
     pending = client.get("/api/reviews/admin?status=pending", headers=auth(admin_token)).json()

@@ -270,12 +270,14 @@ def _register_elsewhere_message(event: EventModel, shop_phone: str) -> str:
     "/events/{event_id}/register",
     response_model=EventRegistrationSchema,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(rate_limit("event-register", limit=10, window_seconds=900))],
+    dependencies=[Depends(rate_limit("event-register", limit=30, window_seconds=900))],  # loose: shared mobile IPs
 )
 def register_for_event(event_id: str, payload: EventRegistrationCreate, db: Session = Depends(get_db)):
+    # Lock the event row (PostgreSQL) so two registrations at once can't both take the last place.
     event = (
         db.query(EventModel)
         .filter(EventModel.id == event_id, EventModel.isActive == True)  # noqa: E712
+        .with_for_update()
         .first()
     )
     if not event:

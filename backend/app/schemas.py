@@ -1,5 +1,29 @@
+import re
 from typing import Optional, List, Literal, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+# Numbers in request bodies must be real numbers: Python's JSON parser accepts NaN/Infinity,
+# which would otherwise be stored and then break every response that includes them.
+FINITE = ConfigDict(allow_inf_nan=False)
+MAX_AMOUNT = 1_000_000  # ₹10 lakh: far above any real stringing / repair bill
+
+# Racket / pickup photos: small images the browser resized (data: URLs) or https links.
+# Anything else (javascript:, data:text/html, SVG...) could run script when staff open it.
+_PHOTO_DATA_URL = re.compile(r"^data:image/(?:jpeg|jpg|png|webp|gif);base64,[A-Za-z0-9+/=\s]+$")
+MAX_PHOTO_CHARS = 2_000_000
+
+
+def check_photo_urls(photos: List[str], max_count: int) -> List[str]:
+    if len(photos) > max_count:
+        raise ValueError(f"Attach at most {max_count} photos")
+    for photo in photos:
+        p = (photo or "").strip()
+        if len(p) > MAX_PHOTO_CHARS:
+            raise ValueError("Photo is too large")
+        if _PHOTO_DATA_URL.match(p) or p.startswith("https://") or (p.startswith("/") and not p.startswith("//")):
+            continue
+        raise ValueError("Photos must be JPG, PNG, WebP or GIF images")
+    return photos
 
 # User Roles
 UserRole = Literal['CUSTOMER', 'EMPLOYEE', 'ADMIN']
@@ -34,6 +58,7 @@ PaymentMethod = Literal['Cash', 'UPI', 'Other']
 
 # Sub-schemas
 class AddressSchema(BaseModel):
+    model_config = FINITE
     id: Optional[str] = None
     label: Literal['Home', 'Office', 'Other'] = 'Home'
     houseFlat: str
@@ -59,6 +84,7 @@ class TimelineEventSchema(BaseModel):
     notes: Optional[str] = None
 
 class RepairEstimateSchema(BaseModel):
+    model_config = FINITE
     labourCharge: float = 0.0
     materialsCharge: float = 0.0
     additionalCharges: float = 0.0
@@ -70,6 +96,8 @@ class RepairEstimateSchema(BaseModel):
     isRevised: Optional[bool] = False
     originalEstimate: Optional[float] = None
     revisionReason: Optional[str] = None
+    # Set when the customer declines: the shop's declined-repair fee at that moment.
+    declinedRepairFee: Optional[float] = None
 
 class PickupConditionSchema(BaseModel):
     condition: BatConditionAtPickup
@@ -87,7 +115,7 @@ class PaymentRecordSchema(BaseModel):
 
 class ReviewSchema(BaseModel):
     rating: int = Field(ge=1, le=5)
-    comment: str
+    comment: str = Field(max_length=1500)
     createdAt: Optional[str] = None
 
 # Notification Schema
@@ -188,27 +216,43 @@ class ServiceRequestSchema(BaseModel):
     review: Optional[ReviewSchema] = None
 
 class RequestCreate(BaseModel):
+    model_config = FINITE
     serviceType: ServiceType = 'GETTING'
-    customerName: str
-    customerEmail: Optional[str] = None  # ignored; customers are identified by mobile
-    customerMobile: str
-    batBrand: str
-    batModel: str
-    batType: str = 'Even Balance (All-Round)'
+    customerName: str = Field(max_length=80)
+    customerEmail: Optional[str] = Field(default=None, max_length=200)  # ignored; customers are identified by mobile
+    customerMobile: str = Field(max_length=40)
+    batBrand: str = Field(max_length=60)
+    batModel: str = Field(max_length=120)
+    batType: str = Field(default='Even Balance (All-Round)', max_length=80)
     batPhotos: List[str] = []
-    gettingType: Optional[str] = None
-    stringPreference: Optional[str] = None
-    stringType: Optional[str] = None
-    stringTensionLbs: Optional[int] = None
-    gettingPrice: Optional[float] = None
-    colour: Optional[str] = None
-    repairIssue: Optional[str] = None
-    repairDescription: Optional[str] = None
+    gettingType: Optional[str] = Field(default=None, max_length=120)
+    stringPreference: Optional[str] = Field(default=None, max_length=120)
+    stringType: Optional[str] = Field(default=None, max_length=120)
+    stringTensionLbs: Optional[int] = Field(default=None, ge=10, le=40)
+    gettingPrice: Optional[float] = None  # ignored; the server prices the package
+    colour: Optional[str] = Field(default=None, max_length=60)
+    repairIssue: Optional[str] = Field(default=None, max_length=200)
+    repairDescription: Optional[str] = Field(default=None, max_length=2000)
     pickupAddress: AddressSchema
     distanceKm: float = 12.0
-    serviceCharge: Optional[float] = None
-    additionalNotes: Optional[str] = None
-    pickupDate: Optional[str] = None  # YYYY-MM-DD, validated against availability
+    serviceCharge: Optional[float] = None  # ignored
+    additionalNotes: Optional[str] = Field(default=None, max_length=2000)
+    pickupDate: Optional[str] = Field(default=None, max_length=30)  # YYYY-MM-DD, validated against availability
+
+    @field_validator("batPhotos")
+    @classmethod
+    def _photos(cls, v: List[str]) -> List[str]:
+        return check_photo_urls(v, 6)
+
+    @field_validator("pickupAddress")
+    @classmethod
+    def _address_lengths(cls, a: AddressSchema) -> AddressSchema:
+        limits = {"id": 60, "houseFlat": 200, "street": 200, "area": 120, "city": 80, "state": 80,
+                  "pincode": 12, "landmark": 200}
+        for field, limit in limits.items():
+            if len(getattr(a, field) or "") > limit:
+                raise ValueError(f"Address {field} must be at most {limit} characters")
+        return a
 
 class RequestStatusUpdate(BaseModel):
     status: RequestStatus
@@ -220,28 +264,37 @@ class AssignEmployeeRequest(BaseModel):
 
 class RecordPickupConditionRequest(BaseModel):
     condition: BatConditionAtPickup
-    notes: str = ""
+    notes: str = Field(default="", max_length=2000)
     photos: List[str] = []
-    collectedBy: Optional[str] = None
+    collectedBy: Optional[str] = Field(default=None, max_length=80)
+
+    @field_validator("photos")
+    @classmethod
+    def _photos(cls, v: List[str]) -> List[str]:
+        return check_photo_urls(v, 10)
 
 class PriceRevisionRequest(BaseModel):
-    additionalAmount: float
+    model_config = FINITE
+    additionalAmount: float = Field(le=MAX_AMOUNT)
     newTotal: float
-    reason: str
+    reason: str = Field(max_length=500)
 
 class RecordPaymentRequest(BaseModel):
-    amount: float
+    model_config = FINITE
+    amount: float = Field(le=MAX_AMOUNT)
     method: PaymentMethod
-    notes: Optional[str] = None
-    collectedBy: Optional[str] = None
+    notes: Optional[str] = Field(default=None, max_length=500)
+    collectedBy: Optional[str] = Field(default=None, max_length=80)
 
 # Distance & Pricing Configuration
 class SlabConfig(BaseModel):
+    model_config = FINITE
     minKm: float
     maxKm: float
     price: float
 
 class DistancePricingConfigSchema(BaseModel):
+    model_config = FINITE
     shopLocationName: str
     shopLat: float
     shopLng: float
@@ -252,6 +305,7 @@ class DistancePricingConfigSchema(BaseModel):
     slabs: List[SlabConfig] = []
 
 class DistanceCalculationRequest(BaseModel):
+    model_config = FINITE
     distanceKm: Optional[float] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
@@ -264,18 +318,20 @@ class DistanceCalculationResponse(BaseModel):
 
 # Service Tiers
 class GettingServiceTierSchema(BaseModel):
+    model_config = FINITE
     id: str
     name: str
-    price: float
+    price: float = Field(ge=0, le=MAX_AMOUNT)
     turnaround: str
     description: str
     features: List[str] = []
     isActive: bool = True
 
 class RepairCategoryTierSchema(BaseModel):
+    model_config = FINITE
     id: str
     name: str
-    basePrice: float
+    basePrice: float = Field(ge=0, le=MAX_AMOUNT)
     turnaround: str
     description: str
     slaDays: int = 7
@@ -317,8 +373,8 @@ class OtpRequest(BaseModel):
     phone: str
 
 class CustomerCreate(BaseModel):
-    name: str
-    address: Optional[str] = None
+    name: str = Field(max_length=80)
+    address: Optional[str] = Field(default=None, max_length=300)
 
 class CustomerResponse(BaseModel):
     id: str
@@ -706,6 +762,7 @@ class PublicSiteContent(BaseModel):
 # ---------------- Shop settings (admin-editable shop details) ----------------
 
 class ShopSettingsSchema(BaseModel):
+    model_config = FINITE
     name: str
     tagline: str = ""
     phone: str

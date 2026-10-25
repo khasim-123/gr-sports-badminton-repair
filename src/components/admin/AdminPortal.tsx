@@ -58,6 +58,7 @@ import {
 } from '../../utils/format';
 import { VisitorReports } from './reports/VisitorReports';
 import { employeeService } from '../../services/employeeService';
+import { useRequestPhotos } from '../../hooks/useRequestPhotos';
 import type { PaymentMethod } from '../../types';
 
 // ---------------------------------------------------------------------------
@@ -490,6 +491,7 @@ export const AdminPortal: React.FC = () => {
   const filtersActive = !!searchQuery.trim() || statusFilter !== 'ALL' || serviceFilter !== 'ALL' || paymentFilter !== 'ALL';
 
   const detailRequest = detailRequestId ? requests.find((r) => r.id === detailRequestId) || null : null;
+  const detailPhotos = useRequestPhotos(detailRequest);
   const assignRequest = assignModalReqId ? requests.find((r) => r.id === assignModalReqId) || null : null;
 
   // Distance form helpers
@@ -2882,9 +2884,9 @@ export const AdminPortal: React.FC = () => {
                       <b>Customer note:</b> {detailRequest.additionalNotes}
                     </p>
                   )}
-                  {detailRequest.batPhotos?.length > 0 && (
+                  {detailPhotos.batPhotos.length > 0 && (
                     <div className="flex flex-wrap gap-2 pt-1">
-                      {detailRequest.batPhotos.slice(0, 6).map((src, i) => (
+                      {detailPhotos.batPhotos.slice(0, 6).map((src, i) => (
                         <a key={i} href={src} target="_blank" rel="noreferrer" className="block">
                           <img src={src} alt={`Racket photo ${i + 1}`} className="w-14 h-14 rounded-lg object-cover border border-slate-200" />
                         </a>
@@ -3081,6 +3083,15 @@ export const AdminPortal: React.FC = () => {
                     Collected by {detailRequest.pickupCondition.collectedBy} on{' '}
                     {formatDateTime(detailRequest.pickupCondition.collectedAt)}
                   </p>
+                  {detailPhotos.pickupPhotos.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {detailPhotos.pickupPhotos.slice(0, 6).map((src, i) => (
+                        <a key={i} href={src} target="_blank" rel="noreferrer" className="block">
+                          <img src={src} alt={`Pickup photo ${i + 1}`} className="w-14 h-14 rounded-lg object-cover border border-slate-200" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

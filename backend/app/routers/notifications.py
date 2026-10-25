@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import NotificationModel, ServiceRequestModel
 from app.schemas import AppNotificationSchema, NotificationCreate
-from app.security import CurrentUser, get_current_user, require_staff
+from app.security import CurrentUser, get_current_user, require_admin, require_staff
 from app.services.notification_service import create_notification
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
@@ -16,7 +16,9 @@ def _visible_notifications(db: Session, user: CurrentUser, unread_only: bool = F
     query = db.query(NotificationModel)
     if unread_only:
         query = query.filter(NotificationModel.isRead == False)  # noqa: E712
-    notifications = query.all()
+    # Oldest first (reversed below). Without ORDER BY, PostgreSQL returns rows in physical
+    # order, which changes after updates (e.g. marking one read), so the list would reshuffle.
+    notifications = query.order_by(NotificationModel.timestamp, NotificationModel.id).all()
 
     own_request_ids = None
     if not user.is_staff:
@@ -51,14 +53,17 @@ def _visible_notifications(db: Session, user: CurrentUser, unread_only: bool = F
 def get_notifications(
     role: Optional[str] = Query(None),  # kept for backwards compatibility; the token decides
     unreadOnly: bool = Query(False),
+    limit: int = Query(200, ge=1, le=1000),
     db: Session = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
-    return _visible_notifications(db, user, unreadOnly)
+    # Newest first; older notifications aren't needed on screen.
+    return _visible_notifications(db, user, unreadOnly)[:limit]
 
 
 @router.post("", response_model=AppNotificationSchema, status_code=status.HTTP_201_CREATED)
-def add_notification(payload: NotificationCreate, db: Session = Depends(get_db), _staff: CurrentUser = Depends(require_staff)):
+def add_notification(payload: NotificationCreate, db: Session = Depends(get_db), _admin: CurrentUser = Depends(require_admin)):
+    # Admin only: an employee could otherwise message any customer (e.g. fake payment requests).
     notif = create_notification(
         db=db,
         type_=payload.type,

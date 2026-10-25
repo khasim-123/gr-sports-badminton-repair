@@ -1,9 +1,12 @@
+import base64
+import binascii
 import random
+import secrets
 import time
 import uuid
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
@@ -15,6 +18,7 @@ from app.models import (
     EmployeeModel,
     GettingServiceTierModel,
     CustomerModel,
+    MediaModel,
 )
 from app.schemas import (
     ServiceRequestSchema,
@@ -26,10 +30,12 @@ from app.schemas import (
     PriceRevisionRequest,
     RecordPaymentRequest,
     ReviewSchema,
+    MAX_AMOUNT,
 )
 from app.services.pricing_service import calculate_delivery_charge, road_distance_km, valid_coordinates
 from app.services.shop_settings import get_shop_settings, display_phone
-from app.services.content_service import assert_pickup_date_available, new_id, now_iso
+from app.services.content_service import assert_pickup_date_available, new_id, now_iso, process_upload
+from app.routers.media import media_url
 from app.models import ReviewModel
 from app.security import CurrentUser, get_current_user, require_staff
 from app.services.sms_service import require_phone
@@ -97,6 +103,13 @@ def _require_status(req: ServiceRequestModel, allowed, action: str) -> None:
         )
 
 
+def _require_customer(user: CurrentUser, action: str) -> None:
+    """Estimate approval is the customer's consent to be charged; staff can't give it for them
+    (an admin who takes approval by phone records it with a status change instead)."""
+    if user.is_staff:
+        raise HTTPException(status_code=403, detail=f"Only the customer can {action} the estimate")
+
+
 def _was_declined(req: ServiceRequestModel) -> bool:
     return req.status == "Repair Declined" or any(
         (e or {}).get("status") == "Repair Declined" for e in (req.timeline or [])
@@ -144,6 +157,7 @@ _PICKUP_STATUSES = ("Submitted", "Accepted", "Employee Assigned", "Pickup Schedu
 _ESTIMATE_STATUSES = ("Bat Picked Up", "Inspection", "Repair Estimate")
 _REVISE_STATUSES = ("Repair Approved", "Repair in Progress")
 _PAYMENT_STATUSES = ("Out for Delivery", "Delivered", "Payment Pending")
+_REVIEWABLE_STATUSES = ("Delivered", "Payment Collected", "Completed", "Completed Without Repair")
 _EMPLOYEE_MOVES = {
     ("GETTING", "Bat Picked Up"): {"Getting in Progress"},
     ("GETTING", "Getting in Progress"): {"Getting Completed"},
@@ -170,6 +184,7 @@ def get_requests(
     search: Optional[str] = Query(None),
     customerId: Optional[str] = Query(None),
     employeeId: Optional[str] = Query(None),
+    includePhotos: bool = Query(False),
     db: Session = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
@@ -199,7 +214,57 @@ def get_requests(
         )
 
     # Return descending by creation
-    return query.order_by(ServiceRequestModel.createdAt.desc()).all()
+    rows = query.order_by(ServiceRequestModel.createdAt.desc()).all()
+    if includePhotos:
+        return rows
+    # Phone photos are stored as ~150 KB data URLs; a list with all of them runs to many MB.
+    # Lists leave the photo data out — screens fetch GET /requests/{id} when a request is opened.
+    return [_without_photo_data(r) for r in rows]
+
+
+def _is_embedded(photo: str) -> bool:
+    return isinstance(photo, str) and photo.startswith("data:")
+
+
+def _store_photos(db: Session, http_request: Request, photos: Optional[List[str]], uploaded_by: str) -> List[str]:
+    """Saves photos sent as data: URLs in the media store and returns their links, so a request
+    row (and every list of requests) holds short URLs instead of ~150 KB of image data each.
+    Photo ids are long and random: the media endpoint is public, the links are not guessable."""
+    stored: List[str] = []
+    for photo in photos or []:
+        if not _is_embedded(photo):
+            stored.append(photo)
+            continue
+        header, _, encoded = photo.partition(",")
+        try:
+            raw = base64.b64decode(encoded, validate=True)
+        except (binascii.Error, ValueError):
+            raise HTTPException(status_code=422, detail="A photo could not be read. Please attach it again.")
+        body, content_type, ext = process_upload(raw, header[5:].split(";")[0])
+        if not content_type.startswith("image/"):
+            raise HTTPException(status_code=415, detail="Photos must be JPG, PNG, WebP or GIF images.")
+        media = MediaModel(
+            id=f"PHO-{secrets.token_urlsafe(18)}",
+            fileName=f"racket-photo.{ext}",
+            contentType=content_type,
+            size=len(body),
+            data=body,
+            uploadedBy=uploaded_by,
+            createdAt=now_iso(),
+        )
+        db.add(media)
+        stored.append(media_url(http_request, media.id))
+    return stored
+
+
+def _without_photo_data(req: ServiceRequestModel) -> ServiceRequestSchema:
+    item = ServiceRequestSchema.model_validate(req, from_attributes=True)
+    update = {"batPhotos": [p for p in item.batPhotos if not _is_embedded(p)]}
+    if item.pickupCondition is not None:
+        update["pickupCondition"] = item.pickupCondition.model_copy(
+            update={"photos": [p for p in (item.pickupCondition.photos or []) if not _is_embedded(p)]}
+        )
+    return item.model_copy(update=update)
 
 
 @router.get("/{request_id}", response_model=ServiceRequestSchema)
@@ -208,7 +273,12 @@ def get_request_by_id(request_id: str, db: Session = Depends(get_db), user: Curr
 
 
 @router.post("", response_model=ServiceRequestSchema, status_code=status.HTTP_201_CREATED)
-def create_request(payload: RequestCreate, db: Session = Depends(get_db), user: CurrentUser = Depends(get_current_user)):
+def create_request(
+    payload: RequestCreate,
+    http_request: Request,
+    db: Session = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
     if not user.is_staff:
         # Customers can only book for their own account.
         payload.customerMobile = user.phone
@@ -327,7 +397,7 @@ def create_request(payload: RequestCreate, db: Session = Depends(get_db), user: 
         batBrand=payload.batBrand,
         batModel=payload.batModel,
         batType=payload.batType,
-        batPhotos=payload.batPhotos or [],
+        batPhotos=_store_photos(db, http_request, payload.batPhotos, user.label),
         gettingType=payload.gettingType,
         stringPreference=payload.stringPreference,
         stringType=payload.stringType,
@@ -458,6 +528,24 @@ def assign_technician(request_id: str, payload: AssignEmployeeRequest, db: Sessi
                 detail=f"{request_id} was already accepted by {req.assignedEmployeeName or 'another staff member'}.",
             )
         _require_status(req, ("Submitted", "Accepted"), "accept this job")
+        # Two employees tapping "Accept" at the same time: only one UPDATE can match the
+        # still-unassigned row (the database re-checks the condition under its row lock).
+        claimed = (
+            db.query(ServiceRequestModel)
+            .filter(
+                ServiceRequestModel.id == request_id,
+                or_(
+                    ServiceRequestModel.assignedEmployeeId.is_(None),
+                    ServiceRequestModel.assignedEmployeeId == "",
+                    ServiceRequestModel.assignedEmployeeId == staff.id,
+                ),
+                ServiceRequestModel.status.in_(("Submitted", "Accepted")),
+            )
+            .update({ServiceRequestModel.assignedEmployeeId: emp.id}, synchronize_session=False)
+        )
+        if not claimed:
+            db.rollback()
+            raise HTTPException(status_code=409, detail=f"{request_id} was just accepted by another staff member.")
 
     previous_id = req.assignedEmployeeId
     req.assignedEmployeeId = emp.id
@@ -514,6 +602,7 @@ def assign_technician(request_id: str, payload: AssignEmployeeRequest, db: Sessi
 def record_pickup_condition(
     request_id: str,
     payload: RecordPickupConditionRequest,
+    http_request: Request,
     db: Session = Depends(get_db),
     staff: CurrentUser = Depends(require_staff)
 ):
@@ -528,7 +617,7 @@ def record_pickup_condition(
     pickup_cond = {
         "condition": payload.condition,
         "notes": payload.notes,
-        "photos": payload.photos,
+        "photos": _store_photos(db, http_request, payload.photos, staff.label),
         "collectedAt": datetime.utcnow().isoformat() + "Z",
         "collectedBy": collector
     }
@@ -592,6 +681,8 @@ def create_repair_estimate(
     parts = (estimate.labourCharge, estimate.materialsCharge, estimate.additionalCharges, estimate.discount)
     if any(v is None or v < 0 for v in parts):
         raise HTTPException(status_code=422, detail="Charges can't be negative")
+    if any(v > MAX_AMOUNT for v in parts):
+        raise HTTPException(status_code=422, detail="Charges look too large")
     # The total is always the sum of the lines (never trust a total sent by the client).
     total = round(max(0.0, estimate.labourCharge + estimate.materialsCharge + estimate.additionalCharges - estimate.discount), 2)
     if total <= 0:
@@ -636,6 +727,7 @@ def create_repair_estimate(
 
 @router.post("/{request_id}/estimate/approve", response_model=ServiceRequestSchema)
 def approve_repair_estimate(request_id: str, db: Session = Depends(get_db), user: CurrentUser = Depends(get_current_user)):
+    _require_customer(user, "approve")
     req = _load_request(db, request_id, user)
     if req.status not in ("Awaiting Customer Approval", "Repair Estimate"):
         raise HTTPException(status_code=409, detail="There is no estimate waiting for approval on this request")
@@ -670,6 +762,7 @@ def approve_repair_estimate(request_id: str, db: Session = Depends(get_db), user
 
 @router.post("/{request_id}/estimate/decline", response_model=ServiceRequestSchema)
 def decline_repair_estimate(request_id: str, db: Session = Depends(get_db), user: CurrentUser = Depends(get_current_user)):
+    _require_customer(user, "decline")
     req = _load_request(db, request_id, user)
     if req.status not in ("Awaiting Customer Approval", "Repair Estimate"):
         raise HTTPException(status_code=409, detail="There is no estimate waiting for approval on this request")
@@ -736,6 +829,8 @@ def correct_distance(
 
     new_km = round(float(payload.distanceKm), 1)
     old_km = float(req.distanceKm or (req.pickupAddress or {}).get("distanceKm") or 0.0)
+    if abs(new_km - old_km) < 0.05:
+        raise HTTPException(status_code=422, detail=f"The distance is already {old_km:g} km")
     old_charge = float(req.pickupDeliveryCharge or 0.0)
     calc = calculate_delivery_charge(new_km, _distance_config(db))
     new_charge = float(calc["charge"])
@@ -870,6 +965,18 @@ def record_payment(
         raise HTTPException(status_code=422, detail="Enter the amount received (more than ₹0)")
     if not staff.is_admin:
         _require_status(req, _PAYMENT_STATUSES, "record the payment")
+    due = round(_amount_due(req), 2)
+    if abs(float(payload.amount) - due) > 1:  # ₹1 tolerance for rounding
+        if not staff.is_admin:
+            raise HTTPException(
+                status_code=422,
+                detail=f"The amount due is ₹{due:,.0f}. Record exactly that amount, or ask the admin to record a different amount.",
+            )
+        if not (payload.notes or "").strip():
+            raise HTTPException(
+                status_code=422,
+                detail=f"The amount due is ₹{due:,.0f}. Add a note explaining the different amount (e.g. discount).",
+            )
 
     # Employees record what they collected themselves; the admin may record it for someone else.
     collector = staff.label if not staff.is_admin else (payload.collectedBy or staff.label)
@@ -886,6 +993,15 @@ def record_payment(
         "collectedBy": collector,
         "transactionNotes": payload.notes or f"Paid via {payload.method}"
     }
+    # Two phones recording the same payment: only one conditional UPDATE can succeed.
+    claimed = (
+        db.query(ServiceRequestModel)
+        .filter(ServiceRequestModel.id == req.id, ServiceRequestModel.paymentStatus != "Paid")
+        .update({ServiceRequestModel.paymentStatus: "Paid"}, synchronize_session=False)
+    )
+    if not claimed:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=f"Payment for {request_id} has already been recorded")
     req.paymentStatus = "Paid"
     req.status = final_status
 
@@ -946,6 +1062,8 @@ def submit_review(
     req = _load_request(db, request_id, user)
     if user.is_staff:
         raise HTTPException(status_code=403, detail="Only the customer can review their service")
+    if req.status not in _REVIEWABLE_STATUSES:
+        raise HTTPException(status_code=409, detail="You can review this service once it has been completed")
 
     review_data = {
         "rating": payload.rating,

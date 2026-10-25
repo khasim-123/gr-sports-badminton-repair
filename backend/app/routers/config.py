@@ -1,3 +1,4 @@
+import math
 import re
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -85,6 +86,16 @@ def calculate_distance(payload: DistanceCalculationRequest, db: Session = Depend
     )
 
 
+def _price(value: Any) -> float:
+    try:
+        price = float(value)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="Price must be a number")
+    if not math.isfinite(price) or price < 0 or price > 1_000_000:
+        raise HTTPException(status_code=422, detail="Price must be between ₹0 and ₹10,00,000")
+    return price
+
+
 # 2. Getting Service Tiers
 @router.get("/getting-services", response_model=List[GettingServiceTierSchema])
 def get_getting_services(db: Session = Depends(get_db)):
@@ -119,7 +130,7 @@ def update_getting_service(tier_id: str, payload: Dict[str, Any], db: Session = 
     if "name" in payload:
         tier.name = payload["name"]
     if "price" in payload:
-        tier.price = float(payload["price"])
+        tier.price = _price(payload["price"])
     if "turnaround" in payload:
         tier.turnaround = payload["turnaround"]
     if "description" in payload:
@@ -168,7 +179,7 @@ def update_repair_category(cat_id: str, payload: Dict[str, Any], db: Session = D
     if "name" in payload:
         cat.name = payload["name"]
     if "basePrice" in payload:
-        cat.basePrice = float(payload["basePrice"])
+        cat.basePrice = _price(payload["basePrice"])
     if "turnaround" in payload:
         cat.turnaround = payload["turnaround"]
     if "description" in payload:

@@ -17,6 +17,7 @@ from app.security import (
     get_current_user,
     hash_password,
     is_password_hash,
+    password_version,
     rate_limit,
     rate_limiter,
     require_admin,
@@ -51,7 +52,7 @@ def _customer_session(customer: Optional[CustomerModel], phone: str) -> AuthSess
 
 
 def _staff_session(emp: EmployeeModel, role: str) -> AuthSessionResponse:
-    token = create_access_token(emp.id, emp.phone, role, emp.name)
+    token = create_access_token(emp.id, emp.phone, role, emp.name, pwv=password_version(emp.password))
     return AuthSessionResponse(
         isLoggedIn=True,
         token=token,
@@ -94,7 +95,9 @@ def _consume_otp(db: Session, phone: str, code: str) -> bool:
     return True
 
 
-@router.post("/otp/request", dependencies=[Depends(rate_limit("otp", limit=5, window_seconds=900))])
+# Per-address limits are loose on purpose: Indian mobile networks put many customers behind one
+# shared IP (CGNAT). The per-number limits and the daily SMS cap are the real protection.
+@router.post("/otp/request", dependencies=[Depends(rate_limit("otp", limit=20, window_seconds=900))])
 def request_otp(payload: OtpRequest, db: Session = Depends(get_db)):
     phone = require_phone(payload.phone)
     # Limit SMS spend: per number, then a daily cap across all numbers (protects against
@@ -123,7 +126,9 @@ def request_otp(payload: OtpRequest, db: Session = Depends(get_db)):
 
     sent = send_login_code(phone, code)
     response = {"success": True, "message": f"Verification code sent by SMS to {phone}", "smsSent": sent}
-    expose = settings.EXPOSE_OTP_IN_RESPONSE
+    # Never show codes on screen in production, whatever EXPOSE_OTP_IN_RESPONSE says: anyone
+    # who knows a customer's number could then sign in as them.
+    expose = "false" if settings.is_production else settings.EXPOSE_OTP_IN_RESPONSE
     if expose in ("1", "true", "yes") or (expose == "auto" and not sent):
         response["otp"] = code
     elif not sent:
@@ -137,13 +142,15 @@ def request_otp(payload: OtpRequest, db: Session = Depends(get_db)):
 @router.post(
     "/login",
     response_model=AuthSessionResponse,
-    dependencies=[Depends(rate_limit("login", limit=10, window_seconds=900))],
+    dependencies=[Depends(rate_limit("login", limit=30, window_seconds=900))],  # per number: 10
 )
 def login(credentials: LoginCredentials, db: Session = Depends(get_db)):
     role = credentials.role
     phone = require_phone(credentials.phone)
 
     if role in ("EMPLOYEE", "ADMIN"):
+        # Per-account limit too: the per-IP limit alone can be dodged by rotating addresses.
+        rate_limiter.check(f"login-phone:{phone}", 10, 900)
         emp = db.query(EmployeeModel).filter(EmployeeModel.phone == phone).first()
         allowed_role = emp and (emp.userRole == role or (role == "EMPLOYEE" and emp.userRole == "ADMIN"))
         if not emp or not emp.isActive or not allowed_role or not _verify_and_upgrade(emp, credentials.password or "", db):
@@ -246,7 +253,8 @@ def change_password(payload: ChangePasswordRequest, user: CurrentUser = Depends(
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     emp.password = hash_password(payload.newPassword)
     db.commit()
-    return {"success": True, "message": "Password updated"}
+    # Older tokens (e.g. on a lost phone) stop working; this device continues with a new one.
+    return {"success": True, "message": "Password updated", "token": _staff_session(emp, user.role).token}
 
 
 @router.get("/customers", response_model=list[CustomerResponse])

@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { StatusBadge } from '../common/Badge';
 import { Button } from '../common/Button';
 import { RequestProgress } from './RequestProgress';
+import { useRequestPhotos } from '../../hooks/useRequestPhotos';
 import { phoneDisplay, telHref, useShopSettings } from '../../hooks/useShopSettings';
 import {
   ArrowLeft,
@@ -70,6 +71,7 @@ export const RequestDetailView: React.FC = () => {
   const [reviewSubmitting, setReviewSubmitting] = React.useState(false);
 
   const request = requests.find((r) => r.id === selectedRequestId);
+  const loadedPhotos = useRequestPhotos(request);
 
   if (!request && isDataLoading && !dataLoaded) {
     return <div className="p-8 text-center text-sm text-slate-500">Loading your request…</div>;
@@ -91,8 +93,8 @@ export const RequestDetailView: React.FC = () => {
   const est = request.repairEstimate;
   const isRevised = !!est?.isRevised;
   const { slot, notes } = splitNotes(request.additionalNotes);
-  const photos = realPhotos(request.batPhotos);
-  const pickupPhotos = realPhotos(request.pickupCondition?.photos);
+  const photos = loadedPhotos.batPhotos;
+  const pickupPhotos = loadedPhotos.pickupPhotos;
   const address = request.pickupAddress;
   const addressLine = [address?.houseFlat, address?.street, address?.area, address?.city].filter(Boolean).join(', ');
   const deliveryCharge = request.pickupDeliveryCharge || 0;
