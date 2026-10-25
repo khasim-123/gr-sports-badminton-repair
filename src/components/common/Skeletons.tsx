@@ -1,36 +1,39 @@
 import React from 'react';
 
+/** Placeholder bar with a calm shimmer (flat with reduced motion — see index.css). */
+const Bar: React.FC<{ className: string }> = ({ className }) => <div className={`skeleton-shimmer rounded ${className}`} />;
+
 export const CardSkeleton: React.FC = () => (
-  <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs animate-pulse space-y-4">
+  <div className="bg-white p-5 rounded-2xl border border-line space-y-4" aria-hidden="true">
     <div className="flex items-center justify-between">
-      <div className="h-4 bg-slate-200 rounded w-1/3" />
-      <div className="h-6 bg-slate-200 rounded-full w-20" />
+      <Bar className="h-4 w-1/3" />
+      <Bar className="h-6 rounded-full w-20" />
     </div>
     <div className="space-y-2">
-      <div className="h-3 bg-slate-100 rounded w-3/4" />
-      <div className="h-3 bg-slate-100 rounded w-1/2" />
+      <Bar className="h-3 w-3/4" />
+      <Bar className="h-3 w-1/2" />
     </div>
     <div className="pt-3 border-t border-line/70 flex justify-between items-center">
-      <div className="h-4 bg-slate-200 rounded w-1/4" />
-      <div className="h-8 bg-slate-200 rounded-xl w-24" />
+      <Bar className="h-4 w-1/4" />
+      <Bar className="h-8 rounded-xl w-24" />
     </div>
   </div>
 );
 
 export const TableSkeleton: React.FC = () => (
-  <div className="bg-white rounded-2xl border border-line shadow-2xs overflow-hidden animate-pulse">
+  <div className="bg-white rounded-2xl border border-line overflow-hidden" aria-hidden="true">
     <div className="p-4 bg-paper border-b border-line flex justify-between">
-      <div className="h-5 bg-slate-200 rounded w-36" />
-      <div className="h-5 bg-slate-200 rounded w-24" />
+      <Bar className="h-5 w-36" />
+      <Bar className="h-5 w-24" />
     </div>
     <div className="divide-y divide-line/70">
       {[1, 2, 3, 4, 5].map((i) => (
         <div key={i} className="p-4 flex items-center justify-between gap-4">
-          <div className="h-4 bg-slate-200 rounded w-24" />
-          <div className="h-4 bg-slate-100 rounded w-32 hidden sm:block" />
-          <div className="h-4 bg-slate-100 rounded w-20" />
-          <div className="h-6 bg-slate-200 rounded-full w-24" />
-          <div className="h-8 bg-slate-200 rounded-xl w-16" />
+          <Bar className="h-4 w-24" />
+          <Bar className="h-4 w-32 hidden sm:block" />
+          <Bar className="h-4 w-20" />
+          <Bar className="h-6 rounded-full w-24" />
+          <Bar className="h-8 rounded-xl w-16" />
         </div>
       ))}
     </div>

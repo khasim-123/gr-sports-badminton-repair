@@ -198,7 +198,7 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
               setUrlMode((m) => !m);
               setLocalError(null);
             }}
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-ink hover:text-ink min-h-[32px] px-1"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-ink hover:text-ink min-h-[32px] px-1"
           >
             {urlMode ? (
               <>
@@ -286,7 +286,7 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
                     href={value}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-[11px] text-ink hover:underline"
+                    className="inline-flex items-center gap-1 text-xs text-ink hover:underline"
                   >
                     Open <ExternalLink className="w-3 h-3" />
                   </a>
@@ -359,7 +359,7 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
               </>
             )}
           </span>
-          <span className="text-[11px] text-slate-500">
+          <span className="text-xs text-slate-500">
             {describeAccept(accept)} · max {MAX_MB} MB
           </span>
         </button>
@@ -367,11 +367,11 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
 
       <div id={describedBy}>
         {shownError ? (
-          <p className="text-[11px] text-rose-600 mt-1 font-medium" role="alert">
+          <p className="text-xs text-rose-600 mt-1 font-medium" role="alert">
             {shownError}
           </p>
         ) : hint ? (
-          <p className="text-[11px] text-slate-500 mt-1 leading-snug">{hint}</p>
+          <p className="text-xs text-slate-500 mt-1 leading-snug">{hint}</p>
         ) : null}
       </div>
     </div>

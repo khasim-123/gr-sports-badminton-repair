@@ -3,6 +3,7 @@
  * Tabs are mounted on first visit and then kept mounted (just hidden), so unsaved
  * input in one tab survives switching to another.
  */
+import { PageHeader } from '../PageHeader';
 import React, { useCallback, useEffect, useState } from 'react';
 import { CalendarClock, FileText, Images, Layers, Medal, Shirt, Star, Trophy } from 'lucide-react';
 import { contentService } from '../../../services/contentService';
@@ -20,12 +21,12 @@ type TabId = 'events' | 'banners' | 'strings' | 'rackets' | 'apparel' | 'reviews
 const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'events', label: 'Events', icon: Medal },
   { id: 'banners', label: 'Banners', icon: Images },
-  { id: 'strings', label: 'Strings & Stock', icon: Layers },
+  { id: 'strings', label: 'Strings & stock', icon: Layers },
   { id: 'rackets', label: 'Rackets', icon: Trophy },
-  { id: 'apparel', label: 'T-shirts & Apparel', icon: Shirt },
+  { id: 'apparel', label: 'T-shirts & apparel', icon: Shirt },
   { id: 'reviews', label: 'Reviews', icon: Star },
   { id: 'documents', label: 'Documents', icon: FileText },
-  { id: 'availability', label: 'Pickup Availability', icon: CalendarClock },
+  { id: 'availability', label: 'Pickup availability', icon: CalendarClock },
 ];
 
 const STORAGE_KEY = 'gr_admin_content_tab';
@@ -83,20 +84,17 @@ export const WebsiteContentPanel: React.FC = () => {
 
   return (
     <div className="space-y-5 min-w-0">
-      <div>
-        <h2 className="font-display tracking-[0.01em] text-3xl sm:text-4xl font-bold text-slate-900">Website Content</h2>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Manage what customers see on the GR Sports website — events, banners, string stock, rackets, T-shirts & apparel, reviews, documents and pickup days.
-        </p>
-      </div>
+      <PageHeader
+        title="Website content"
+        subtitle="What customers see on the GR Sports website — events, banners, string stock, rackets, T-shirts & apparel, reviews, documents and pickup days."
+      />
 
       <div
         role="tablist"
         aria-label="Website content sections"
-        className="flex gap-1 p-1 bg-white rounded-2xl border border-line shadow-2xs overflow-x-auto max-w-full lg:flex-wrap lg:overflow-visible"
+        className="flex gap-1 border-b border-line overflow-x-auto no-scrollbar max-w-full"
       >
         {TABS.map((tab, i) => {
-          const Icon = tab.icon;
           const isActive = tab.id === active;
           const badge = tab.id === 'reviews' && pendingReviews ? pendingReviews : null;
           return (
@@ -110,15 +108,14 @@ export const WebsiteContentPanel: React.FC = () => {
               tabIndex={isActive ? 0 : -1}
               onClick={() => select(tab.id)}
               onKeyDown={(e) => onTabKeyDown(e, i)}
-              className={`shrink-0 inline-flex items-center gap-2 min-h-[42px] px-3.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
-                isActive ? 'bg-sportsBlue text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              className={`shrink-0 -mb-px inline-flex items-center gap-2 min-h-[44px] px-3 sm:px-3.5 border-b-2 text-sm font-semibold whitespace-nowrap transition-colors duration-150 ${
+                isActive ? 'border-ink text-ink' : 'border-transparent text-slate-500 hover:text-ink hover:border-line'
               }`}
             >
-              <Icon className={`w-4 h-4 ${isActive ? 'text-brandYellow' : ''}`} />
               {tab.label}
               {badge !== null && (
                 <span
-                  className="text-[10px] min-w-[20px] px-1.5 py-0.5 rounded-full font-bold bg-brandYellow text-sportsBlue"
+                  className="text-xs leading-none min-w-[22px] text-center px-1.5 py-1 rounded-full font-semibold bg-accent text-ink tabular-nums"
                   aria-label={`${badge} pending`}
                 >
                   {badge}

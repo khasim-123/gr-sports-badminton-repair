@@ -4,7 +4,7 @@ import { DistancePricingConfig, GettingServiceTier, RepairCategoryTier, ServiceR
 import { StatusBadge } from '../common/Badge';
 import { formatDate, formatDateTime, formatINR } from '../../utils/format';
 import { formatMobile, mobileTelHref } from '../../utils/phone';
-import { ServiceTypeTile, gettingTierName, realPhotos, splitNotes, tidyRupees } from '../customer/requestDisplay';
+import { gettingTierName, splitNotes, tidyRupees } from '../customer/requestDisplay';
 import { StaffDialog } from './StaffDialog';
 import { useRequestPhotos } from '../../hooks/useRequestPhotos';
 import { distanceSourceInfo } from '../../utils/distance';
@@ -24,8 +24,8 @@ import {
 } from './jobLogic';
 
 const Card: React.FC<{ title: string; icon?: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => (
-  <section className="bg-white rounded-2xl border border-line p-4 sm:p-5 shadow-2xs">
-    <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3">
+  <section className="bg-white rounded-2xl border border-line p-4 sm:p-5">
+    <h2 className="font-display tracking-[0.01em] text-xl leading-tight font-bold text-ink flex items-center gap-2 mb-3">
       {icon}
       {title}
     </h2>
@@ -34,7 +34,7 @@ const Card: React.FC<{ title: string; icon?: React.ReactNode; children: React.Re
 );
 
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{children}</dt>
+  <dt className="text-xs font-semibold text-slate-500">{children}</dt>
 );
 
 const Line: React.FC<{ label: React.ReactNode; value: React.ReactNode; strong?: boolean }> = ({ label, value, strong }) => (
@@ -105,65 +105,94 @@ export const JobDetail: React.FC<JobDetailProps> = ({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 min-h-[44px] pr-3 text-sm font-semibold text-slate-600 hover:text-ink"
+          className="inline-flex items-center gap-2 min-h-[44px] pr-3 -ml-1 pl-1 rounded-xl text-[15px] font-semibold text-slate-600 hover:text-ink transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
         >
           <ArrowLeft className="w-4 h-4" /> {backLabel}
         </button>
-        <span className="text-xs text-slate-500">Booked {formatDateTime(r.createdAt)}</span>
+        <span className="text-[13px] text-slate-500">Booked {formatDateTime(r.createdAt)}</span>
       </div>
 
-      <section className="bg-white rounded-2xl border border-line p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <ServiceTypeTile type={r.serviceType} />
-          <div className="min-w-0">
-            <p className="text-xs text-slate-500">
-              <span className="font-mono font-bold text-slate-700">{r.id}</span> · {serviceName(r)}
-            </p>
-            <h1 className="font-display tracking-[0.01em] text-lg sm:text-xl font-bold text-slate-900 break-words">
-              {r.batBrand} {r.batModel}
-            </h1>
-            <p className="text-xs text-slate-500">
-              {r.assignedEmployeeName ? `Assigned to ${r.assignedEmployeeName}` : 'Not assigned yet'}
-            </p>
+      {/* Who and where: the first thing needed on the road */}
+      <section className="bg-white rounded-2xl border border-line p-4 sm:p-5" aria-label="Job and customer">
+        <div className="flex items-center justify-between gap-2">
+          <p className="inline-flex items-center gap-1.5 min-w-0 text-[13px] text-slate-500">
+            <span className="font-mono font-semibold text-slate-700">{r.id}</span>
+            <span aria-hidden="true">·</span>
+            <span className="truncate">{serviceName(r)}</span>
+          </p>
+          <StatusBadge status={r.status} size="sm" />
+        </div>
+        <h1 className="mt-1 font-display tracking-[0.01em] text-[28px] sm:text-[32px] leading-tight font-bold text-ink break-words">
+          {r.batBrand} {r.batModel}
+        </h1>
+        <p className="text-[13px] text-slate-500">
+          {r.assignedEmployeeName ? `Assigned to ${r.assignedEmployeeName}` : 'Not assigned yet'}
+        </p>
+
+        <div className="mt-4 pt-4 border-t border-line/70 space-y-1">
+          <p className="text-base font-semibold text-ink">{r.customerName}</p>
+          <p className="text-sm text-slate-600 tabular-nums">{formatMobile(r.customerMobile) || 'No mobile number'}</p>
+          <p className="text-[15px] text-slate-900 pt-1">{addressLine(r.pickupAddress) || 'Address not recorded'}</p>
+          {r.pickupAddress?.landmark && <p className="text-sm text-slate-600">Landmark: {r.pickupAddress.landmark}</p>}
+        </div>
+        {notes && (
+          <p className="mt-3 rounded-xl bg-paper border border-line px-3 py-2 text-sm text-slate-800 whitespace-pre-line">
+            <span className="font-semibold text-ink">Customer note: </span>
+            {notes}
+          </p>
+        )}
+        {(tel || map) && (
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:max-w-sm">
+            {tel && (
+              <a href={tel} className={`${secondaryBtnCls} min-h-[48px] ${map ? '' : 'col-span-2'}`} aria-label={`Call ${r.customerName}`}>
+                <Phone className="w-[18px] h-[18px]" aria-hidden="true" /> Call
+              </a>
+            )}
+            {map && (
+              <a
+                href={map}
+                target="_blank"
+                rel="noreferrer"
+                className={`${secondaryBtnCls} min-h-[48px] ${tel ? '' : 'col-span-2'}`}
+                aria-label="Open the address in Google Maps"
+              >
+                <MapPin className="w-[18px] h-[18px]" aria-hidden="true" /> Map
+              </a>
+            )}
           </div>
-        </div>
-        <div className="shrink-0">
-          <StatusBadge status={r.status} size="lg" />
-        </div>
+        )}
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
         <div className="lg:col-span-3 space-y-4">
           {/* What to do next */}
           <section
-            className={`rounded-2xl border p-4 sm:p-5 ${
-              stage === 'done' ? 'bg-emerald-50/60 border-emerald-200' : readOnly ? 'bg-paper border-line' : 'bg-paper border-line'
-            }`}
+            className={`rounded-2xl border p-4 sm:p-5 ${stage === 'done' ? 'bg-emerald-50/60 border-emerald-200' : 'bg-paper border-line'}`}
             aria-label="Next step"
           >
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{stage === 'done' ? 'Finished' : 'Next step'}</p>
-            <p className="text-base font-bold text-slate-900 mt-0.5">{nextStepText(r, mine)}</p>
-            <div className="mt-1">
+            <p className="text-xs font-semibold text-slate-500">{stage === 'done' ? 'Finished' : 'Next step'}</p>
+            <p className="font-display tracking-[0.01em] text-2xl leading-tight font-bold text-ink mt-0.5">{nextStepText(r, mine)}</p>
+            <div className="mt-1.5">
               <TimingNote request={r} repairCategories={repairCategories} />
             </div>
             {readOnly && stage !== 'done' && (
-              <p className="text-xs text-slate-600 mt-1">
+              <p className="text-sm text-slate-600 mt-1.5">
                 This job is assigned to {r.assignedEmployeeName || 'another staff member'}. Ask the admin if it should move to you.
               </p>
             )}
             {mine && r.status === 'Awaiting Customer Approval' && (
-              <p className="text-xs text-slate-600 mt-1">
+              <p className="text-sm text-slate-600 mt-1.5">
                 The customer approves the estimate in their account. Call them if it is taking long; work can start once they approve.
               </p>
             )}
             {actions.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
+              <div className="hidden md:flex flex-wrap gap-2 mt-4">
                 {actions.map((a) => (
                   <button
                     key={a.kind}
                     type="button"
                     onClick={() => onAction(a.kind, r)}
-                    className={`${a.primary ? actionClass(a.kind) : secondaryBtnCls} flex-1 basis-full sm:basis-auto sm:flex-none`}
+                    className={`${a.primary ? actionClass(a.kind) : secondaryBtnCls} min-w-[160px]`}
                   >
                     {a.label}
                   </button>
@@ -172,31 +201,25 @@ export const JobDetail: React.FC<JobDetailProps> = ({
             )}
           </section>
 
-          {/* Customer & pickup */}
-          <Card title="Customer & pickup" icon={<MapPin className="w-4 h-4 text-ink" />}>
+          {/* Pickup details */}
+          <Card title="Pickup" icon={<CalendarDays className="w-4 h-4 text-ink" />}>
             <dl className="space-y-3 text-sm">
               <div>
-                <Label>Customer</Label>
-                <dd className="font-semibold text-slate-900">{r.customerName}</dd>
-                {tel ? (
-                  <a href={tel} className="inline-flex items-center gap-1.5 min-h-[44px] font-bold text-ink hover:underline">
-                    <Phone className="w-4 h-4" /> {formatMobile(r.customerMobile)}
-                  </a>
-                ) : (
-                  <dd className="text-slate-600">{formatMobile(r.customerMobile) || '—'}</dd>
-                )}
+                <Label>When</Label>
+                <dd className="text-[15px] text-slate-900">
+                  {r.pickupDate ? formatDate(r.pickupDate) : 'Date not chosen'}
+                  {slot ? `, ${slot}` : ''}
+                </dd>
               </div>
               <div>
-                <Label>Pickup address</Label>
-                <dd className="text-slate-900">{addressLine(r.pickupAddress) || 'Address not recorded'}</dd>
-                {r.pickupAddress?.landmark && <dd className="text-xs text-slate-600">Landmark: {r.pickupAddress.landmark}</dd>}
-                <dd className="text-xs text-slate-500">
-                  {r.distanceKm} KM from the shop ·{' '}
+                <Label>Distance</Label>
+                <dd className="text-[15px] text-slate-900 tabular-nums">
+                  {r.distanceKm} km from the shop ·{' '}
                   {r.isFreeDelivery || delivery === 0 ? 'free pickup & delivery' : `${formatINR(delivery)} pickup & delivery`}
                 </dd>
-                <dd className="mt-1">
+                <dd className="mt-1.5">
                   <span
-                    className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold border ${
+                    className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold border ${
                       distSource.needsCheck && stage !== 'done'
                         ? 'bg-amber-50 border-amber-300 text-amber-900'
                         : 'bg-paper border-line text-slate-600'
@@ -205,28 +228,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                     Distance {distSource.label}
                   </span>
                 </dd>
-                {map && (
-                  <a href={map} target="_blank" rel="noreferrer" className={`${secondaryBtnCls} mt-2`}>
-                    <MapPin className="w-4 h-4 text-slate-500" /> Open in Google Maps
-                  </a>
-                )}
               </div>
-              <div>
-                <Label>Pickup</Label>
-                <dd className="flex items-start gap-2 text-slate-900">
-                  <CalendarDays className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
-                  <span>
-                    {r.pickupDate ? formatDate(r.pickupDate) : 'Date not chosen'}
-                    {slot ? `, ${slot}` : ''}
-                  </span>
-                </dd>
-              </div>
-              {notes && (
-                <div>
-                  <Label>Customer note</Label>
-                  <dd className="text-slate-800 whitespace-pre-line">{notes}</dd>
-                </div>
-              )}
             </dl>
           </Card>
 
@@ -266,7 +268,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
             </dl>
             {customerPhotos.length > 0 && (
               <div className="mt-4">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Customer&apos;s photos</p>
+                <p className="text-xs font-semibold text-slate-500 mb-2">Customer&apos;s photos</p>
                 <Photos photos={customerPhotos} label="Customer photo" onView={setViewPhoto} />
               </div>
             )}
@@ -329,7 +331,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
               )}
               <Line
                 label="Pickup & delivery"
-                value={delivery > 0 ? formatINR(delivery) : <span className="text-emerald-700">Free (within {distanceConfig.freeRadiusKm} KM)</span>}
+                value={delivery > 0 ? formatINR(delivery) : <span className="text-emerald-700">Free (within {distanceConfig.freeRadiusKm} km)</span>}
               />
               {fee > 0 && <Line label="Declined-repair fee" value={formatINR(fee)} />}
               {!declined && r.discount > 0 && <Line label="Discount" value={`−${formatINR(r.discount)}`} />}
@@ -379,6 +381,28 @@ export const JobDetail: React.FC<JobDetailProps> = ({
           </Card>
         </div>
       </div>
+
+      {/* Phones: the job's actions sit at the bottom of the screen, within thumb reach */}
+      {actions.length > 0 && (
+        <div
+          className="md:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-line px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          role="region"
+          aria-label="Job actions"
+        >
+          <div className="flex flex-wrap gap-2">
+            {[...actions.filter((a) => a.primary), ...actions.filter((a) => !a.primary)].map((a) => (
+              <button
+                key={a.kind}
+                type="button"
+                onClick={() => onAction(a.kind, r)}
+                className={`${a.primary ? `${actionClass(a.kind)} min-h-[52px] text-base basis-full` : secondaryBtnCls} flex-1`}
+              >
+                {a.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {viewPhoto && (
         <StaffDialog

@@ -14,7 +14,7 @@ const inputCls =
   'w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-ink/40 bg-white';
 const labelCls = 'block text-xs font-bold text-slate-700 mb-1';
 const sectionCls = 'p-4 rounded-2xl border border-line space-y-3';
-const sectionTitle = 'text-[11px] font-bold text-slate-500 uppercase tracking-wider';
+const sectionTitle = 'text-xs font-bold text-slate-500 uppercase tracking-wider';
 
 const productLabel = (p: StringProduct) =>
   p.brand && !p.name.toLowerCase().startsWith(p.brand.toLowerCase()) ? `${p.brand} ${p.name}` : p.name;
@@ -148,10 +148,10 @@ export const NewBookingDialog: React.FC<Props> = ({ open, prefill, onClose, onCr
     if (!addr.street.trim()) errors.street = 'Required.';
     if (!addr.area.trim()) errors.area = 'Required.';
     if (!/^\d{6}$/.test(addr.pincode.trim())) errors.pincode = '6-digit pincode.';
-    if (!Number.isFinite(km) || km < 0 || km > 200) errors.distanceKm = 'Enter the distance in KM (0–200).';
+    if (!Number.isFinite(km) || km < 0 || km > 200) errors.distanceKm = 'Enter the distance in km (0–200).';
   }
   const err = (k: string) =>
-    touched && errors[k] ? <p className="text-[11px] text-rose-700 mt-1">{errors[k]}</p> : null;
+    touched && errors[k] ? <p className="text-xs text-rose-700 mt-1">{errors[k]}</p> : null;
   const bad = (k: string) => (touched && errors[k] ? 'border-rose-400' : '');
 
   const stringName = ownString
@@ -279,11 +279,11 @@ export const NewBookingDialog: React.FC<Props> = ({ open, prefill, onClose, onCr
                 <MobileInput id="nb-mobile" value={mobile} onChange={setMobile} required aria-invalid={touched && !!errors.mobile} />
                 {err('mobile')}
                 {matched ? (
-                  <p className="text-[11px] text-emerald-700 mt-1">
+                  <p className="text-xs text-emerald-700 mt-1">
                     Existing customer · {matched.bookings} booking{matched.bookings === 1 ? '' : 's'}
                   </p>
                 ) : normalized ? (
-                  <p className="text-[11px] text-slate-500 mt-1">New customer — an account is created for {formatMobile(normalized)}.</p>
+                  <p className="text-xs text-slate-500 mt-1">New customer — an account is created for {formatMobile(normalized)}.</p>
                 ) : null}
               </div>
               <div>
@@ -333,7 +333,7 @@ export const NewBookingDialog: React.FC<Props> = ({ open, prefill, onClose, onCr
                     ))}
                   </select>
                   {err('package')}
-                  {pkg && <p className="text-[11px] text-slate-500 mt-1">The price is set by the server from the package.</p>}
+                  {pkg && <p className="text-xs text-slate-500 mt-1">The price is set by the server from the package.</p>}
                 </div>
                 <label className="sm:col-span-2 flex items-center gap-2 text-xs font-semibold text-slate-700 min-h-[40px]">
                   <input type="checkbox" checked={ownString} onChange={(e) => setOwnString(e.target.checked)} className="w-4 h-4" />
@@ -484,7 +484,7 @@ export const NewBookingDialog: React.FC<Props> = ({ open, prefill, onClose, onCr
                 ))}
                 <div>
                   <label htmlFor="nb-km" className={labelCls}>
-                    Distance from the shop (KM)
+                    Distance from the shop (km)
                   </label>
                   <input id="nb-km" type="number" inputMode="decimal" min={0} max={200} step="0.1" value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} className={`${inputCls} ${bad('distanceKm')}`} placeholder="e.g. 4.5" />
                   {err('distanceKm')}

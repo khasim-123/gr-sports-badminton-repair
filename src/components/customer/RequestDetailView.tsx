@@ -82,7 +82,7 @@ export const RequestDetailView: React.FC = () => {
       <div className="max-w-md mx-auto p-8 text-center space-y-4">
         <p className="text-slate-600">We couldn&apos;t find that request.</p>
         <Button onClick={() => setCustomerSubView('requests')} variant="outline" className="min-h-[44px]">
-          Back to My Requests
+          Back to My requests
         </Button>
       </div>
     );
@@ -137,7 +137,7 @@ export const RequestDetailView: React.FC = () => {
           onClick={() => setCustomerSubView('requests')}
           className="inline-flex items-center gap-2 min-h-[40px] pr-3 text-sm font-semibold text-slate-600 hover:text-ink"
         >
-          <ArrowLeft className="w-4 h-4" /> My Requests
+          <ArrowLeft className="w-4 h-4" aria-hidden="true" /> My requests
         </button>
         <span className="text-xs text-slate-500">
           Booked {formatDateTime(request.createdAt)}
@@ -151,7 +151,7 @@ export const RequestDetailView: React.FC = () => {
           <div className="min-w-0">
             <p className="text-xs text-slate-500">
               {isRepair ? 'Racket repair' : 'Racket stringing'} ·{' '}
-              <span className="font-mono font-bold text-ink">{request.id}</span>
+              <span className="font-semibold text-ink tabular-nums">{request.id}</span>
             </p>
             <h1 className="font-display tracking-[0.01em] text-2xl font-bold text-slate-900 truncate">
               {request.batBrand} {request.batModel}
@@ -173,7 +173,7 @@ export const RequestDetailView: React.FC = () => {
               {isRevised ? <ShieldAlert className="w-5 h-5" /> : <Wrench className="w-5 h-5" />}
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-600">Your approval is needed</p>
+              <p className="text-xs font-semibold text-amber-800">Your approval is needed</p>
               <h2 className="text-base font-bold text-slate-900 mt-0.5">
                 {isRevised ? 'We found more damage — the repair estimate has changed.' : 'Your repair estimate is ready.'}
               </h2>
@@ -190,8 +190,8 @@ export const RequestDetailView: React.FC = () => {
           <Button
             onClick={handleOpenApprovalModal}
             size="lg"
-            variant={isRevised ? 'secondary' : 'primary'}
-            className="w-full md:w-auto shrink-0 font-bold min-h-[48px]"
+            variant="primary"
+            className="w-full md:w-auto shrink-0 min-h-[48px]"
           >
             Review estimate
           </Button>
@@ -204,7 +204,7 @@ export const RequestDetailView: React.FC = () => {
           <Card title="What you booked" icon={<ClipboardCheck className="w-4 h-4 text-ink" />}>
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
               <div>
-                <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Racket</dt>
+                <dt className="text-xs font-semibold text-slate-500">Racket</dt>
                 <dd className="font-semibold text-slate-900">
                   {request.batBrand} {request.batModel}
                 </dd>
@@ -212,23 +212,23 @@ export const RequestDetailView: React.FC = () => {
               </div>
               {isRepair ? (
                 <div>
-                  <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Problem</dt>
+                  <dt className="text-xs font-semibold text-slate-500">Problem</dt>
                   <dd className="font-semibold text-slate-900">{request.repairIssue || '—'}</dd>
                   {request.repairDescription && <dd className="text-xs text-slate-600 mt-0.5 whitespace-pre-line">{request.repairDescription}</dd>}
                 </div>
               ) : (
                 <>
                   <div>
-                    <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Package</dt>
+                    <dt className="text-xs font-semibold text-slate-500">Package</dt>
                     <dd className="font-semibold text-slate-900">{gettingTierName(request, gettingServices)}</dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">String</dt>
+                    <dt className="text-xs font-semibold text-slate-500">String</dt>
                     <dd className="font-semibold text-slate-900">{request.stringPreference || request.stringType || "Technician's choice"}</dd>
                     {request.colour && <dd className="text-xs text-slate-600">Colour: {request.colour}</dd>}
                   </div>
                   <div>
-                    <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Tension</dt>
+                    <dt className="text-xs font-semibold text-slate-500">Tension</dt>
                     <dd className="font-semibold text-slate-900">{request.stringTensionLbs ? `${request.stringTensionLbs} lbs` : '—'}</dd>
                   </div>
                 </>
@@ -237,7 +237,7 @@ export const RequestDetailView: React.FC = () => {
 
             {photos.length > 0 && (
               <div className="mt-4">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Your photos</p>
+                <p className="text-xs font-semibold text-slate-500 mb-2">Your photos</p>
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {photos.map((photo, i) => (
                     <a key={i} href={photo} target="_blank" rel="noreferrer" className="shrink-0">
@@ -257,7 +257,7 @@ export const RequestDetailView: React.FC = () => {
               </p>
               {address?.landmark && <p className="text-xs text-slate-500">Landmark: {address.landmark}</p>}
               <p className="text-xs text-slate-500">
-                About {request.distanceKm} KM from our shop
+                About {request.distanceKm} km from our shop
                 {address?.distanceSource === 'staff'
                   ? ' (corrected by our team)'
                   : address?.distanceSource === 'customer' && !isPaid
@@ -286,10 +286,10 @@ export const RequestDetailView: React.FC = () => {
 
             {request.pickupCondition && (
               <div className="mt-4 pt-4 border-t border-line/70 text-sm space-y-1">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Condition when we collected it</p>
+                <p className="text-xs font-semibold text-slate-500">Condition when we collected it</p>
                 <p className="font-semibold text-slate-900">{request.pickupCondition.condition}</p>
                 {request.pickupCondition.notes && <p className="text-xs text-slate-600">{request.pickupCondition.notes}</p>}
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   {[request.pickupCondition.collectedBy && `Collected by ${request.pickupCondition.collectedBy}`, request.pickupCondition.collectedAt && formatDateTime(request.pickupCondition.collectedAt)]
                     .filter(Boolean)
                     .join(' · ')}
@@ -322,7 +322,7 @@ export const RequestDetailView: React.FC = () => {
               )}
               <Row label="Pickup & delivery">
                 {request.isFreeDelivery || deliveryCharge === 0 ? (
-                  <span className="text-emerald-700">Free (within {distanceConfig.freeRadiusKm} KM)</span>
+                  <span className="text-emerald-700">Free (within {distanceConfig.freeRadiusKm} km)</span>
                 ) : (
                   formatINR(deliveryCharge)
                 )}
@@ -372,7 +372,7 @@ export const RequestDetailView: React.FC = () => {
                 <User className="w-5 h-5" />
               </span>
               <span>
-                <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">Handled by</span>
+                <span className="block text-xs font-semibold text-slate-500">Handled by</span>
                 <span className="block text-sm font-bold text-slate-900">{request.assignedEmployeeName}</span>
               </span>
             </section>
@@ -389,7 +389,7 @@ export const RequestDetailView: React.FC = () => {
                     <span className="ml-2 text-sm font-bold text-slate-900">{request.review.rating} / 5</span>
                   </div>
                   <p className="text-sm text-slate-700 whitespace-pre-line">“{request.review.comment}”</p>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-xs text-slate-500">
                     Sent {formatDate(request.review.createdAt)}. Thank you! Reviews are checked by the shop before they appear on our
                     website.
                   </p>
@@ -451,7 +451,7 @@ export const RequestDetailView: React.FC = () => {
                   >
                     Send review
                   </Button>
-                  <p className="text-[11px] text-slate-500">The shop checks reviews before they appear on our website.</p>
+                  <p className="text-xs text-slate-500">The shop checks reviews before they appear on our website.</p>
                 </div>
               )}
             </Card>

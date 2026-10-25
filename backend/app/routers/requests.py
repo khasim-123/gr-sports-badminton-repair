@@ -154,6 +154,36 @@ def _km(value: float) -> str:
 
 # Status changes an employee may make through PATCH /status (admins may set any status).
 _PICKUP_STATUSES = ("Submitted", "Accepted", "Employee Assigned", "Pickup Scheduled")
+# How a status reads in the request history customers and staff see (values themselves are unchanged).
+_STATUS_WORDING = {
+    "Submitted": "Booked",
+    "Accepted": "Accepted",
+    "Employee Assigned": "Assigned to our team",
+    "Pickup Scheduled": "Pickup scheduled",
+    "Bat Picked Up": "Racket picked up",
+    "Getting in Progress": "Stringing started",
+    "Getting Completed": "Stringing done",
+    "Inspection": "Being inspected",
+    "Repair Estimate": "Estimate being prepared",
+    "Awaiting Customer Approval": "Waiting for approval",
+    "Repair Approved": "Repair approved",
+    "Repair in Progress": "Repair started",
+    "Repair Completed": "Repair done",
+    "Repair Declined": "Repair declined",
+    "Out for Delivery": "Out for delivery",
+    "Delivered": "Delivered",
+    "Payment Pending": "Payment due",
+    "Payment Collected": "Paid",
+    "Completed": "Completed",
+    "Completed Without Repair": "Returned without repair",
+    "Cancelled": "Cancelled",
+}
+
+
+def _status_wording(status: str) -> str:
+    return _STATUS_WORDING.get(status, status)
+
+
 _ESTIMATE_STATUSES = ("Bat Picked Up", "Inspection", "Repair Estimate")
 _REVISE_STATUSES = ("Repair Approved", "Repair in Progress")
 _PAYMENT_STATUSES = ("Out for Delivery", "Delivered", "Payment Pending")
@@ -378,7 +408,7 @@ def create_request(
             "status": "Submitted",
             "label": (
                 f"Booked by {user.label} for the customer (phone/walk-in)"
-                if booked_by_staff else "Request Submitted Online"
+                if booked_by_staff else "Booked online"
             ),
             "timestamp": formatted_time,
             "actor": user.label if booked_by_staff else f"Customer ({payload.customerName})",
@@ -468,7 +498,7 @@ def update_status(request_id: str, payload: RequestStatusUpdate, db: Session = D
 
     timeline_event = {
         "status": payload.status,
-        "label": f"Status updated to {payload.status}",
+        "label": _status_wording(payload.status),
         "timestamp": formatted_time,
         "actor": actor,
         "notes": payload.notes or ""
@@ -628,7 +658,7 @@ def record_pickup_condition(
     current_timeline = list(req.timeline or [])
     current_timeline.append({
         "status": "Bat Picked Up",
-        "label": f"Bat Picked Up & Doorstep Inspected ({payload.condition})",
+        "label": f"Racket picked up — condition: {payload.condition.lower()}",
         "timestamp": formatted_time,
         "actor": collector,
         "notes": payload.notes or f"Condition at handover: {payload.condition}"
@@ -702,7 +732,7 @@ def create_repair_estimate(
     current_timeline = list(req.timeline or [])
     current_timeline.append({
         "status": "Awaiting Customer Approval",
-        "label": f"Repair Estimate ₹{estimate.totalEstimate:,.0f} Created",
+        "label": f"Repair estimate of ₹{estimate.totalEstimate:,.0f} sent for approval",
         "timestamp": formatted_time,
         "actor": staff.label,
         "notes": f"Inspection: {estimate.inspectionNotes}"
@@ -738,7 +768,7 @@ def approve_repair_estimate(request_id: str, db: Session = Depends(get_db), user
     current_timeline = list(req.timeline or [])
     current_timeline.append({
         "status": "Repair Approved",
-        "label": f"Estimate ₹{req.repairEstimate.get('totalEstimate', req.serviceCharge)} Approved by Customer",
+        "label": f"Customer approved the estimate of ₹{float(req.repairEstimate.get('totalEstimate', req.serviceCharge) or 0):,.0f}",
         "timestamp": formatted_time,
         "actor": f"Customer ({req.customerName})",
         "notes": "Work order authorized to proceed with composite rebuilding."
@@ -787,7 +817,7 @@ def decline_repair_estimate(request_id: str, db: Session = Depends(get_db), user
     current_timeline = list(req.timeline or [])
     current_timeline.append({
         "status": "Repair Declined",
-        "label": "Repair Estimate Declined by Customer",
+        "label": "Customer declined the repair estimate",
         "timestamp": formatted_time,
         "actor": f"Customer ({req.customerName})",
         "notes": notes,
@@ -926,7 +956,7 @@ def request_price_revision(
     current_timeline = list(req.timeline or [])
     current_timeline.append({
         "status": "Awaiting Customer Approval",
-        "label": f"Revised Estimate ₹{new_total:,.0f} (Requires Approval)",
+        "label": f"Revised estimate of ₹{new_total:,.0f} sent for approval",
         "timestamp": formatted_time,
         "actor": staff.label,
         "notes": f"Reason: {payload.reason} (+₹{payload.additionalAmount:,.0f})"
@@ -1008,14 +1038,14 @@ def record_payment(
     current_timeline = list(req.timeline or [])
     current_timeline.append({
         "status": "Payment Collected",
-        "label": f"{amount_text} Collected via {payload.method}",
+        "label": f"{amount_text} received by {payload.method}",
         "timestamp": formatted_time,
         "actor": collector,
         "notes": payload.notes or f"Payment received at doorstep ({payload.method})"
     })
     current_timeline.append({
         "status": final_status,
-        "label": "Racket Returned Without Repair" if declined else "Service Order Completed",
+        "label": "Returned without repair" if declined else "Completed",
         "timestamp": formatted_time,
         "actor": collector,
         "notes": "Returned to the customer and settled." if declined else "Delivered and settled."

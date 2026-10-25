@@ -24,14 +24,13 @@ const PAGE_LABELS: Record<string, string> = {
 const pageLabel = (page: string) => PAGE_LABELS[page] || page.replace(/[_/]/g, ' ');
 const fmt = (n: number) => n.toLocaleString('en-IN');
 
-const StatTile: React.FC<{ label: string; value: string; hint?: string; icon: React.ReactNode }> = ({ label, value, hint, icon }) => (
-  <div className={`${cardClass} p-4`}>
-    <div className="flex items-center gap-2 text-slate-500">
-      {icon}
-      <h4 className="text-[11px] font-bold uppercase tracking-wide">{label}</h4>
-    </div>
-    <p className="text-2xl font-black text-slate-900 mt-1.5 tabular-nums">{value}</p>
-    {hint && <p className="text-[11px] text-slate-500 mt-0.5">{hint}</p>}
+// Same tile as the dashboard and the other admin pages: plain label, big figure, one line of context.
+// (`icon` is kept in the props so callers don't change; the tiles read cleaner without it.)
+const StatTile: React.FC<{ label: string; value: string; hint?: string; icon: React.ReactNode }> = ({ label, value, hint }) => (
+  <div className={`${cardClass} p-4 sm:p-5 min-w-0`}>
+    <h4 className="text-[13px] font-semibold text-slate-500 truncate">{label}</h4>
+    <p className="font-display text-[32px] leading-tight font-bold text-ink mt-1 tabular-nums">{value}</p>
+    {hint && <p className="text-[13px] text-slate-500 mt-0.5">{hint}</p>}
   </div>
 );
 
@@ -105,7 +104,7 @@ const DailyChart: React.FC<{ daily: VisitorSummary['daily'] }> = ({ daily }) => 
               {h > 0 && (
                 <path
                   d={`M${x},${8 + plotH} V${y + r} Q${x},${y} ${x + r},${y} H${x + barW - r} Q${x + barW},${y} ${x + barW},${y + r} V${8 + plotH} Z`}
-                  fill="#2563eb"
+                  fill="#0F1B2B"
                   opacity={active === null || active === i ? 1 : 0.55}
                 />
               )}
@@ -208,7 +207,7 @@ export const VisitorReports: React.FC = () => {
     <div className="space-y-5">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black text-slate-900">Website Visitors & Customers</h2>
+          <h3 className="font-display tracking-[0.01em] text-2xl font-bold text-ink">Website visitors & customers</h3>
           <p className="text-xs text-slate-500 mt-0.5">Who visited the site, which pages they used, and how many went on to book.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -278,7 +277,7 @@ export const VisitorReports: React.FC = () => {
           <div className={`${cardClass} overflow-hidden`}>
             <div className="p-4 pb-2">
               <h3 className="text-sm font-bold text-slate-900">Recent customer visits</h3>
-              <p className="text-[11px] text-slate-500">Customers who were logged in while browsing. Guests are counted above but not identified.</p>
+              <p className="text-xs text-slate-500">Customers who were logged in while browsing. Guests are counted above but not identified.</p>
             </div>
             {summary.recentCustomers.length === 0 ? (
               <p className="text-xs text-slate-400 px-4 pb-4">No logged-in customer visits in this period.</p>
@@ -314,7 +313,7 @@ export const VisitorReports: React.FC = () => {
             )}
           </div>
 
-          <p className="text-[11px] text-slate-500 flex items-start gap-1.5">
+          <p className="text-xs text-slate-500 flex items-start gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-600" />
             Reports contain customers' personal details — store downloads securely and don't share them outside the business. Every download is recorded in the audit log.
           </p>

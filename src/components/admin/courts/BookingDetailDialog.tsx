@@ -186,12 +186,12 @@ export const BookingDetailDialog: React.FC<{
         >
           <div className="flex justify-between items-start gap-3 p-4 sm:p-6 pb-3 border-b border-line/70 shrink-0">
             <div className="min-w-0">
-              <h3 id="court-booking-title" className="text-lg font-bold text-slate-900 flex flex-wrap items-center gap-2">
+              <h3 id="court-booking-title" className="text-lg font-semibold text-ink flex flex-wrap items-center gap-2">
                 <span className="font-mono">{bookingId}</span>
                 {booking && <CourtStatusPill status={booking.status} />}
               </h3>
               {booking && (
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-[13px] text-slate-500 mt-0.5">
                   {booking.bookedBy === 'admin' ? 'Booked by the shop (walk-in / phone)' : 'Booked online by the customer'} ·{' '}
                   {formatDateTime(booking.createdAt)}
                 </p>
@@ -208,7 +208,7 @@ export const BookingDetailDialog: React.FC<{
             </button>
           </div>
 
-          <div className="overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4 text-xs">
+          <div className="overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4 text-[13px]">
             {loadError && (
               <div role="alert" className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-between gap-2">
                 <span className="flex items-start gap-1.5">
@@ -328,9 +328,9 @@ export const BookingDetailDialog: React.FC<{
                       (payment ? (
                         <form className="space-y-2 bg-white border border-emerald-200 rounded-xl p-3" onSubmit={submitPayment} noValidate>
                           <p className="font-bold text-slate-900 text-sm">Record payment at the venue</p>
-                          <p className="text-[11px] text-slate-500">Booking price {formatINR(booking.price)}.</p>
+                          <p className="text-xs text-slate-500">Booking price {formatINR(booking.price)}.</p>
                           <div className="grid grid-cols-2 gap-2">
-                            <label className="text-[11px] font-bold text-slate-600">
+                            <label className="text-xs font-bold text-slate-600">
                               Amount received (₹)
                               <input
                                 type="number"
@@ -346,7 +346,7 @@ export const BookingDetailDialog: React.FC<{
                                 disabled={busy === 'payment'}
                               />
                             </label>
-                            <label className="text-[11px] font-bold text-slate-600">
+                            <label className="text-xs font-bold text-slate-600">
                               Method
                               <select
                                 value={payment.method}
@@ -360,7 +360,7 @@ export const BookingDetailDialog: React.FC<{
                               </select>
                             </label>
                           </div>
-                          <label className="block text-[11px] font-bold text-slate-600">
+                          <label className="block text-xs font-bold text-slate-600">
                             {amountDiffers ? 'Note (required — why is the amount different?)' : 'Note (optional, e.g. UPI reference)'}
                             <input
                               type="text"
@@ -427,7 +427,7 @@ export const BookingDetailDialog: React.FC<{
                           </button>
                         ) : (
                           <div className="space-y-2">
-                            <label className="block text-[11px] font-bold text-slate-600">
+                            <label className="block text-xs font-bold text-slate-600">
                               Reason for cancelling (the customer sees this)
                               <input
                                 type="text"
@@ -482,11 +482,11 @@ export const BookingDetailDialog: React.FC<{
                         <li key={i} className="relative">
                           <span className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-ink border-2 border-white" />
                           <p className="font-semibold text-slate-900">{ev.label || ev.status}</p>
-                          <p className="text-[11px] text-slate-500">
+                          <p className="text-xs text-slate-500">
                             {formatDateTime(ev.timestamp)}
                             {ev.actor ? ` · ${ev.actor}` : ''}
                           </p>
-                          {ev.notes && <p className="text-[11px] text-slate-600 break-words">{ev.notes}</p>}
+                          {ev.notes && <p className="text-xs text-slate-600 break-words">{ev.notes}</p>}
                         </li>
                       ))}
                     </ol>

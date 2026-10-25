@@ -75,10 +75,10 @@ export const Footer: React.FC = () => {
               Badminton racket stringing and repair in {cityOf(shop)}, with doorstep pickup and delivery.
             </p>
             <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[11px] text-emerald-400 font-semibold">
-                <Truck className="w-3.5 h-3.5" /> Free pickup within {distanceConfig.freeRadiusKm} KM
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white/80 font-semibold">
+                <Truck className="w-3.5 h-3.5" /> Free pickup within {distanceConfig.freeRadiusKm} km
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[11px] text-white/80 font-semibold">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white/80 font-semibold">
                 <Wallet className="w-3.5 h-3.5" /> Pay after delivery (cash / UPI)
               </span>
             </div>
@@ -137,12 +137,12 @@ export const Footer: React.FC = () => {
 
             {!isLoggedIn && (
               <div className="pt-3 mt-2 space-y-2 border-t border-white/10">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Staff access</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Staff access</span>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => openAuthModal('EMPLOYEE')}
-                    className="px-3 min-h-[40px] rounded-xl bg-white/5 border border-white/10 hover:border-white/30 text-emerald-400 font-bold text-xs inline-flex items-center gap-2"
+                    className="px-3 min-h-[40px] rounded-xl bg-white/5 border border-white/10 hover:border-white/30 text-white font-bold text-xs inline-flex items-center gap-2"
                   >
                     <Wrench className="w-3.5 h-3.5" /> Employee login
                   </button>
@@ -172,22 +172,22 @@ export const Footer: React.FC = () => {
                 <span>{fullAddress(shop)}</span>
               </a>
               <a href={telHref(shop.phone)} className="flex items-center gap-2 text-slate-300 hover:text-white min-h-[32px]">
-                <Phone className="w-4 h-4 text-amber-400 shrink-0" /> {phoneDisplay(shop.phone)}
+                <Phone className="w-4 h-4 text-accent shrink-0" /> {phoneDisplay(shop.phone)}
               </a>
               {shop.email && (
                 <a href={`mailto:${shop.email}`} className="flex items-center gap-2 text-slate-300 hover:text-white min-h-[32px] break-all">
-                  <Mail className="w-4 h-4 text-purple-400 shrink-0" /> {shop.email}
+                  <Mail className="w-4 h-4 text-accent shrink-0" /> {shop.email}
                 </a>
               )}
               {shop.openingHours && (
                 <p className="flex items-start gap-2">
-                  <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <Clock className="w-4 h-4 text-accent shrink-0 mt-0.5" />
                   <span className="text-slate-300">Shop hours: {shop.openingHours}</span>
                 </p>
               )}
               {pickupHours && (
                 <p className="flex items-start gap-2">
-                  <Truck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <Truck className="w-4 h-4 text-accent shrink-0 mt-0.5" />
                   <span className="text-slate-300">Doorstep pickups: {pickupHours}</span>
                 </p>
               )}

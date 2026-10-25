@@ -37,7 +37,7 @@ export interface CourtBookingPrefill {
 }
 
 const sectionCls = 'p-4 rounded-2xl border border-line space-y-3';
-const sectionTitle = 'text-[11px] font-bold text-slate-500 uppercase tracking-wider';
+const sectionTitle = 'text-xs font-bold text-slate-500 uppercase tracking-wider';
 
 interface SlotOption {
   start: string;
@@ -279,7 +279,7 @@ export const NewCourtBookingDialog: React.FC<{
                   <dd className="text-right font-semibold text-amber-700">Unpaid · pay at venue</dd>
                 </dl>
                 {pricePreview !== null && Math.abs(pricePreview - created.price) > 0.005 && (
-                  <p className="text-[11px] text-slate-500">The preview was {formatINR(pricePreview)}; the server's price applies.</p>
+                  <p className="text-xs text-slate-500">The preview was {formatINR(pricePreview)}; the server's price applies.</p>
                 )}
               </div>
               <div className="shrink-0 border-t border-line/70 p-3 sm:p-4 flex gap-2">
@@ -308,9 +308,9 @@ export const NewCourtBookingDialog: React.FC<{
                       <MobileInput id="cb-mobile" value={mobile} onChange={setMobile} required aria-invalid={touched && !!errors.mobile} />
                       {err('mobile')}
                       {matched ? (
-                        <p className="text-[11px] text-emerald-700 mt-1">Existing customer · {matched.name}</p>
+                        <p className="text-xs text-emerald-700 mt-1">Existing customer · {matched.name}</p>
                       ) : normalized ? (
-                        <p className="text-[11px] text-slate-500 mt-1">New customer — {formatMobile(normalized)}.</p>
+                        <p className="text-xs text-slate-500 mt-1">New customer — {formatMobile(normalized)}.</p>
                       ) : null}
                     </div>
                     <div>
@@ -400,17 +400,17 @@ export const NewCourtBookingDialog: React.FC<{
                         ))}
                       </select>
                       {runFree > 0 && runFree < maxSlots && (
-                        <p className="text-[11px] text-slate-500 mt-1">The court is taken after {fmtTime(options[startIdx + runFree - 1]?.end)}.</p>
+                        <p className="text-xs text-slate-500 mt-1">The court is taken after {fmtTime(options[startIdx + runFree - 1]?.end)}.</p>
                       )}
                     </div>
                   </div>
                   {availError && (
-                    <p className="text-[11px] text-amber-700 flex items-start gap-1">
+                    <p className="text-xs text-amber-700 flex items-start gap-1">
                       <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {availError} The server checks again when you save.
                     </p>
                   )}
                   {avail && avail.bookable === false && avail.message && (
-                    <p className="text-[11px] text-amber-700 flex items-start gap-1">
+                    <p className="text-xs text-amber-700 flex items-start gap-1">
                       <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {avail.message}
                     </p>
                   )}
@@ -462,7 +462,7 @@ export const NewCourtBookingDialog: React.FC<{
                     </span>
                     <span className="text-right shrink-0">
                       <span className="font-bold text-slate-900 text-sm">{formatINR(pricePreview)}</span>
-                      <span className="block text-[10px] text-slate-500">
+                      <span className="block text-xs text-slate-500">
                         {priceFromServer ? 'Server slot prices' : 'Estimate from the venue prices'} · final price on save
                       </span>
                     </span>

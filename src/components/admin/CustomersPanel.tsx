@@ -1,3 +1,4 @@
+import { PageHeader } from './PageHeader';
 import React, { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, ChevronLeft, ChevronRight, Phone, Plus, Search, Users } from 'lucide-react';
 import { customerService, CustomerDetail, CustomerSummary } from '../../services/customerService';
@@ -118,8 +119,8 @@ export const CustomersPanel: React.FC<Props> = ({ onOpenRequest, onNewBooking, r
               ['Total paid', formatINR(c.totalPaid)],
             ].map(([label, value]) => (
               <div key={label} className="bg-white rounded-2xl border border-line p-3">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</p>
-                <p className="text-lg font-black text-slate-900 mt-0.5">{value}</p>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{label}</p>
+                <p className="text-lg font-bold text-slate-900 mt-0.5">{value}</p>
               </div>
             ))}
           </div>
@@ -158,7 +159,7 @@ export const CustomersPanel: React.FC<Props> = ({ onOpenRequest, onNewBooking, r
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold text-slate-900">{formatINR(r.totalAmount)}</p>
-                      <p className={`text-[11px] font-semibold ${r.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                      <p className={`text-xs font-semibold ${r.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-amber-700'}`}>
                         {r.paymentStatus === 'Paid' ? 'Paid' : r.status === 'Cancelled' ? 'Cancelled' : 'Unpaid'}
                       </p>
                     </div>
@@ -176,17 +177,15 @@ export const CustomersPanel: React.FC<Props> = ({ onOpenRequest, onNewBooking, r
   // -------------------------------------------------------------------- list
   return (
     <div className="space-y-4 animate-in fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="font-display tracking-[0.01em] text-3xl sm:text-4xl font-bold text-slate-900">Customers</h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Everyone who has an account, with their bookings and payments.</p>
-        </div>
-        <div className="flex flex-wrap gap-2 shrink-0">
+      <PageHeader
+        title="Customers"
+        subtitle="Everyone who has an account, with their bookings and payments."
+        actions={
           <Button onClick={() => onNewBooking()} size="sm" className="min-h-[40px]" leftIcon={<Plus className="w-4 h-4" />}>
             New booking
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="bg-white p-3 sm:p-4 rounded-2xl border border-line shadow-2xs">
         <div className="relative">
@@ -242,14 +241,14 @@ export const CustomersPanel: React.FC<Props> = ({ onOpenRequest, onNewBooking, r
                     <p className="text-xs">
                       <TelLink phone={c.phone} />
                     </p>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-xs text-slate-500">
                       {c.bookings} booking{c.bookings === 1 ? '' : 's'}
                       {c.openBookings ? ` · ${c.openBookings} open` : ''} · last {c.lastBookingAt ? formatDate(c.lastBookingAt) : '—'}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-sm font-bold text-slate-900">{formatINR(c.totalPaid)}</p>
-                    <p className="text-[10px] text-slate-500">paid</p>
+                    <p className="text-xs text-slate-500">paid</p>
                   </div>
                 </div>
               </li>
@@ -259,7 +258,7 @@ export const CustomersPanel: React.FC<Props> = ({ onOpenRequest, onNewBooking, r
           {/* Desktop: table */}
           <div className={`${cardCls} overflow-x-auto hidden md:block`}>
             <table className="w-full text-sm">
-              <thead className="bg-paper text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <thead className="bg-paper text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
                 <tr>
                   <th className={thCls}>Name</th>
                   <th className={thCls}>Mobile</th>

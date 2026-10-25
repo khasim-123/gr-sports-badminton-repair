@@ -412,10 +412,10 @@ export const DocumentsManager: React.FC = () => {
             <section key={group.category} aria-labelledby={`doc-cat-${group.category}`}>
               <h4
                 id={`doc-cat-${group.category}`}
-                className="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-2"
+                className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-2"
               >
                 {group.category}
-                <span className="text-[10px] font-bold bg-slate-200 text-slate-600 rounded-full px-1.5">{group.items.length}</span>
+                <span className="text-xs font-bold bg-slate-200 text-slate-600 rounded-full px-1.5">{group.items.length}</span>
               </h4>
               <ul className="space-y-2">
                 {group.items.map((d) => {
@@ -435,17 +435,17 @@ export const DocumentsManager: React.FC = () => {
                             <div className="flex flex-wrap items-center gap-1.5">
                               <span className="font-bold text-sm text-slate-900 break-words">{d.title}</span>
                               {d.isPublic ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                                   <Globe className="w-3 h-3" /> Visible on website
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-line">
+                                <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-line">
                                   <Lock className="w-3 h-3" /> Staff only
                                 </span>
                               )}
                             </div>
                             {d.description && <p className="text-xs text-slate-600 mt-0.5 break-words">{d.description}</p>}
-                            <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+                            <p className="text-xs text-slate-400 mt-0.5 truncate">
                               {d.fileName || d.fileUrl} · Added {formatDate(d.createdAt)}
                             </p>
                           </div>

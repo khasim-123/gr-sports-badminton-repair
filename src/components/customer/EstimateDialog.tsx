@@ -85,14 +85,14 @@ export const EstimateDialog: React.FC<Props> = ({ request, freeRadiusKm, onClose
         <div className="p-4 sm:p-5 space-y-4 overflow-y-auto text-sm">
           {isRevised && est.revisionReason && (
             <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-amber-900 mb-1">Why the price changed</p>
+              <p className="text-xs font-semibold text-amber-900 mb-1">Why the price changed</p>
               <p className="text-slate-800">{est.revisionReason}</p>
             </div>
           )}
 
           {(est.inspectionNotes || request.repairIssue) && (
             <div className="p-3.5 bg-paper rounded-2xl border border-line">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1 flex items-center gap-1.5">
+              <p className="text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5" /> Technician&apos;s findings
               </p>
               {est.inspectionNotes && <p className="text-slate-800">{est.inspectionNotes}</p>}
@@ -125,7 +125,7 @@ export const EstimateDialog: React.FC<Props> = ({ request, freeRadiusKm, onClose
             )}
             <Line
               label="Pickup & delivery"
-              value={delivery > 0 ? formatINR(delivery) : `Free (within ${freeRadiusKm} KM)`}
+              value={delivery > 0 ? formatINR(delivery) : `Free (within ${freeRadiusKm} km)`}
               tone={delivery > 0 ? 'text-slate-900' : 'text-emerald-700'}
             />
             <div className="flex justify-between items-baseline gap-4 py-2.5">
@@ -185,7 +185,7 @@ export const EstimateDialog: React.FC<Props> = ({ request, freeRadiusKm, onClose
                 </Button>
                 <Button
                   onClick={onApprove}
-                  variant="success"
+                  variant="primary"
                   size="md"
                   className="w-full min-h-[48px] font-bold order-1 sm:order-2"
                   leftIcon={<CheckCircle2 className="w-4 h-4" />}

@@ -312,8 +312,8 @@ export const DayView: React.FC<{
         <div key={c.label} className="bg-white px-3 py-2.5 rounded-2xl border border-slate-200/90 shadow-2xs min-w-0">
           <p className="text-xs font-semibold text-slate-500 truncate">{c.label}</p>
           <p className="flex items-baseline gap-2 min-w-0">
-            <span className={`text-xl font-black ${c.tone}`}>{c.value}</span>
-            <span className="text-[11px] text-slate-500 truncate">{c.detail}</span>
+            <span className={`text-xl font-bold ${c.tone}`}>{c.value}</span>
+            <span className="text-xs text-slate-500 truncate">{c.detail}</span>
           </p>
         </div>
       ))}
@@ -344,15 +344,15 @@ export const DayView: React.FC<{
           <span className="font-bold text-xs truncate">{b.customerName}</span>
           {b.status !== 'Confirmed' && <span className="text-[10px] font-bold uppercase tracking-wide shrink-0">{b.status}</span>}
         </span>
-        <span className={`flex items-center gap-1 min-w-0 text-[11px] ${dark ? 'text-white/80' : 'text-slate-700'}`}>
+        <span className={`flex items-center gap-1 min-w-0 text-xs ${dark ? 'text-white/80' : 'text-slate-700'}`}>
           <span className="font-semibold">{formatINR(b.price)}</span>
           <PayTag b={b} dark={dark} />
           {span === 1 && <span className="truncate">{formatMobile(b.customerMobile)}</span>}
         </span>
         {span > 1 && (
           <>
-            <span className={`text-[11px] truncate ${dark ? 'text-white/80' : 'text-slate-700'}`}>{formatMobile(b.customerMobile)}</span>
-            <span className={`text-[11px] truncate ${dark ? 'text-white/60' : 'text-slate-500'}`}>
+            <span className={`text-xs truncate ${dark ? 'text-white/80' : 'text-slate-700'}`}>{formatMobile(b.customerMobile)}</span>
+            <span className={`text-xs truncate ${dark ? 'text-white/60' : 'text-slate-500'}`}>
               {fmtRange(b.startTime, b.endTime)}
               {b.players ? ` · ${b.players} players` : ''}
             </span>
@@ -424,7 +424,7 @@ export const DayView: React.FC<{
                 {rows.map((r, ri) => (
                   <div
                     key={r.start}
-                    className="sticky left-0 z-10 bg-white border-r border-line text-[11px] font-semibold text-slate-500 px-2 pt-1 text-right whitespace-nowrap"
+                    className="sticky left-0 z-10 bg-white border-r border-line text-xs font-semibold text-slate-500 px-2 pt-1 text-right whitespace-nowrap"
                     style={{ gridColumn: 1, gridRow: ri + 2 }}
                   >
                     {fmtTime(r.start)}
@@ -457,7 +457,7 @@ export const DayView: React.FC<{
                             style={HATCH_STYLE}
                             title={`Blocked: ${it.reason} (${fmtRange(it.start, it.end)})`}
                           >
-                            <p className="text-[11px] font-bold flex items-center gap-1 min-w-0">
+                            <p className="text-xs font-bold flex items-center gap-1 min-w-0">
                               <Lock className="w-3 h-3 shrink-0" />
                               <span className="truncate">{it.reason}</span>
                             </p>
@@ -468,7 +468,7 @@ export const DayView: React.FC<{
                     if (it.kind === 'taken')
                       return (
                         <div key={key} className="p-1 min-w-0" style={style}>
-                          <div className="w-full h-full rounded-lg bg-slate-200 text-slate-600 text-[11px] font-bold px-2 py-1">Booked</div>
+                          <div className="w-full h-full rounded-lg bg-slate-200 text-slate-600 text-xs font-bold px-2 py-1">Booked</div>
                         </div>
                       );
                     if (it.kind === 'past')
@@ -479,7 +479,7 @@ export const DayView: React.FC<{
                           type="button"
                           onClick={() => book(c.id, it.start)}
                           aria-label={`Book ${c.name} at ${fmtTime(it.start)}`}
-                          className="group w-full h-full rounded-lg border border-transparent hover:border-ink/30 hover:bg-paper text-slate-400 hover:text-ink text-[11px] font-semibold flex items-center justify-center gap-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                          className="group w-full h-full rounded-lg border border-transparent hover:border-ink/30 hover:bg-paper text-slate-400 hover:text-ink text-xs font-semibold flex items-center justify-center gap-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
                         >
                           <span className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 inline-flex items-center gap-1">
                             <CalendarPlus className="w-3.5 h-3.5" /> Book{it.price != null ? ` · ${formatINR(it.price)}` : ''}
@@ -491,7 +491,7 @@ export const DayView: React.FC<{
                 )}
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 border-t border-line text-[11px] text-slate-500">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 border-t border-line text-xs text-slate-500">
               <span className="inline-flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded bg-ink border-l-2 border-accent" /> Confirmed
               </span>
@@ -535,7 +535,7 @@ export const DayView: React.FC<{
                 {phoneColumn.items.map((it) => {
                   const key = `${phoneColumn.id}-${it.row}-${it.kind}`;
                   const time = (
-                    <span className="w-16 shrink-0 text-[11px] font-semibold text-slate-500 pt-0.5">{fmtTime(it.kind === 'booking' ? it.booking.startTime : it.start)}</span>
+                    <span className="w-16 shrink-0 text-xs font-semibold text-slate-500 pt-0.5">{fmtTime(it.kind === 'booking' ? it.booking.startTime : it.start)}</span>
                   );
                   if (it.kind === 'booking') {
                     const b = it.booking;
@@ -553,7 +553,7 @@ export const DayView: React.FC<{
                             <span className="font-bold text-sm truncate">{b.customerName}</span>
                             <span className="font-bold text-sm shrink-0">{formatINR(b.price)}</span>
                           </span>
-                          <span className={`flex items-center justify-between gap-2 text-[11px] mt-0.5 ${b.status === 'Confirmed' ? 'text-white/80' : 'text-slate-700'}`}>
+                          <span className={`flex items-center justify-between gap-2 text-xs mt-0.5 ${b.status === 'Confirmed' ? 'text-white/80' : 'text-slate-700'}`}>
                             <span className="truncate">
                               {fmtRange(b.startTime, b.endTime)} · {formatMobile(b.customerMobile)}
                             </span>
@@ -572,7 +572,7 @@ export const DayView: React.FC<{
                           <p className="text-xs font-bold flex items-center gap-1">
                             <Lock className="w-3 h-3 shrink-0" /> <span className="truncate">{it.reason}</span>
                           </p>
-                          <p className="text-[11px]">{fmtRange(it.start, it.end)}</p>
+                          <p className="text-xs">{fmtRange(it.start, it.end)}</p>
                         </div>
                       </li>
                     );
@@ -587,7 +587,7 @@ export const DayView: React.FC<{
                     return (
                       <li key={key} className="flex gap-2 px-2.5 py-2 bg-slate-50/70">
                         {time}
-                        <span className="text-[11px] text-slate-400">Past</span>
+                        <span className="text-xs text-slate-400">Past</span>
                       </li>
                     );
                   return (

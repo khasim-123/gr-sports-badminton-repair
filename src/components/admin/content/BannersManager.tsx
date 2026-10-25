@@ -500,7 +500,7 @@ export const BannersManager: React.FC = () => {
                           loading="lazy"
                           className={`absolute inset-0 w-full h-full object-cover ${b.isActive ? '' : 'grayscale opacity-60'}`}
                         />
-                        <span className="absolute bottom-1 left-1 text-[9px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded">
+                        <span className="absolute bottom-1 left-1 text-xs font-bold bg-black/60 text-white px-1.5 py-0.5 rounded">
                           Desktop
                         </span>
                       </div>
@@ -511,7 +511,7 @@ export const BannersManager: React.FC = () => {
                           loading="lazy"
                           className={`absolute inset-0 w-full h-full object-cover ${b.isActive ? '' : 'grayscale opacity-60'}`}
                         />
-                        <span className="absolute bottom-1 left-1 text-[9px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded">
+                        <span className="absolute bottom-1 left-1 text-xs font-bold bg-black/60 text-white px-1.5 py-0.5 rounded">
                           {b.mobileImageUrl ? 'Mobile' : 'Auto'}
                         </span>
                       </div>
@@ -520,19 +520,19 @@ export const BannersManager: React.FC = () => {
                     {/* Details */}
                     <div className="flex-1 min-w-0 space-y-1.5">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-[10px] font-bold text-slate-400">#{i + 1}</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${toneClass[state.tone]}`}>
+                        <span className="text-xs font-bold text-slate-400">#{i + 1}</span>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${toneClass[state.tone]}`}>
                           {state.label}
                         </span>
                         {b.badge && (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded bg-brandYellow text-sportsBlue">
+                          <span className="text-xs font-bold px-2 py-0.5 rounded bg-brandYellow text-sportsBlue">
                             {b.badge}
                           </span>
                         )}
                       </div>
                       <h4 className="font-bold text-sm text-slate-900 break-words">{b.title}</h4>
                       {b.subtitle && <p className="text-xs text-slate-600 break-words">{b.subtitle}</p>}
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
                         <span className="inline-flex items-center gap-1 min-w-0">
                           <MousePointerClick className="w-3.5 h-3.5 shrink-0" />
                           {b.ctaTarget === 'none' ? (

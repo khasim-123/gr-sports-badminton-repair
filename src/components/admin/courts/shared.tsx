@@ -21,8 +21,8 @@ export const inputCls =
   'w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-ink/40 bg-white disabled:bg-paper disabled:text-slate-500';
 export const labelCls = 'block text-xs font-bold text-slate-700 mb-1';
 export const cardCls = 'bg-white rounded-2xl border border-line shadow-xs';
-export const sectionLabel = 'font-bold text-slate-500 uppercase tracking-wider text-[10px]';
-export const fieldErrCls = 'text-[11px] text-rose-700 mt-1 font-medium';
+export const sectionLabel = 'font-bold text-slate-500 uppercase tracking-wider text-xs';
+export const fieldErrCls = 'text-xs text-rose-700 mt-1 font-medium';
 
 export const HATCH_STYLE: React.CSSProperties = {
   backgroundImage: 'repeating-linear-gradient(135deg, #EDEAE2 0 6px, #F6F4EF 6px 12px)',
@@ -256,7 +256,7 @@ export const TelLink: React.FC<{ phone: string; className?: string }> = ({ phone
 };
 
 export const InlineError: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <p role="alert" className={`text-[11px] text-rose-700 flex items-start gap-1 font-medium ${className}`}>
+  <p role="alert" className={`text-xs text-rose-700 flex items-start gap-1 font-medium ${className}`}>
     <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
     <span>{children}</span>
   </p>

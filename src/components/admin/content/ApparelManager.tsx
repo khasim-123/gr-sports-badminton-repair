@@ -120,7 +120,7 @@ const PhotoTile: React.FC<{
         {broken ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-slate-400 p-2 text-center">
             <ImageOff className="w-6 h-6" />
-            <span className="text-[10px] font-semibold">Can't load this photo</span>
+            <span className="text-xs font-semibold">Can't load this photo</span>
           </div>
         ) : (
           <img
@@ -132,7 +132,7 @@ const PhotoTile: React.FC<{
           />
         )}
         <span
-          className={`absolute top-1.5 left-1.5 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded ${
+          className={`absolute top-1.5 left-1.5 text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${
             isMain ? 'bg-brandYellow text-sportsBlue' : 'bg-white/90 border border-line text-slate-600'
           }`}
         >
@@ -223,7 +223,7 @@ const PhotosEditor: React.FC<{
     <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
         <span className="block text-xs font-semibold text-slate-700">Photos</span>
-        <span className={`text-[11px] font-bold ${full ? 'text-amber-700' : 'text-slate-500'}`}>
+        <span className={`text-xs font-bold ${full ? 'text-amber-700' : 'text-slate-500'}`}>
           {images.length}/{MAX_APPAREL_PHOTOS}
         </span>
       </div>
@@ -242,7 +242,7 @@ const PhotosEditor: React.FC<{
           ))}
         </ul>
       ) : (
-        <p className="text-[11px] text-slate-500">No photos yet — add at least one real photo of the garment before showing it on the website.</p>
+        <p className="text-xs text-slate-500">No photos yet — add at least one real photo of the garment before showing it on the website.</p>
       )}
       {/* Kept mounted (only hidden) when full, so an in-flight upload can still report it finished. */}
       <div hidden={full}>
@@ -257,7 +257,7 @@ const PhotosEditor: React.FC<{
           error={error}
         />
       </div>
-      {full && <p className="text-[11px] text-amber-700 font-medium">Maximum of {MAX_APPAREL_PHOTOS} photos reached — remove one to add another.</p>}
+      {full && <p className="text-xs text-amber-700 font-medium">Maximum of {MAX_APPAREL_PHOTOS} photos reached — remove one to add another.</p>}
     </div>
   );
 };
@@ -616,7 +616,7 @@ const StockCell: React.FC<{
       </div>
       <div className="flex items-center justify-between gap-1 mt-0.5 min-h-[24px]">
         <span
-          className={`text-[10px] font-bold ${error ? 'text-rose-700' : shown <= 0 ? 'text-rose-700' : shown <= LOW_STOCK ? 'text-amber-700' : 'text-slate-400'}`}
+          className={`text-xs font-bold ${error ? 'text-rose-700' : shown <= 0 ? 'text-rose-700' : shown <= LOW_STOCK ? 'text-amber-700' : 'text-slate-400'}`}
           role={error ? 'alert' : undefined}
         >
           {saving ? (
@@ -906,7 +906,7 @@ const VariantsDialog: React.FC<{
         type="button"
         onClick={() => addCell(size, colour)}
         disabled={!!busy}
-        className="w-full min-w-[8.5rem] min-h-[40px] rounded-xl border border-dashed border-slate-300 text-[11px] font-bold text-slate-500 hover:bg-paper hover:text-ink inline-flex items-center justify-center gap-1 disabled:opacity-50"
+        className="w-full min-w-[8.5rem] min-h-[40px] rounded-xl border border-dashed border-slate-300 text-xs font-bold text-slate-500 hover:bg-paper hover:text-ink inline-flex items-center justify-center gap-1 disabled:opacity-50"
         aria-label={`Add ${colour.colour} / ${size}`}
       >
         {busy === key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Add
@@ -1013,7 +1013,7 @@ const VariantsDialog: React.FC<{
                   </Button>
                 </div>
                 {inputError.size && (
-                  <p className="text-[11px] text-rose-600 font-medium" role="alert">
+                  <p className="text-xs text-rose-600 font-medium" role="alert">
                     {inputError.size}
                   </p>
                 )}
@@ -1025,7 +1025,7 @@ const VariantsDialog: React.FC<{
                         type="button"
                         onClick={() => addSize(s)}
                         disabled={!!busy}
-                        className="min-h-[34px] px-2.5 rounded-lg border border-line bg-white text-[11px] font-bold text-slate-700 hover:bg-paper disabled:opacity-50 inline-flex items-center gap-1"
+                        className="min-h-[34px] px-2.5 rounded-lg border border-line bg-white text-xs font-bold text-slate-700 hover:bg-paper disabled:opacity-50 inline-flex items-center gap-1"
                       >
                         {busy === `size:${s}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} {s}
                       </button>
@@ -1069,11 +1069,11 @@ const VariantsDialog: React.FC<{
                   </Button>
                 </div>
                 {inputError.colour ? (
-                  <p className="text-[11px] text-rose-600 font-medium" role="alert">
+                  <p className="text-xs text-rose-600 font-medium" role="alert">
                     {inputError.colour}
                   </p>
                 ) : (
-                  <p className="text-[11px] text-slate-500 leading-snug">
+                  <p className="text-xs text-slate-500 leading-snug">
                     {hexInput ? (
                       <span className="inline-flex items-center gap-1">
                         Swatch {hexInput}
@@ -1090,7 +1090,7 @@ const VariantsDialog: React.FC<{
             </div>
 
             {(pendingSizes.length > 0 || pendingColours.length > 0) && (
-              <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
                 {pendingSizes.length > 0
                   ? `Now add a colour — sizes ${pendingSizes.join(', ')} are saved once there is at least one colour.`
                   : `Now add a size — ${pendingColours.map((c) => c.colour).join(', ')} is saved once there is at least one size.`}
@@ -1104,7 +1104,7 @@ const VariantsDialog: React.FC<{
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="bg-paper border-b border-line text-slate-600">
-                        <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">Colour \ Size</th>
+                        <th className="py-2 px-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap">Colour \ Size</th>
                         {sizes.map((s) => (
                           <th key={s} className="py-2 px-2 font-bold text-slate-900 text-sm whitespace-nowrap">
                             <span className="inline-flex items-center gap-1">
@@ -1158,7 +1158,7 @@ const VariantsDialog: React.FC<{
                     </div>
                   ))}
                   {sizes.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 text-[11px] text-slate-500 items-center">
+                    <div className="flex flex-wrap gap-1.5 text-xs text-slate-500 items-center">
                       Remove a size:
                       {sizes.map((s) => (
                         <button
@@ -1174,7 +1174,7 @@ const VariantsDialog: React.FC<{
                     </div>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   Tap − / + or type a number; it saves on its own. <span className="text-amber-700 font-semibold">Amber</span> = {LOW_STOCK} or
                   fewer left, <span className="text-rose-700 font-semibold">red</span> = out of stock (customers can't order it).
                 </p>
@@ -1190,7 +1190,7 @@ const VariantsDialog: React.FC<{
 
           <div className="px-5 py-3 border-t border-line/70 shrink-0 flex flex-col-reverse sm:flex-row sm:justify-end sm:items-center gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             {anyPending && (
-              <span className="text-[11px] text-slate-500 inline-flex items-center gap-1 sm:mr-auto" role="status">
+              <span className="text-xs text-slate-500 inline-flex items-center gap-1 sm:mr-auto" role="status">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving stock…
               </span>
             )}
@@ -1253,7 +1253,7 @@ const ProductThumb: React.FC<{ product: ApparelProduct }> = ({ product }) => {
         <Shirt className="w-8 h-8 text-slate-300" aria-hidden="true" />
       )}
       {photos.length > 1 && (
-        <span className="absolute bottom-1 right-1 text-[9px] font-black bg-slate-900/75 text-white px-1 rounded">{photos.length} photos</span>
+        <span className="absolute bottom-1 right-1 text-xs font-bold bg-slate-900/75 text-white px-1 rounded">{photos.length} photos</span>
       )}
     </div>
   );
@@ -1281,43 +1281,43 @@ const ProductRow: React.FC<{
         <ProductThumb product={p} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded bg-paper text-sportsBlue border border-line">
+            <span className="text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-paper text-sportsBlue border border-line">
               {categoryLabel(p.category)}
             </span>
             {p.isFeatured && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-brandYellow text-sportsBlue">
+              <span className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded bg-brandYellow text-sportsBlue">
                 <Star className="w-3 h-3" /> Featured
               </span>
             )}
             {p.isActive ? (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">
+              <span className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">
                 <Eye className="w-3 h-3" /> On website
               </span>
             ) : (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-600">
+              <span className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-600">
                 <EyeOff className="w-3 h-3" /> Hidden
               </span>
             )}
             {p.customisable && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white border border-line text-slate-600">Name / number printing</span>
+              <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-white border border-line text-slate-600">Name / number printing</span>
             )}
           </div>
           <p className="font-bold text-sm text-slate-900 mt-1 break-words">{p.name}</p>
-          <p className="text-[11px] text-slate-500 break-words">
+          <p className="text-xs text-slate-500 break-words">
             <span className="font-bold text-slate-900 text-xs">₹{Number(p.price || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
             {[p.fabric, p.fit].filter((s) => s && s.trim()).map((s) => ` · ${s}`)}
           </p>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
             {vs.length === 0 ? (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-800">
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-800">
                 <Layers className="w-3 h-3" /> No sizes yet — customers can't order it
               </span>
             ) : (
               <>
-                <span className={`text-[11px] font-bold ${total === 0 ? 'text-rose-700' : 'text-slate-700'}`}>
+                <span className={`text-xs font-bold ${total === 0 ? 'text-rose-700' : 'text-slate-700'}`}>
                   {total} in stock · {vs.length} {vs.length === 1 ? 'variant' : 'variants'}
                 </span>
-                {sizes.length > 0 && <span className="text-[11px] text-slate-500">Sizes {sizes.join(', ')}</span>}
+                {sizes.length > 0 && <span className="text-xs text-slate-500">Sizes {sizes.join(', ')}</span>}
                 {colours.length > 0 && (
                   <span className="inline-flex items-center gap-0.5" aria-label={`Colours: ${colours.map((c) => c.colour).join(', ')}`}>
                     {colours.slice(0, 8).map((c) => (
@@ -1328,15 +1328,15 @@ const ProductRow: React.FC<{
                   </span>
                 )}
                 {low > 0 && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-800">{low} low</span>
+                  <span className="text-xs font-bold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-800">{low} low</span>
                 )}
                 {out > 0 && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-rose-200 bg-rose-50 text-rose-700">{out} out of stock</span>
+                  <span className="text-xs font-bold px-1.5 py-0.5 rounded border border-rose-200 bg-rose-50 text-rose-700">{out} out of stock</span>
                 )}
               </>
             )}
             {noPhoto && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border border-slate-300 bg-paper text-slate-600">
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded border border-slate-300 bg-paper text-slate-600">
                 <ImageOff className="w-3 h-3" /> No photo yet
               </span>
             )}
@@ -1347,7 +1347,7 @@ const ProductRow: React.FC<{
       <div className="flex flex-col sm:flex-row sm:items-center gap-2 lg:shrink-0">
         <div className="flex items-center gap-3 px-1 sm:pr-2 sm:border-r border-line/70">
           {(['isActive', 'isFeatured'] as const).map((key) => (
-            <label key={key} className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 cursor-pointer min-h-[44px]">
+            <label key={key} className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 cursor-pointer min-h-[44px]">
               <button
                 type="button"
                 role="switch"
@@ -1570,20 +1570,20 @@ export const ApparelManager: React.FC = () => {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div className={`${cardClass} p-3`}>
-              <p className="text-[11px] font-semibold text-slate-500">Items</p>
-              <p className="text-xl font-black text-slate-900">{products.length}</p>
+              <p className="text-xs font-semibold text-slate-500">Items</p>
+              <p className="text-xl font-bold text-slate-900">{products.length}</p>
             </div>
             <div className={`${cardClass} p-3`}>
-              <p className="text-[11px] font-semibold text-slate-500">Pieces in stock</p>
-              <p className="text-xl font-black text-slate-900">{stats.units}</p>
+              <p className="text-xs font-semibold text-slate-500">Pieces in stock</p>
+              <p className="text-xl font-bold text-slate-900">{stats.units}</p>
             </div>
             <div className={`${cardClass} p-3`}>
-              <p className="text-[11px] font-semibold text-slate-500">Low stock (≤ {LOW_STOCK})</p>
-              <p className={`text-xl font-black ${stats.lowVariants ? 'text-amber-600' : 'text-emerald-600'}`}>{stats.lowVariants}</p>
+              <p className="text-xs font-semibold text-slate-500">Low stock (≤ {LOW_STOCK})</p>
+              <p className={`text-xl font-bold ${stats.lowVariants ? 'text-amber-600' : 'text-emerald-600'}`}>{stats.lowVariants}</p>
             </div>
             <div className={`${cardClass} p-3`}>
-              <p className="text-[11px] font-semibold text-slate-500">Out of stock</p>
-              <p className={`text-xl font-black ${stats.outVariants ? 'text-rose-600' : 'text-emerald-600'}`}>{stats.outVariants}</p>
+              <p className="text-xs font-semibold text-slate-500">Out of stock</p>
+              <p className={`text-xl font-bold ${stats.outVariants ? 'text-rose-600' : 'text-emerald-600'}`}>{stats.outVariants}</p>
             </div>
           </div>
 

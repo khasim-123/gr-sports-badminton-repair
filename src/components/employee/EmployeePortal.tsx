@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { RefreshCw, Search, X } from 'lucide-react';
+import { ChevronRight, RefreshCw, Search, WifiOff, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ServiceRequest } from '../../types';
 import { formatDate, formatINR, parseDate } from '../../utils/format';
@@ -57,6 +57,22 @@ export const EmployeePortal: React.FC = () => {
   const [search, setSearch] = useState('');
   const [dialog, setDialog] = useState<{ kind: ActionKind; id: string } | null>(null);
   const backTo = useRef<Exclude<View, 'detail'>>('dashboard');
+  // Staff work outdoors: say plainly when the phone has no connection (saves would fail).
+  const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && navigator.onLine === false);
+  useEffect(() => {
+    const on = () => {
+      setOffline(false);
+      refreshData();
+    };
+    const off = () => setOffline(true);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const detailRequest = view === 'detail' ? requests.find((r) => r.id === selectedRequestId) : undefined;
   const dialogRequest = dialog ? requests.find((r) => r.id === dialog.id) : undefined;
@@ -144,20 +160,45 @@ export const EmployeePortal: React.FC = () => {
 
   const section = (title: string, list: ServiceRequest[], hint?: string, key?: string) =>
     list.length === 0 ? null : (
-      <section key={key} className="space-y-2" aria-label={title}>
-        <h2 className="text-sm font-bold text-slate-900">
-          {title} <span className="text-slate-400 font-semibold">({list.length})</span>
-        </h2>
-        {hint && <p className="text-xs text-slate-500 -mt-1">{hint}</p>}
+      <section key={key} className="space-y-3" aria-label={title}>
+        <div>
+          <h2 className="font-display tracking-[0.01em] text-[22px] leading-tight font-bold text-ink flex items-baseline gap-2">
+            {title}
+            <span className="font-sans text-sm font-semibold text-slate-500 tabular-nums">{list.length}</span>
+          </h2>
+          {hint && <p className="text-[13px] text-slate-500 mt-0.5">{hint}</p>}
+        </div>
         {renderList(list)}
       </section>
     );
 
   const empty = (title: string, text: string, action?: React.ReactNode) => (
-    <div className="bg-white rounded-2xl border border-dashed border-slate-300 px-5 py-10 text-center">
-      <p className="text-base font-bold text-slate-900">{title}</p>
-      <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">{text}</p>
-      {action && <div className="mt-4">{action}</div>}
+    <div className="bg-white rounded-2xl border border-line px-5 py-10 text-center">
+      <p className="font-display tracking-[0.01em] text-xl font-bold text-ink">{title}</p>
+      <p className="text-[15px] text-slate-600 mt-1 max-w-md mx-auto">{text}</p>
+      {action && <div className="mt-5">{action}</div>}
+    </div>
+  );
+
+  /** Placeholder cards shaped like the job cards while the first load runs. */
+  const skeleton = (
+    <div className="space-y-3" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Loading your jobs…</span>
+      <div className="h-6 w-28 rounded-lg bg-slate-200/70 motion-safe:animate-pulse" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="bg-white rounded-2xl border border-line p-4 space-y-3" aria-hidden="true">
+            <div className="flex justify-between gap-3">
+              <div className="h-4 w-32 rounded bg-slate-200/70 motion-safe:animate-pulse" />
+              <div className="h-5 w-20 rounded-full bg-slate-200/70 motion-safe:animate-pulse" />
+            </div>
+            <div className="h-6 w-48 rounded bg-slate-200/80 motion-safe:animate-pulse" />
+            <div className="h-4 w-56 rounded bg-slate-200/60 motion-safe:animate-pulse" />
+            <div className="h-4 w-40 rounded bg-slate-200/60 motion-safe:animate-pulse" />
+            <div className="h-12 w-full rounded-xl bg-slate-200/70 motion-safe:animate-pulse" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 
@@ -336,7 +377,23 @@ export const EmployeePortal: React.FC = () => {
   const listHeading = view === 'new' ? 'New requests' : view === 'done' ? 'Completed' : 'My jobs';
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8 space-y-4 pb-16">
+    <div
+      className={`max-w-6xl mx-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8 space-y-4 ${
+        view === 'detail' && detailRequest ? 'pb-36 md:pb-16' : 'pb-16'
+      }`}
+    >
+      {offline && (
+        <p
+          role="status"
+          className="flex items-start gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+        >
+          <WifiOff className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+          <span>
+            <b>You&apos;re offline.</b> The list shows the last update. Pickups, payments and other changes can&apos;t be saved
+            until the connection is back.
+          </span>
+        </p>
+      )}
       {view === 'detail' && detailRequest ? (
         <JobDetail
           request={detailRequest}
@@ -352,8 +409,8 @@ export const EmployeePortal: React.FC = () => {
         <>
           <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="font-display tracking-[0.01em] text-2xl sm:text-3xl font-bold text-slate-900">{listHeading}</h1>
-              <p className="text-sm text-slate-500 truncate">
+              <h1 className="font-display tracking-[0.01em] text-[30px] sm:text-4xl leading-tight font-bold text-ink">{listHeading}</h1>
+              <p className="text-sm text-slate-500 truncate mt-0.5">
                 {userName || 'Staff'} · {formatDate(today)}
               </p>
             </div>
@@ -361,7 +418,7 @@ export const EmployeePortal: React.FC = () => {
               type="button"
               onClick={refreshData}
               disabled={isDataLoading}
-              className="inline-flex items-center justify-center gap-2 min-h-[44px] min-w-[44px] px-3 sm:px-4 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-paper disabled:opacity-60 shrink-0"
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] min-w-[44px] px-3 sm:px-4 rounded-xl border border-line bg-white text-sm font-bold text-ink hover:bg-paper transition-colors duration-150 disabled:opacity-60 shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
               aria-label="Refresh jobs"
             >
               <RefreshCw className={`w-4 h-4 ${isDataLoading ? 'animate-spin' : ''}`} />
@@ -370,20 +427,24 @@ export const EmployeePortal: React.FC = () => {
           </div>
 
           {/* Phone: view switcher (the top bar shows these tabs on wider screens) */}
-          <nav className="md:hidden grid grid-cols-3 gap-1 p-1 rounded-2xl bg-slate-100 border border-line" aria-label="Staff views">
+          <nav className="md:hidden grid grid-cols-3 gap-1 p-1 rounded-2xl bg-paper-deep/60 border border-line" aria-label="Staff views">
             {LIST_VIEWS.map((v) => (
               <button
                 key={v.id}
                 type="button"
                 onClick={() => goTo(v.id)}
                 aria-current={view === v.id ? 'page' : undefined}
-                className={`min-h-[44px] px-1 rounded-xl text-[13px] font-bold flex items-center justify-center gap-1 ${
-                  view === v.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'
+                className={`min-h-[44px] px-1 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
+                  view === v.id ? 'bg-white text-ink border border-line' : 'text-slate-600 border border-transparent'
                 }`}
               >
                 {v.id === 'new' ? 'New' : v.label}
                 {counts[v.id] !== null && counts[v.id]! > 0 && (
-                  <span className={`text-[11px] px-1.5 rounded-full ${v.id === 'new' ? 'bg-ink text-white' : 'bg-slate-200 text-slate-700'}`}>
+                  <span
+                    className={`min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center text-xs tabular-nums rounded-full ${
+                      v.id === 'new' ? 'bg-accent text-ink' : 'bg-ink/10 text-ink'
+                    }`}
+                  >
                     {counts[v.id]}
                   </span>
                 )}
@@ -416,7 +477,7 @@ export const EmployeePortal: React.FC = () => {
           )}
 
           {loading ? (
-            <p className="py-12 text-center text-sm text-slate-500">Loading your jobs…</p>
+            skeleton
           ) : dataLoaded && !me ? (
             empty(
               "Your staff account wasn't found",
@@ -469,15 +530,17 @@ export const EmployeePortal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => goTo('new')}
-                  className="w-full min-h-[48px] flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-line bg-paper text-left text-sm text-ink hover:bg-paper-deep"
+                  className="w-full min-h-[52px] flex items-center justify-between gap-3 pl-4 pr-3 py-3 rounded-2xl border border-line border-l-4 border-l-accent bg-white text-left text-[15px] text-ink hover:bg-paper transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
                 >
                   <span>
-                    <b>
-                      {unassigned.length} new {unassigned.length === 1 ? 'request is' : 'requests are'}
+                    <b className="tabular-nums">
+                      {unassigned.length} new {unassigned.length === 1 ? 'request' : 'requests'}
                     </b>{' '}
-                    waiting to be accepted.
+                    <span className="text-slate-600">waiting to be accepted</span>
                   </span>
-                  <span className="font-bold shrink-0">View</span>
+                  <span className="inline-flex items-center gap-1 font-bold shrink-0">
+                    View <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                  </span>
                 </button>
               )}
               {open.length === 0 ? (
@@ -496,7 +559,12 @@ export const EmployeePortal: React.FC = () => {
                 )
               ) : (
                 <>
-                  {section('Today', todayJobs, 'Pickups due today or overdue, and deliveries already on the way.')}
+                  {todayJobs.length === 0 && (
+                    <p className="text-[15px] text-slate-600 px-1">
+                      <b className="text-ink">Nothing due today.</b> Upcoming jobs are below.
+                    </p>
+                  )}
+                  {section('Today', todayJobs, 'Pickups due today or overdue, and deliveries on the way.')}
                   {WORK_STAGES.map((s) => section(STAGE_TITLES[s], byStage(s), undefined, s))}
                 </>
               )}

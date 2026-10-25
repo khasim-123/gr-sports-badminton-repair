@@ -67,87 +67,139 @@ export const CustomerDashboard: React.FC = () => {
     { label: 'All bookings', value: requests.length, icon: <ClipboardList className="w-4 h-4 text-slate-500" />, hint: 'Since you joined' },
   ];
 
+  const hasAttention = approvals.length > 0 || reviewable.length > 0;
+
+  const servicesSection = (
+    <section className="space-y-3" aria-labelledby="dash-services">
+      <h2 id="dash-services" className="font-display tracking-[0.01em] text-2xl font-semibold text-slate-900">
+        Services and prices
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {[
+          {
+            type: 'GETTING' as const,
+            title: 'Racket stringing',
+            subtitle: 'Your string, colour and tension',
+            text: 'Choose a package, your string and colour from our current catalogue, and the tension you want.',
+            price: stringingPrice,
+            cta: 'Book stringing',
+          },
+          {
+            type: 'REPAIR' as const,
+            title: 'Racket repair',
+            subtitle: 'Frame, shaft, joint, handle and grip',
+            text: 'We inspect your racket first and send you an itemised estimate. Work starts only after you approve it.',
+            price: repairPrice,
+            cta: 'Book a repair',
+          },
+        ].map((card) => (
+          <button
+            key={card.type}
+            type="button"
+            onClick={() => openWizardWithService(card.type)}
+            className="text-left bg-white rounded-2xl border border-line p-5 hover:border-slate-300 hover:bg-paper/40 transition-colors duration-150 group flex flex-col"
+          >
+            <span className="flex items-center gap-3">
+              <ServiceTypeTile type={card.type} />
+              <span>
+                <span className="block text-lg font-semibold text-slate-900">{card.title}</span>
+                <span className="block text-[13px] text-slate-500">{card.subtitle}</span>
+              </span>
+            </span>
+            <span className="block text-sm text-slate-600 leading-relaxed mt-3 flex-1">{card.text}</span>
+            <span className="mt-4 pt-3 border-t border-line/70 flex items-center justify-between text-sm">
+              <span className="font-semibold text-slate-900 tabular-nums">{card.price}</span>
+              <span className="font-semibold text-ink flex items-center gap-1 group-hover:underline underline-offset-4">
+                {card.cta} <ChevronRight className="w-4 h-4" aria-hidden="true" />
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-6">
+    <div className="max-w-6xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
       {/* Welcome */}
-      <section className="bg-ink text-white p-5 sm:p-7 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-5">
+      <section className="bg-ink text-white p-5 sm:p-7 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-5 focus-on-dark">
         <div className="min-w-0">
           <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-[0.01em]">
             {firstName ? `Welcome, ${firstName}` : 'Welcome'}
           </h1>
-          <p className="text-sm text-white/75 mt-1.5 max-w-xl leading-relaxed">
+          <p className="text-[15px] text-white/80 mt-1.5 max-w-xl leading-relaxed">
             Book racket stringing or a repair. We pick your racket up from your door
-            {distanceConfig.freeRadiusKm > 0 ? ` (free within ${distanceConfig.freeRadiusKm} KM)` : ''} and you pay after
-            it is delivered back.
+            {distanceConfig.freeRadiusKm > 0 ? ` (free within ${distanceConfig.freeRadiusKm} km)` : ''} and you pay when it
+            comes back.
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 shrink-0">
+        <div className="flex flex-col sm:flex-row gap-2.5 shrink-0">
           <button
             type="button"
             onClick={() => openWizardWithService('GETTING')}
-            className="inline-flex items-center justify-center min-h-[44px] px-5 rounded-xl bg-accent hover:bg-accent-hover text-ink text-sm font-bold transition-colors"
+            className="inline-flex items-center justify-center min-h-[44px] px-5 rounded-xl bg-accent hover:bg-accent-hover text-ink text-sm font-semibold transition-colors duration-150"
           >
             Book stringing
           </button>
           <button
             type="button"
             onClick={() => openWizardWithService('REPAIR')}
-            className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 rounded-xl border border-white/25 text-white hover:bg-white/10 text-sm font-bold transition-colors"
+            className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 rounded-xl border border-white/30 text-white hover:bg-white/10 text-sm font-semibold transition-colors duration-150"
           >
-            <Wrench className="w-4 h-4" />
+            <Wrench className="w-4 h-4" aria-hidden="true" />
             Book a repair
           </button>
         </div>
       </section>
 
-      {/* Next court booking and shop orders (only when there are any) */}
-      <NextCourtBookingBlock />
-      <YourOrdersBlock />
-
-      {/* Things that need the customer's attention */}
-      {(approvals.length > 0 || reviewable.length > 0) && (
-        <section className="space-y-2.5" aria-label="Needs your attention">
-          {approvals.map((r) => (
-            <div
-              key={`approve-${r.id}`}
-              className="p-4 rounded-2xl border-2 border-amber-300 bg-amber-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-            >
-              <div className="flex items-start gap-3 min-w-0">
-                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-slate-900">
-                    {r.repairEstimate?.isRevised ? 'Updated repair estimate' : 'Repair estimate'} for {r.batBrand} {r.batModel}
-                    {r.repairEstimate ? ` — ${formatINR(r.repairEstimate.totalEstimate)}` : ''}
-                  </p>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    {r.id} · We won&apos;t start the repair until you approve it.
-                  </p>
+      {/* Things that need the customer's attention — first, so nothing waits on them unnoticed */}
+      {hasAttention && (
+        <section aria-labelledby="dash-attention" className="bg-white rounded-2xl border border-line overflow-hidden">
+          <h2 id="dash-attention" className="px-4 sm:px-5 pt-4 pb-2 text-sm font-semibold text-slate-900">
+            Needs your attention
+          </h2>
+          <ul className="divide-y divide-line/70">
+            {approvals.map((r) => (
+              <li
+                key={`approve-${r.id}`}
+                className="px-4 sm:px-5 py-4 bg-amber-50/70 border-l-4 border-amber-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              >
+                <div className="flex items-start gap-3 min-w-0">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-semibold text-slate-900">
+                      {r.repairEstimate?.isRevised ? 'Updated repair estimate' : 'Repair estimate'} for {r.batBrand} {r.batModel}
+                      {r.repairEstimate ? <span className="tabular-nums"> — {formatINR(r.repairEstimate.totalEstimate)}</span> : ''}
+                    </p>
+                    <p className="text-[13px] text-slate-600 mt-0.5">
+                      {r.id} · We won&apos;t start the repair until you approve it.
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <Button onClick={() => openRequestDetail(r.id)} size="sm" variant="primary" className="min-h-[40px] shrink-0">
-                Review estimate
-              </Button>
-            </div>
-          ))}
-          {reviewable.slice(0, 2).map((r) => (
-            <div
-              key={`review-${r.id}`}
-              className="p-4 rounded-2xl border border-line bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-            >
-              <div className="flex items-start gap-3 min-w-0">
-                <Star className="w-5 h-5 text-amber-500 fill-amber-400 shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-slate-900">How was your {r.serviceType === 'REPAIR' ? 'repair' : 'stringing'}?</p>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    {r.id} · {r.batBrand} {r.batModel} — tell us in a short review.
-                  </p>
+                <Button onClick={() => openRequestDetail(r.id)} size="md" variant="primary" className="min-h-[44px] shrink-0">
+                  Review estimate
+                </Button>
+              </li>
+            ))}
+            {reviewable.slice(0, 2).map((r) => (
+              <li key={`review-${r.id}`} className="px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0">
+                  <Star className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-semibold text-slate-900">
+                      How was your {r.serviceType === 'REPAIR' ? 'repair' : 'stringing'}?
+                    </p>
+                    <p className="text-[13px] text-slate-600 mt-0.5">
+                      {r.id} · {r.batBrand} {r.batModel} — tell us in a short review.
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <Button onClick={() => openRequestDetail(r.id)} size="sm" variant="outline" className="min-h-[40px] shrink-0">
-                Write a review
-              </Button>
-            </div>
-          ))}
+                <Button onClick={() => openRequestDetail(r.id)} size="md" variant="outline" className="min-h-[44px] shrink-0">
+                  Write a review
+                </Button>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 
@@ -159,69 +211,22 @@ export const CustomerDashboard: React.FC = () => {
               key={s.label}
               type="button"
               onClick={() => setCustomerSubView('requests')}
-              className={`text-left bg-white p-4 sm:p-5 rounded-2xl border shadow-2xs hover:shadow-md transition-all ${
-                s.highlight ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200/80 hover:border-line'
+              className={`text-left bg-white p-4 sm:p-5 rounded-2xl border transition-colors duration-150 hover:bg-paper/40 ${
+                s.highlight ? 'border-amber-300' : 'border-line hover:border-slate-300'
               }`}
             >
-              <span className="flex items-center justify-between text-slate-500 mb-2">
-                <span className="text-xs font-semibold">{s.label}</span>
-                {s.icon}
+              <span className="flex items-center justify-between text-slate-600 mb-2">
+                <span className="text-[13px] font-medium">{s.label}</span>
+                <span aria-hidden="true">{s.icon}</span>
               </span>
-              <span className="block text-2xl font-black text-slate-900">{showLoading ? '—' : s.value}</span>
-              <span className="block text-[11px] text-slate-400 mt-1">{s.hint}</span>
+              <span className="block font-display text-4xl font-semibold leading-none text-slate-900 tabular-nums">
+                {showLoading ? '—' : s.value}
+              </span>
+              <span className="block text-xs text-slate-500 mt-2">{s.hint}</span>
             </button>
           ))}
         </section>
       )}
-
-      {/* Services */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-4" aria-label="Services">
-        <button
-          type="button"
-          onClick={() => openWizardWithService('GETTING')}
-          className="text-left bg-white rounded-2xl border border-line p-5 shadow-2xs hover:border-ink/30 hover:shadow-lg transition-all group flex flex-col"
-        >
-          <span className="flex items-center gap-3">
-            <ServiceTypeTile type="GETTING" />
-            <span>
-              <span className="block text-lg font-black text-slate-900 group-hover:text-ink">Racket stringing</span>
-              <span className="block text-xs text-slate-500">Bat getting</span>
-            </span>
-          </span>
-          <span className="block text-xs text-slate-600 leading-relaxed mt-3 flex-1">
-            Choose a package, your string and colour from our current catalogue, and the tension you want.
-          </span>
-          <span className="mt-4 pt-3 border-t border-line/70 flex items-center justify-between text-xs">
-            <span className="font-bold text-slate-800">{stringingPrice}</span>
-            <span className="font-bold text-ink flex items-center gap-1">
-              Book stringing <ChevronRight className="w-4 h-4" />
-            </span>
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => openWizardWithService('REPAIR')}
-          className="text-left bg-white rounded-2xl border border-line p-5 shadow-2xs hover:border-amber-400 hover:shadow-lg transition-all group flex flex-col"
-        >
-          <span className="flex items-center gap-3">
-            <ServiceTypeTile type="REPAIR" />
-            <span>
-              <span className="block text-lg font-black text-slate-900 group-hover:text-amber-700">Racket repair</span>
-              <span className="block text-xs text-slate-500">Frame, shaft, joint, handle and grip</span>
-            </span>
-          </span>
-          <span className="block text-xs text-slate-600 leading-relaxed mt-3 flex-1">
-            We inspect your racket first and send you an itemised estimate. Work starts only after you approve it.
-          </span>
-          <span className="mt-4 pt-3 border-t border-line/70 flex items-center justify-between text-xs">
-            <span className="font-bold text-slate-800">{repairPrice}</span>
-            <span className="font-bold text-amber-700 flex items-center gap-1">
-              Book a repair <ChevronRight className="w-4 h-4" />
-            </span>
-          </span>
-        </button>
-      </section>
 
       {/* How it works — shown to customers who haven't booked yet */}
       {isNewCustomer && (
@@ -229,29 +234,35 @@ export const CustomerDashboard: React.FC = () => {
           {[
             { icon: <ClipboardList className="w-5 h-5 text-ink" />, title: '1. Book online', text: 'Tell us about your racket and pick a pickup day and time.' },
             {
-              icon: <Truck className="w-5 h-5 text-emerald-600" />,
+              icon: <Truck className="w-5 h-5 text-ink" />,
               title: '2. We collect it',
-              text: `Our agent picks it up from your door${distanceConfig.freeRadiusKm > 0 ? ` — free within ${distanceConfig.freeRadiusKm} KM` : ''}.`,
+              text: `Our agent picks it up from your door${distanceConfig.freeRadiusKm > 0 ? ` — free within ${distanceConfig.freeRadiusKm} km` : ''}.`,
             },
-            { icon: <Wallet className="w-5 h-5 text-amber-600" />, title: '3. Pay after delivery', text: 'We bring it back; pay by cash or UPI.' },
+            { icon: <Wallet className="w-5 h-5 text-ink" />, title: '3. Pay on delivery', text: 'We bring it back; pay by cash or UPI.' },
           ].map((step) => (
             <div key={step.title} className="bg-white rounded-2xl border border-line p-4 flex items-start gap-3">
-              <span className="w-10 h-10 rounded-xl bg-paper border border-line/70 flex items-center justify-center shrink-0">{step.icon}</span>
+              <span className="w-10 h-10 rounded-xl bg-paper border border-line/70 flex items-center justify-center shrink-0" aria-hidden="true">
+                {step.icon}
+              </span>
               <span>
-                <span className="block text-sm font-bold text-slate-900">{step.title}</span>
-                <span className="block text-xs text-slate-600 mt-0.5">{step.text}</span>
+                <span className="block text-[15px] font-semibold text-slate-900">{step.title}</span>
+                <span className="block text-[13px] text-slate-600 mt-0.5">{step.text}</span>
               </span>
             </div>
           ))}
         </section>
       )}
 
+      {isNewCustomer && servicesSection}
+
       {/* Recent requests */}
-      <section className="bg-white rounded-2xl border border-line p-4 sm:p-6 shadow-2xs space-y-3">
+      <section className="bg-white rounded-2xl border border-line p-4 sm:p-6 space-y-3" aria-labelledby="dash-recent">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Recent requests</h2>
-            <p className="text-xs text-slate-500">Open one to see its progress, charges and pickup details.</p>
+            <h2 id="dash-recent" className="font-display tracking-[0.01em] text-2xl font-semibold text-slate-900">
+              Recent requests
+            </h2>
+            <p className="text-[13px] text-slate-500">Open one to see its progress, charges and pickup details.</p>
           </div>
           {requests.length > 0 && (
             <Button
@@ -267,7 +278,7 @@ export const CustomerDashboard: React.FC = () => {
         </div>
 
         {showLoading && (
-          <div className="space-y-3">
+          <div className="space-y-3" aria-busy="true" aria-label="Loading your bookings">
             <CardSkeleton />
             <CardSkeleton />
           </div>
@@ -300,33 +311,39 @@ export const CustomerDashboard: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => openRequestDetail(req.id)}
-                  className="w-full text-left py-3 px-2 -mx-2 sm:mx-0 rounded-2xl hover:bg-paper transition-colors grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_11rem_auto] items-center gap-x-3 gap-y-2"
+                  className="w-full text-left py-3 px-2 -mx-2 sm:mx-0 rounded-xl hover:bg-paper transition-colors duration-150 grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_11rem_auto] items-center gap-x-3 gap-y-2"
                 >
                   <ServiceTypeTile type={req.serviceType} size="sm" />
                   <span className="min-w-0">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                      <span className="font-mono text-[11px] font-bold text-ink bg-paper px-1.5 py-0.5 rounded border border-line">
+                      <span className="text-xs font-semibold text-ink bg-paper px-1.5 py-0.5 rounded border border-line tabular-nums">
                         {req.id}
                       </span>
-                      <span className="text-sm font-bold text-slate-900 truncate">
+                      <span className="text-[15px] font-semibold text-slate-900 truncate">
                         {req.batBrand} {req.batModel}
                       </span>
                     </span>
-                    <span className="block text-xs text-slate-500 mt-0.5 truncate">
+                    <span className="block text-[13px] text-slate-500 mt-0.5 truncate">
                       {serviceSummary(req, gettingServices)} · Booked {formatDate(req.createdAt)}
                     </span>
                   </span>
                   <span className="col-start-2 sm:col-start-auto flex sm:flex-col items-center sm:items-end justify-between gap-1">
                     <StatusBadge status={req.status} size="sm" />
-                    <span className="text-xs font-extrabold text-slate-900">{priceLabel(req)}</span>
+                    <span className="text-sm font-semibold text-slate-900 tabular-nums">{priceLabel(req)}</span>
                   </span>
-                  <ChevronRight className="w-4 h-4 text-slate-400 hidden sm:block" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 hidden sm:block" aria-hidden="true" />
                 </button>
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      {/* Next court booking and shop orders (only when there are any) */}
+      <NextCourtBookingBlock />
+      <YourOrdersBlock />
+
+      {!isNewCustomer && servicesSection}
     </div>
   );
 };

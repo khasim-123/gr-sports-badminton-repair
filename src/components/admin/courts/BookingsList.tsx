@@ -2,7 +2,7 @@
  * Bookings list: a date range (default the next 7 days), search, status filter and CSV export.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Download, Eye, RefreshCw, Search } from 'lucide-react';
+import { AlertTriangle, ChevronRight, Download, Eye, RefreshCw, Search } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
 import { courtService } from '../../../services/courtService';
 import type { CourtBooking, CourtBookingStatus, CourtVenue } from '../../../types/courts';
@@ -161,11 +161,11 @@ export const BookingsList: React.FC<{
     <div className="space-y-4 min-w-0">
       <div className="bg-white p-3 sm:p-4 rounded-2xl border border-line shadow-2xs space-y-3">
         <div className="grid grid-cols-2 lg:grid-cols-[auto,auto,1fr,auto] gap-2 items-end">
-          <label className="text-[11px] font-bold text-slate-600 min-w-0">
+          <label className="text-xs font-bold text-slate-600 min-w-0">
             From
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={`mt-1 ${inputCls}`} />
           </label>
-          <label className="text-[11px] font-bold text-slate-600 min-w-0">
+          <label className="text-xs font-bold text-slate-600 min-w-0">
             To
             <input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} className={`mt-1 ${inputCls}`} />
           </label>
@@ -196,7 +196,7 @@ export const BookingsList: React.FC<{
             </Button>
           </div>
         </div>
-        {rangeBad && <p className="text-[11px] text-rose-700">The “to” date must be on or after the “from” date.</p>}
+        {rangeBad && <p className="text-xs text-rose-700">The “to” date must be on or after the “from” date.</p>}
         <div className={`grid grid-cols-1 ${venues.length > 1 ? 'sm:grid-cols-[1fr,14rem,14rem]' : 'sm:grid-cols-[1fr,14rem]'} gap-2`}>
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -288,7 +288,7 @@ export const BookingsList: React.FC<{
                     <span className="block font-bold text-slate-900 text-sm">
                       {formatDayLabel(b.date)} · {fmtRange(b.startTime, b.endTime)}
                     </span>
-                    <span className="block text-[11px] text-slate-500">
+                    <span className="block text-xs text-slate-500">
                       <span className="font-mono">{b.id}</span> · {b.courtName}
                       {venues.length > 1 ? ` · ${b.venueName}` : ''}
                     </span>
@@ -302,7 +302,7 @@ export const BookingsList: React.FC<{
                   </div>
                   <span className="text-right shrink-0">
                     <span className="font-bold text-slate-900">{formatINR(b.price)}</span>
-                    <span className={`block text-[11px] ${b.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-slate-500'}`}>{paymentShort(b)}</span>
+                    <span className={`block text-xs ${b.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-slate-500'}`}>{paymentShort(b)}</span>
                   </span>
                 </div>
                 <button
@@ -318,10 +318,10 @@ export const BookingsList: React.FC<{
 
           {/* Desktop: table */}
           <div className={`${cardCls} overflow-hidden hidden md:block`}>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[820px] text-left border-collapse text-xs">
+            <div className="overflow-auto lg:max-h-[calc(100vh-9rem)]">
+              <table className="w-full min-w-[820px] text-left border-collapse text-[13px]">
                 <thead>
-                  <tr className="bg-paper border-b border-line text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                  <tr className="text-slate-500 font-semibold uppercase tracking-[0.06em] text-xs [&>th]:sticky [&>th]:top-0 [&>th]:z-10 [&>th]:bg-paper [&>th]:shadow-[inset_0_-1px_0_#E3DFD6]">
                     <th className={thCls}>When</th>
                     <th className={thCls}>Court</th>
                     <th className={thCls}>Customer</th>
@@ -345,23 +345,23 @@ export const BookingsList: React.FC<{
                     <tr key={b.id} className="hover:bg-paper/70 transition-colors">
                       <td className={tdCls}>
                         <p className="font-bold text-slate-900 whitespace-nowrap">{formatDayLabel(b.date)}</p>
-                        <p className="text-[11px] text-slate-500 whitespace-nowrap">
+                        <p className="text-xs text-slate-500 whitespace-nowrap">
                           {fmtRange(b.startTime, b.endTime)} · {hoursText(durationMin(b))}
                         </p>
                       </td>
                       <td className={tdCls}>
                         <p className="font-semibold text-slate-800 whitespace-nowrap">{b.courtName}</p>
-                        {venues.length > 1 && <p className="text-[11px] text-slate-500 max-w-[10rem] truncate">{b.venueName}</p>}
+                        {venues.length > 1 && <p className="text-xs text-slate-500 max-w-[10rem] truncate">{b.venueName}</p>}
                       </td>
                       <td className={tdCls}>
                         <p className="font-bold text-slate-900 max-w-[12rem] truncate" title={b.customerName}>
                           {b.customerName}
                         </p>
-                        <TelLink phone={b.customerMobile} className="text-[11px] font-medium" />
+                        <TelLink phone={b.customerMobile} className="text-xs font-medium" />
                       </td>
                       <td className={`${tdCls} text-right whitespace-nowrap`}>
                         <p className="font-bold text-slate-900">{formatINR(b.price)}</p>
-                        <p className={`text-[11px] ${b.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-slate-500'}`}>{paymentShort(b)}</p>
+                        <p className={`text-xs ${b.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-slate-500'}`}>{paymentShort(b)}</p>
                       </td>
                       <td className={tdCls}>
                         <CourtStatusPill status={b.status} />
@@ -370,15 +370,15 @@ export const BookingsList: React.FC<{
                         <button type="button" onClick={() => onOpenBooking(b)} className="font-mono font-bold text-ink hover:underline whitespace-nowrap">
                           {b.id}
                         </button>
-                        <p className="text-[11px] text-slate-500 whitespace-nowrap">{b.bookedBy === 'admin' ? 'Walk-in / phone' : 'Online'}</p>
+                        <p className="text-xs text-slate-500 whitespace-nowrap">{b.bookedBy === 'admin' ? 'Walk-in / phone' : 'Online'}</p>
                       </td>
                       <td className={`${tdCls} text-right`}>
                         <button
                           type="button"
                           onClick={() => onOpenBooking(b)}
-                          className="min-h-[40px] px-3 inline-flex items-center gap-1 rounded-lg border border-line text-slate-700 font-bold hover:text-ink hover:bg-paper transition-colors"
+                          className="min-h-[36px] px-3 inline-flex items-center gap-1 rounded-lg border border-line bg-white text-slate-700 font-semibold hover:text-ink hover:border-slate-400 transition-colors duration-150"
                         >
-                          <Eye className="w-3.5 h-3.5" /> Open
+                          Open <ChevronRight className="w-3.5 h-3.5" />
                         </button>
                       </td>
                     </tr>

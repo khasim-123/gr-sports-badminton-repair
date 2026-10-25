@@ -533,7 +533,7 @@ export const CourtsPage: React.FC = () => {
                   {(avail.status === 'loading' || avail.status === 'idle') && !data && (
                     <div className="space-y-2" aria-hidden="true">
                       {[0, 1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} className="h-11 animate-pulse rounded-lg bg-paper" />
+                        <div key={i} className="h-11 animate-pulse rounded-lg bg-paper-deep motion-reduce:animate-none" />
                       ))}
                     </div>
                   )}
@@ -686,9 +686,9 @@ export const CourtsPage: React.FC = () => {
                 </div>
                 <div className="lg:col-span-7">
                   {photos.length > 1 ? (
-                    <ul className="grid grid-cols-2 gap-3">
+                    <ul className={cx('grid gap-3', photos.length > 2 && 'grid-cols-2')}>
                       {photos.slice(1, 5).map((p, i) => (
-                        <li key={p} className="relative aspect-[4/3] overflow-hidden rounded-xl bg-paper-deep">
+                        <li key={p} className={cx('relative overflow-hidden rounded-xl bg-paper-deep', photos.length > 2 ? 'aspect-[4/3]' : 'aspect-[16/10]')}>
                           <img src={p} alt={`${venue.name}, photo ${i + 2}`} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
                         </li>
                       ))}

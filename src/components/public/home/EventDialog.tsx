@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { CheckCircle2, ExternalLink, Phone } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ExternalLink, Phone } from 'lucide-react';
 import type { SiteEvent } from '../../../types/content';
 import { ApiError } from '../../../services/apiClient';
 import { contentService } from '../../../services/contentService';
@@ -307,7 +307,8 @@ const RegistrationForm: React.FC<{
             className={fieldControl}
           />
           {errors.name && (
-            <p id={fid('name-err')} className="mt-1.5 text-[13px] font-medium text-flameRed">
+            <p id={fid('name-err')} className="mt-1.5 flex items-start gap-1.5 text-[13px] font-medium text-flameRed">
+              <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               {errors.name}
             </p>
           )}
@@ -338,7 +339,8 @@ const RegistrationForm: React.FC<{
             We call this number to confirm.
           </p>
           {errors.mobile && (
-            <p id={fid('mobile-err')} className="mt-1 text-[13px] font-medium text-flameRed">
+            <p id={fid('mobile-err')} className="mt-1 flex items-start gap-1.5 text-[13px] font-medium text-flameRed">
+              <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               {errors.mobile}
             </p>
           )}
@@ -364,7 +366,8 @@ const RegistrationForm: React.FC<{
               ))}
             </Select>
             {errors.category && (
-              <p id={fid('category-err')} className="mt-1.5 text-[13px] font-medium text-flameRed">
+              <p id={fid('category-err')} className="mt-1.5 flex items-start gap-1.5 text-[13px] font-medium text-flameRed">
+                <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 {errors.category}
               </p>
             )}
@@ -404,8 +407,9 @@ const RegistrationForm: React.FC<{
       </div>
 
       {serverError && (
-        <p role="alert" className="mt-5 rounded-xl border border-[#F3C9C9] bg-[#FDF3F3] px-4 py-3 text-[14px] text-[#8A1F1F]">
-          {serverError}
+        <p role="alert" className="mt-5 flex items-start gap-2 rounded-xl border border-[#F3C9C9] bg-[#FDF3F3] px-4 py-3 text-[14px] text-[#8A1F1F]">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>{serverError}</span>
         </p>
       )}
 

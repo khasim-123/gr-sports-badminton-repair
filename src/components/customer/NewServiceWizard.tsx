@@ -12,6 +12,7 @@ import { ApiError } from '../../services/apiClient';
 import { PublicAvailability, StringProduct, StringVariant } from '../../types/content';
 import {
   CheckCircle2,
+  Check,
   ArrowRight,
   ArrowLeft,
   Upload,
@@ -37,6 +38,7 @@ import { getCurrentLocation, hasCoords, LocationError, roadDistanceKm } from '..
 import { phoneDisplay, telHref, useShopSettings } from '../../hooks/useShopSettings';
 
 const OWN_STRING = '__own__';
+const WIZARD_STEPS = ['Service', 'Your racket', 'Pickup', 'Review', 'Done'];
 const MAX_PHOTOS = 3;
 
 type LoadStatus = 'loading' | 'ready' | 'error';
@@ -495,7 +497,7 @@ export const NewServiceWizard: React.FC = () => {
           : "Tap 'Use my current location', or enter the distance from the shop in km.";
       }
       if (maxServiceKm > 0 && customDistanceKm > maxServiceKm) {
-        return `Doorstep pickup is available within ${maxServiceKm} KM of our shop. Please call ${phoneDisplay(shop.phone)} or drop your racket at the store.`;
+        return `Doorstep pickup is available within ${maxServiceKm} km of our shop. Please call ${phoneDisplay(shop.phone)} or drop your racket at the store.`;
       }
       if (availabilityStatus === 'loading') return 'Loading pickup availability, please wait a moment…';
       if (!pickupDate) return 'Please choose a pickup date.';
@@ -604,44 +606,49 @@ export const NewServiceWizard: React.FC = () => {
   // ---------------------------------------------------------------- render
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
-      {/* Wizard Progress Stepper */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-2">
-          {['Service', 'Bat Details', 'Pickup', 'Review', 'Confirmation'].map((name, idx) => {
+      {/* Wizard progress: numbered steps joined by a line (labels hidden on phones, where the
+          current step is spelled out above instead). */}
+      <nav className="mb-8" aria-label="Booking steps">
+        <p className="sm:hidden text-center text-sm text-slate-600 mb-3">
+          Step {currentStep} of {WIZARD_STEPS.length} · <span className="font-semibold text-ink">{WIZARD_STEPS[currentStep - 1]}</span>
+        </p>
+        <ol className="flex items-start">
+          {WIZARD_STEPS.map((name, idx) => {
             const stepNum = idx + 1;
             const isCompleted = currentStep > stepNum;
             const isCurrent = currentStep === stepNum;
             return (
-              <div key={idx} className="flex flex-col items-center flex-1">
-                <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+              <li key={name} className="flex-1 flex flex-col items-center relative" aria-current={isCurrent ? 'step' : undefined}>
+                {idx > 0 && (
+                  <span
+                    className={`absolute top-4 right-1/2 w-full h-0.5 -translate-y-1/2 ${currentStep >= stepNum ? 'bg-ink' : 'bg-line'}`}
+                    aria-hidden="true"
+                  />
+                )}
+                <span
+                  className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold tabular-nums transition-colors duration-200 ${
                     isCompleted
-                      ? 'bg-emerald-600 text-white shadow-sm'
+                      ? 'bg-ink text-white'
                       : isCurrent
-                      ? 'bg-ink text-white ring-4 ring-ink/40 shadow-md'
-                      : 'bg-slate-200 text-slate-500'
+                      ? 'bg-accent text-ink ring-2 ring-ink ring-offset-2 ring-offset-paper'
+                      : 'bg-white text-slate-500 border border-line'
                   }`}
                 >
-                  {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : stepNum}
-                </div>
+                  {isCompleted ? <Check className="w-4 h-4" aria-hidden="true" /> : stepNum}
+                  {isCompleted && <span className="sr-only"> (done)</span>}
+                </span>
                 <span
-                  className={`text-[11px] font-semibold mt-1.5 hidden sm:block ${
-                    isCurrent ? 'text-ink font-bold' : 'text-slate-500'
+                  className={`hidden sm:block text-[13px] mt-2 ${
+                    isCurrent ? 'text-ink font-semibold' : isCompleted ? 'text-slate-700' : 'text-slate-500'
                   }`}
                 >
                   {name}
                 </span>
-              </div>
+              </li>
             );
           })}
-        </div>
-        <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-          <div
-            className="bg-ink h-full transition-all duration-300"
-            style={{ width: `${((currentStep - 1) / 4) * 100}%` }}
-          />
-        </div>
-      </div>
+        </ol>
+      </nav>
 
       {/* STEP 1: SERVICE SELECTION */}
       {currentStep === 1 && (
@@ -656,7 +663,7 @@ export const NewServiceWizard: React.FC = () => {
               {
                 type: 'GETTING' as ServiceType,
                 title: 'Racket stringing',
-                subtitle: 'Bat getting',
+                subtitle: 'Your string, colour and tension',
                 icon: <Grid3x3 className="w-6 h-6" />,
                 text: 'Pick a package, your string and colour from our current catalogue, and your tension.',
                 price: tierPriceRange,
@@ -734,7 +741,9 @@ export const NewServiceWizard: React.FC = () => {
               {serviceType === 'GETTING' ? 'Your racket & stringing' : 'Your racket & the damage'}
             </h2>
             <p className="text-sm text-slate-600 mt-1">
-              Provide your badminton bat brand, model, and service preferences.
+              {serviceType === 'GETTING'
+                ? 'Tell us about your racket and how you would like it strung.'
+                : 'Tell us about your racket and what needs fixing.'}
             </p>
           </div>
 
@@ -742,8 +751,8 @@ export const NewServiceWizard: React.FC = () => {
             {/* Brand & Model */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Bat Brand *
+                <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                  Racket brand *
                 </label>
                 <input
                   type="text"
@@ -751,13 +760,13 @@ export const NewServiceWizard: React.FC = () => {
                   onChange={(e) => setBatBrand(e.target.value)}
                   placeholder="e.g. Yonex, Li-Ning, Victor, Apacs..."
                   required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
+                  className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Bat Model *
+                <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                  Racket model *
                 </label>
                 <input
                   type="text"
@@ -765,20 +774,20 @@ export const NewServiceWizard: React.FC = () => {
                   onChange={(e) => setBatModel(e.target.value)}
                   placeholder="e.g. Astrox 99 Pro / Nanoflare 800"
                   required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
+                  className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
                 />
               </div>
             </div>
 
             {/* Bat Type */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Bat Type / Balance
+              <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                Balance
               </label>
               <select
                 value={batType}
                 onChange={(e) => setBatType(e.target.value as BatType)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
+                className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
               >
                 <option value="Even Balance (All-Round)">Even Balance (All-Round / Controlled Play)</option>
                 <option value="Head Heavy (Power / Smash)">Head Heavy (Maximum Smash & Power)</option>
@@ -791,7 +800,7 @@ export const NewServiceWizard: React.FC = () => {
             {/* GETTING SPECIFIC OPTIONS */}
             {serviceType === 'GETTING' && (
               <div className="space-y-5 pt-2 border-t border-line/70">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                <label className="block text-sm font-semibold text-slate-800">
                   Stringing package *
                 </label>
                 {activeTiers.length === 0 ? (
@@ -810,7 +819,7 @@ export const NewServiceWizard: React.FC = () => {
                         className={`text-left p-4 rounded-2xl border-2 transition-all ${
                           gettingType === item.name
                             ? 'border-ink bg-paper shadow-xs'
-                            : 'border-line bg-paper/50 hover:border-line'
+                            : 'border-line bg-paper/50 hover:border-slate-300'
                         }`}
                       >
                         <span className="flex justify-between items-center gap-2 mb-1">
@@ -821,7 +830,7 @@ export const NewServiceWizard: React.FC = () => {
                         </span>
                         <span className="block text-xs text-slate-500">{item.description}</span>
                         {item.turnaround && (
-                          <span className="mt-2 text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+                          <span className="mt-2 text-xs text-emerald-700 font-semibold flex items-center gap-1">
                             <Calendar className="w-3.5 h-3.5" /> Turnaround: {item.turnaround}
                           </span>
                         )}
@@ -832,8 +841,8 @@ export const NewServiceWizard: React.FC = () => {
 
                 {/* String Tension */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Desired String Tension (lbs)
+                  <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                    String tension
                   </label>
                   <div className="flex items-center gap-3">
                     <input
@@ -852,8 +861,8 @@ export const NewServiceWizard: React.FC = () => {
 
                 {/* String selection */}
                 <div className="space-y-3">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Choose Your String *
+                  <label className="block text-sm font-semibold text-slate-800">
+                    String *
                   </label>
 
                   {prefillStringNotice && (
@@ -871,7 +880,7 @@ export const NewServiceWizard: React.FC = () => {
 
                   {catalogueStatus === 'error' && (
                     <div className="space-y-3">
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-xs text-slate-500">
                         Our live string catalogue isn't available right now — tell us which string you'd like and our
                         technician will confirm it at pickup.
                       </p>
@@ -881,14 +890,14 @@ export const NewServiceWizard: React.FC = () => {
                           value={freeTextString}
                           onChange={(e) => setFreeTextString(e.target.value)}
                           placeholder="String (e.g. Yonex BG65) — leave empty for technician's choice"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
+                          className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
                         />
                         <input
                           type="text"
                           value={freeTextColour}
                           onChange={(e) => setFreeTextColour(e.target.value)}
                           placeholder="Preferred colour (optional)"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
+                          className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
                         />
                       </div>
                     </div>
@@ -930,7 +939,7 @@ export const NewServiceWizard: React.FC = () => {
                         />
                       </div>
                       {catalogue.some((p) => p.price == null) && (
-                        <p className="text-[11px] text-slate-500">
+                        <p className="text-xs text-slate-500">
                           Where no price is shown, the string is covered by your package price or confirmed by our stringer at pickup.
                         </p>
                       )}
@@ -957,12 +966,12 @@ export const NewServiceWizard: React.FC = () => {
                                   ? 'border-line bg-paper opacity-60 cursor-not-allowed'
                                   : isSelected
                                   ? 'border-ink bg-paper shadow-xs'
-                                  : 'border-line bg-white hover:border-line'
+                                  : 'border-line bg-white hover:border-slate-300'
                               }`}
                             >
                               <div className="flex justify-between items-start gap-2">
                                 <div>
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                  <span className="text-xs font-medium text-slate-500">
                                     {product.brand}
                                     {product.gauge ? ` • ${product.gauge}` : ''}
                                   </span>
@@ -973,7 +982,7 @@ export const NewServiceWizard: React.FC = () => {
                                 )}
                               </div>
                               {product.description && (
-                                <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">{product.description}</p>
+                                <p className="text-xs text-slate-500 mt-1 line-clamp-2">{product.description}</p>
                               )}
                               <div className="mt-2 flex items-center gap-1.5">
                                 {product.variants.slice(0, 8).map((v) => (
@@ -985,7 +994,7 @@ export const NewServiceWizard: React.FC = () => {
                                   />
                                 ))}
                                 {!selectable && (
-                                  <span className="text-[10px] font-bold text-rose-600 ml-1">Out of stock</span>
+                                  <span className="text-xs font-bold text-rose-600 ml-1">Out of stock</span>
                                 )}
                               </div>
                             </button>
@@ -1001,14 +1010,14 @@ export const NewServiceWizard: React.FC = () => {
                             setPrefillStringNotice(null);
                           }}
                           className={`text-left p-4 rounded-2xl border-2 border-dashed transition-all ${
-                            ownString ? 'border-ink bg-paper' : 'border-slate-300 bg-white hover:border-line'
+                            ownString ? 'border-ink bg-paper' : 'border-slate-300 bg-white hover:border-slate-300'
                           }`}
                         >
                           <div className="flex items-center gap-2">
                             <Package className="w-4 h-4 text-slate-500" />
                             <p className="font-bold text-sm text-slate-900">I'll provide my own string</p>
                           </div>
-                          <p className="text-[11px] text-slate-500 mt-1">
+                          <p className="text-xs text-slate-500 mt-1">
                             Hand your string set to our pickup agent along with the racket.
                           </p>
                         </button>
@@ -1020,15 +1029,15 @@ export const NewServiceWizard: React.FC = () => {
                           value={ownStringNote}
                           onChange={(e) => setOwnStringNote(e.target.value)}
                           placeholder="Which string will you provide? (optional, e.g. Yonex BG80 White)"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
+                          className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
                         />
                       )}
 
                       {/* Colour choice for the selected product */}
                       {selectedProduct && selectedProduct.variants.length > 0 && (
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                            String Colour — {productLabel(selectedProduct)} *
+                          <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                            Colour for {productLabel(selectedProduct)} *
                           </label>
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                             {selectedProduct.variants.map((variant) => {
@@ -1047,7 +1056,7 @@ export const NewServiceWizard: React.FC = () => {
                                       ? 'border-line bg-paper opacity-60 cursor-not-allowed'
                                       : isSelected
                                       ? 'border-ink bg-paper ring-1 ring-ink/40 shadow-xs'
-                                      : 'border-line hover:border-line'
+                                      : 'border-line hover:border-slate-300'
                                   }`}
                                 >
                                   <div className="h-14 w-full rounded-lg overflow-hidden border border-line bg-slate-100 mb-1.5">
@@ -1067,7 +1076,7 @@ export const NewServiceWizard: React.FC = () => {
                                   </div>
                                   <span className="block text-xs font-semibold text-slate-800">{variant.colour}</span>
                                   {!variant.inStock && (
-                                    <span className="block text-[10px] font-bold text-rose-600">Out of stock</span>
+                                    <span className="block text-xs font-bold text-rose-600">Out of stock</span>
                                   )}
                                 </button>
                               );
@@ -1093,7 +1102,7 @@ export const NewServiceWizard: React.FC = () => {
                 </div>
 
                 <div>
-                  <span className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">What is the problem? *</span>
+                  <span className="block text-sm font-semibold text-slate-800 mb-1.5">What is the problem? *</span>
                   {activeCategories.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" role="radiogroup" aria-label="Repair problem">
                       {activeCategories.map((cat) => {
@@ -1106,7 +1115,7 @@ export const NewServiceWizard: React.FC = () => {
                             aria-checked={selected}
                             onClick={() => setRepairIssue(cat.name as RepairIssue)}
                             className={`text-left p-3 rounded-2xl border-2 transition-all ${
-                              selected ? 'border-ink bg-paper' : 'border-line bg-white hover:border-line'
+                              selected ? 'border-ink bg-paper' : 'border-line bg-white hover:border-slate-300'
                             }`}
                           >
                             <span className="flex justify-between items-baseline gap-2">
@@ -1115,8 +1124,8 @@ export const NewServiceWizard: React.FC = () => {
                                 <span className="text-xs font-bold text-ink whitespace-nowrap">from {formatINR(cat.basePrice)}</span>
                               )}
                             </span>
-                            {cat.description && <span className="block text-[11px] text-slate-500 mt-0.5 line-clamp-2">{cat.description}</span>}
-                            {cat.turnaround && <span className="block text-[11px] text-emerald-700 font-semibold mt-1">Usually {cat.turnaround}</span>}
+                            {cat.description && <span className="block text-xs text-slate-500 mt-0.5 line-clamp-2">{cat.description}</span>}
+                            {cat.turnaround && <span className="block text-xs text-emerald-700 font-semibold mt-1">Usually {cat.turnaround}</span>}
                           </button>
                         );
                       })}
@@ -1137,7 +1146,7 @@ export const NewServiceWizard: React.FC = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="repair-description" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  <label htmlFor="repair-description" className="block text-sm font-semibold text-slate-800 mb-1.5">
                     Describe the damage{repairNeedsDescription ? ' *' : ''}
                   </label>
                   <textarea
@@ -1146,7 +1155,7 @@ export const NewServiceWizard: React.FC = () => {
                     value={repairDescription}
                     onChange={(e) => setRepairDescription(e.target.value)}
                     placeholder="Where is the crack or problem, and how did it happen?"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
+                    className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
                   />
                 </div>
               </div>
@@ -1154,27 +1163,27 @@ export const NewServiceWizard: React.FC = () => {
 
             {/* Photos */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Bat Condition Photos (Optional, up to {MAX_PHOTOS})
+              <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                Photos of the racket <span className="font-normal text-slate-500">(optional, up to {MAX_PHOTOS})</span>
               </label>
               <div className="flex flex-wrap items-center gap-3">
                 {batPhotos.map((photo, idx) => (
                   <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-300">
-                    <img src={photo} alt={`Bat photo ${idx + 1}`} className="w-full h-full object-cover" />
+                    <img src={photo} alt={`Racket photo ${idx + 1}`} className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => setBatPhotos((prev) => prev.filter((_, i) => i !== idx))}
-                      className="absolute top-1 right-1 bg-slate-900/70 text-white rounded-full p-0.5"
-                      title="Remove photo"
+                      className="absolute top-1 right-1 w-7 h-7 flex items-center justify-center bg-slate-900/75 hover:bg-slate-900 text-white rounded-full"
+                      aria-label={`Remove photo ${idx + 1}`}
                     >
-                      <X className="w-3 h-3" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
                 {batPhotos.length < MAX_PHOTOS && (
                   <label className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 hover:border-ink flex flex-col items-center justify-center cursor-pointer text-slate-400 hover:text-ink transition-colors bg-paper">
-                    <Upload className="w-5 h-5 mb-1" />
-                    <span className="text-[10px] font-semibold">Upload</span>
+                    <Upload className="w-5 h-5 mb-1" aria-hidden="true" />
+                    <span className="text-xs font-semibold">Add photo</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -1188,20 +1197,20 @@ export const NewServiceWizard: React.FC = () => {
                   </label>
                 )}
               </div>
-              {photoError && <p className="text-[11px] text-rose-600 mt-1">{photoError}</p>}
+              {photoError && <p className="text-xs text-rose-600 mt-1">{photoError}</p>}
             </div>
 
             {/* Additional notes */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Additional Delivery / Handling Notes
+              <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                Note for our pickup agent <span className="font-normal text-slate-500">(optional)</span>
               </label>
               <input
                 type="text"
                 value={additionalNotes}
                 onChange={(e) => setAdditionalNotes(e.target.value)}
                 placeholder="e.g. Ring doorbell, call before arriving..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
+                className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
               />
             </div>
           </div>
@@ -1213,7 +1222,7 @@ export const NewServiceWizard: React.FC = () => {
               Back
             </Button>
             <Button onClick={handleNext} variant="primary" size="lg" rightIcon={<ArrowRight className="w-4 h-4" />}>
-              Continue to Pickup
+              Continue
             </Button>
           </div>
         </div>
@@ -1223,16 +1232,16 @@ export const NewServiceWizard: React.FC = () => {
       {currentStep === 3 && (
         <div className="space-y-6 animate-in fade-in">
           <div className="text-center max-w-lg mx-auto">
-            <h2 className="font-display tracking-[0.01em] text-3xl font-bold text-slate-900">Doorstep Pickup</h2>
+            <h2 className="font-display tracking-[0.01em] text-3xl font-bold text-slate-900">Pickup from your door</h2>
             <p className="text-sm text-slate-600 mt-1">
-              Choose where and when we should collect your racket. Free pickup within {distanceConfig.freeRadiusKm} KM.
+              Choose where and when we should collect your racket. Free pickup within {distanceConfig.freeRadiusKm} km.
             </p>
           </div>
 
           {/* Address choice */}
           <div className="space-y-3">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Pickup Address *
+            <label className="block text-sm font-semibold text-slate-800">
+              Pickup address
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {savedAddresses.map((addr) => {
@@ -1248,17 +1257,17 @@ export const NewServiceWizard: React.FC = () => {
                       setCustomDistanceKm(addr.distanceKm);
                     }}
                     className={`text-left p-4 rounded-2xl border-2 transition-all ${
-                      isSelected ? 'border-ink bg-paper shadow-xs' : 'border-line bg-white hover:border-line'
+                      isSelected ? 'border-ink bg-paper shadow-xs' : 'border-line bg-white hover:border-slate-300'
                     }`}
                   >
                     <span className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-bold uppercase tracking-wider text-ink bg-paper-deep px-2 py-0.5 rounded-md">
+                      <span className="text-xs font-semibold text-ink bg-paper-deep px-2 py-0.5 rounded-md">
                         {addr.label}
                       </span>
-                      <span className="text-xs font-bold text-slate-700">~{addr.distanceKm} KM</span>
+                      <span className="text-xs font-bold text-slate-700">About {addr.distanceKm} km</span>
                     </span>
                     <span className="block text-xs font-semibold text-slate-800 mt-2">{addr.houseFlat}</span>
-                    <span className="block text-[11px] text-slate-500 mt-0.5 leading-snug">
+                    <span className="block text-xs text-slate-500 mt-0.5 leading-snug">
                       {[addr.street, addr.area, addr.pincode].filter(Boolean).join(', ')}
                     </span>
                   </button>
@@ -1270,10 +1279,10 @@ export const NewServiceWizard: React.FC = () => {
                 aria-checked={addressChoice === 'NEW'}
                 onClick={() => setAddressChoice('NEW')}
                 className={`p-4 min-h-[56px] rounded-2xl border-2 border-dashed transition-all flex items-center justify-center text-xs font-bold ${
-                  addressChoice === 'NEW' ? 'border-ink bg-paper text-ink' : 'border-slate-300 text-slate-600 hover:border-line'
+                  addressChoice === 'NEW' ? 'border-ink bg-paper text-ink' : 'border-slate-300 text-slate-600 hover:border-slate-300'
                 }`}
               >
-                + Enter a new address
+                <span aria-hidden="true">+</span>&nbsp;{savedAddresses.length > 0 ? 'Use a new address' : 'Enter the pickup address'}
               </button>
             </div>
 
@@ -1298,14 +1307,18 @@ export const NewServiceWizard: React.FC = () => {
                   value={addressForm.houseFlat}
                   onChange={(e) => updateAddressForm({ houseFlat: e.target.value })}
                   placeholder="Flat / House / Court name *"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none"
+                  aria-label="Flat / House / Court name"
+                  autoComplete="address-line1"
+                  className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none"
                 />
                 <input
                   type="text"
                   value={addressForm.street}
                   onChange={(e) => updateAddressForm({ street: e.target.value })}
                   placeholder="Street / Road"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none"
+                  aria-label="Street / Road"
+                  autoComplete="address-line2"
+                  className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none"
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <input
@@ -1313,14 +1326,18 @@ export const NewServiceWizard: React.FC = () => {
                     value={addressForm.area}
                     onChange={(e) => updateAddressForm({ area: e.target.value })}
                     placeholder="Area / Locality *"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none"
+                  aria-label="Area / Locality"
+                  autoComplete="address-level3"
+                    className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none"
                   />
                   <input
                     type="text"
                     value={addressForm.city}
                     onChange={(e) => updateAddressForm({ city: e.target.value })}
                     placeholder="City"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none"
+                  aria-label="City"
+                  autoComplete="address-level2"
+                    className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none"
                   />
                   <input
                     type="text"
@@ -1329,7 +1346,9 @@ export const NewServiceWizard: React.FC = () => {
                     value={addressForm.pincode}
                     onChange={(e) => updateAddressForm({ pincode: e.target.value.replace(/\D/g, '') })}
                     placeholder="Pincode *"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none"
+                  aria-label="Pincode"
+                  autoComplete="postal-code"
+                    className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none"
                   />
                 </div>
                 <input
@@ -1337,7 +1356,9 @@ export const NewServiceWizard: React.FC = () => {
                   value={addressForm.landmark}
                   onChange={(e) => updateAddressForm({ landmark: e.target.value })}
                   placeholder="Landmark (optional)"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none"
+                  aria-label="Landmark (optional)"
+                  autoComplete="off"
+                  className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none"
                 />
                 <label className="flex items-center gap-2 text-slate-600">
                   <input
@@ -1354,7 +1375,7 @@ export const NewServiceWizard: React.FC = () => {
 
           {/* Distance */}
           <div className="space-y-3">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+            <label className="block text-sm font-semibold text-slate-800">
               Distance from our shop
             </label>
             <div className="bg-paper border border-line rounded-2xl p-4 space-y-3 shadow-2xs">
@@ -1426,9 +1447,9 @@ export const NewServiceWizard: React.FC = () => {
                     value={manualKmText}
                     onChange={(e) => setManualKmText(e.target.value)}
                     placeholder="e.g. 6"
-                    className="mt-1 w-full sm:w-40 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none"
+                    className="mt-1 w-full sm:w-40 px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none"
                   />
-                  <p className="text-[11px] text-slate-600 mt-1.5">
+                  <p className="text-xs text-slate-600 mt-1.5">
                     We&apos;ll check the distance when we pick up your racket; if it&apos;s different, the delivery charge is
                     corrected before you pay.
                   </p>
@@ -1439,8 +1460,8 @@ export const NewServiceWizard: React.FC = () => {
               <MapSimulation distanceKm={customDistanceKm} sourceLabel={locationKm != null ? 'from your location' : 'entered by you'} />
             )}
             {distanceKnown && maxServiceKm > 0 && customDistanceKm > maxServiceKm && (
-              <div role="alert" className="p-3 rounded-2xl border border-red-200 bg-red-50 text-xs text-red-800">
-                <p className="font-bold">This address is outside our pickup area ({maxServiceKm} KM).</p>
+              <div role="alert" className="p-3 rounded-2xl border border-rose-200 bg-rose-50 text-sm text-rose-800">
+                <p className="font-bold">This address is outside our pickup area ({maxServiceKm} km).</p>
                 <p className="mt-0.5">
                   Please call{' '}
                   <a href={telHref(shop.phone)} className="font-bold underline">
@@ -1456,7 +1477,7 @@ export const NewServiceWizard: React.FC = () => {
           <div className="bg-white rounded-2xl border border-line p-5 space-y-4 shadow-xs">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-ink" />
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Pickup Date *</label>
+              <label className="text-sm font-semibold text-slate-800">Pickup day</label>
             </div>
 
             {prefillDateNotice && (
@@ -1471,7 +1492,7 @@ export const NewServiceWizard: React.FC = () => {
 
             {availabilityStatus === 'error' && (
               <div className="space-y-2">
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   Live pickup availability couldn't be loaded. Pick your preferred date — we'll confirm it with you.
                 </p>
                 <input
@@ -1479,7 +1500,7 @@ export const NewServiceWizard: React.FC = () => {
                   min={tomorrowIso}
                   value={pickupDate}
                   onChange={(e) => setPickupDate(e.target.value)}
-                  className="px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none"
+                  className="px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none"
                 />
               </div>
             )}
@@ -1514,19 +1535,19 @@ export const NewServiceWizard: React.FC = () => {
                               ? 'border-line/70 bg-paper text-slate-400 cursor-not-allowed'
                               : isSelected
                               ? 'border-ink bg-ink text-white shadow-xs'
-                              : 'border-line text-slate-700 hover:border-line'
+                              : 'border-line text-slate-700 hover:border-slate-300'
                           }`}
                         >
-                          <span className="block text-[10px] font-semibold uppercase">
+                          <span className="block text-xs font-medium">
                             {formatDay(day.date, { weekday: 'short' })}
                           </span>
-                          <span className="block text-sm font-black">{formatDay(day.date, { day: 'numeric' })}</span>
-                          <span className="block text-[10px]">{formatDay(day.date, { month: 'short' })}</span>
+                          <span className="block text-base font-semibold tabular-nums">{formatDay(day.date, { day: 'numeric' })}</span>
+                          <span className="block text-xs">{formatDay(day.date, { month: 'short' })}</span>
                           {!day.available && (
-                            <span className="block text-[9px] leading-tight mt-0.5 truncate">{day.reason || 'Unavailable'}</span>
+                            <span className="block text-xs leading-tight mt-0.5 truncate">{day.reason || 'Unavailable'}</span>
                           )}
                           {day.available && day.remaining != null && (
-                            <span className={`block text-[9px] leading-tight mt-0.5 ${isSelected ? 'text-white/75' : 'text-emerald-600'}`}>
+                            <span className={`block text-xs leading-tight mt-0.5 ${isSelected ? 'text-white/75' : 'text-emerald-600'}`}>
                               {day.remaining} left
                             </span>
                           )}
@@ -1540,7 +1561,7 @@ export const NewServiceWizard: React.FC = () => {
                   <div>
                     <div className="flex items-center gap-2 mb-1.5">
                       <Clock className="w-4 h-4 text-ink" />
-                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Preferred Pickup Time *</span>
+                      <span className="text-sm font-semibold text-slate-800">Pickup time</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {pickupSlots.map((slot) => (
@@ -1551,7 +1572,7 @@ export const NewServiceWizard: React.FC = () => {
                           className={`px-3 min-h-[40px] rounded-xl border text-xs font-semibold transition-all ${
                             pickupSlot === slot
                               ? 'border-ink bg-paper text-ink ring-1 ring-ink/40'
-                              : 'border-line text-slate-600 hover:border-line'
+                              : 'border-line text-slate-600 hover:border-slate-300'
                           }`}
                         >
                           {slot}
@@ -1578,7 +1599,7 @@ export const NewServiceWizard: React.FC = () => {
               Back
             </Button>
             <Button onClick={handleNext} variant="primary" size="lg" rightIcon={<ArrowRight className="w-4 h-4" />}>
-              Continue to Review
+              Review booking
             </Button>
           </div>
         </div>
@@ -1588,18 +1609,18 @@ export const NewServiceWizard: React.FC = () => {
       {currentStep === 4 && (
         <div className="space-y-6 animate-in fade-in">
           <div className="text-center max-w-lg mx-auto">
-            <h2 className="font-display tracking-[0.01em] text-3xl font-bold text-slate-900">Review Your Service Request</h2>
+            <h2 className="font-display tracking-[0.01em] text-3xl font-bold text-slate-900">Check and book</h2>
             <p className="text-sm text-slate-600 mt-1">
-              Verify your racket specifications and pickup details before booking.
+              Check the details below. Nothing to pay now — you pay when your racket comes back.
             </p>
           </div>
 
           <div className="bg-white rounded-2xl border border-line p-6 space-y-6 shadow-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="p-4 bg-paper rounded-2xl border border-line/70 space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-ink">Service Selection</span>
+                <span className="text-xs font-semibold text-slate-500">Service</span>
                 <h4 className="text-base font-bold text-slate-900">
-                  {serviceType === 'GETTING' ? `Bat Getting: ${gettingType}` : `Bat Repair: ${repairIssue}`}
+                  {serviceType === 'GETTING' ? gettingType : `Repair: ${repairIssue}`}
                 </h4>
                 {serviceType === 'GETTING' ? (
                   <div className="text-xs text-slate-600 space-y-1">
@@ -1641,27 +1662,27 @@ export const NewServiceWizard: React.FC = () => {
                         Starting price: <b>{formatINR(selectedCategory.basePrice)}</b>
                       </p>
                     )}
-                    <p className="text-amber-800 font-semibold">Cost: To be confirmed after physical workshop inspection</p>
+                    <p className="text-amber-800 font-semibold">Final price after we inspect the racket</p>
                   </div>
                 )}
               </div>
 
               <div className="p-4 bg-paper rounded-2xl border border-line/70 space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-ink">Bat Specifications</span>
+                <span className="text-xs font-semibold text-slate-500">Racket</span>
                 <h4 className="text-base font-bold text-slate-900">
                   {batBrand} {batModel}
                 </h4>
                 <div className="text-xs text-slate-600 space-y-1">
                   <p>
-                    Type: <b>{batType}</b>
+                    Balance: <b>{batType}</b>
                   </p>
                   <p>
-                    Customer: <b>{userName || 'You'}</b>
+                    Name: <b>{userName || 'You'}</b>
                   </p>
                   {userMobile && (
                     <p>
                       Mobile: <b>{formatMobile(userMobile)}</b>{' '}
-                      <span className="text-slate-400">(your login number — our pickup agent will call this)</span>
+                      <span className="text-slate-500">— our pickup agent calls this number</span>
                     </p>
                   )}
                   {additionalNotes.trim() && (
@@ -1677,8 +1698,8 @@ export const NewServiceWizard: React.FC = () => {
             {/* Location & Date Summary */}
             <div className="p-4 bg-paper rounded-2xl border border-line space-y-1 text-xs">
               <div className="flex justify-between items-center font-bold text-slate-800 mb-1">
-                <span>Pickup Location:</span>
-                <span className="text-ink">About {customDistanceKm} KM from the shop</span>
+                <span>Pickup address</span>
+                <span className="text-ink">About {customDistanceKm} km from the shop</span>
               </div>
               <p className="text-slate-700">
                 {[pickupAddressPreview.houseFlat, pickupAddressPreview.street, pickupAddressPreview.area, pickupAddressPreview.city]
@@ -1687,10 +1708,10 @@ export const NewServiceWizard: React.FC = () => {
                 {pickupAddressPreview.pincode ? ` - ${pickupAddressPreview.pincode}` : ''}
               </p>
               {pickupAddressPreview.landmark && (
-                <p className="text-slate-500 text-[11px] mt-1">Landmark: {pickupAddressPreview.landmark}</p>
+                <p className="text-slate-500 text-xs mt-1">Landmark: {pickupAddressPreview.landmark}</p>
               )}
               <div className="flex justify-between items-center font-bold text-slate-800 pt-2">
-                <span>Pickup Date:</span>
+                <span>Pickup</span>
                 <span className="text-ink">
                   {pickupDate ? formatDay(pickupDate, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                   {pickupSlot ? ` • ${pickupSlot}` : ''}
@@ -1701,7 +1722,7 @@ export const NewServiceWizard: React.FC = () => {
             {/* Charges */}
             <div className="bg-paper rounded-2xl p-4 divide-y divide-line text-xs space-y-2.5">
               <div className="flex justify-between items-center text-slate-700 pb-1">
-                <span>Service Charge:</span>
+                <span>{serviceType === 'GETTING' ? 'Stringing' : 'Repair'}</span>
                 {serviceType === 'GETTING' ? (
                   <span className="font-semibold text-slate-900">{formatINR(servicePrice)}</span>
                 ) : (
@@ -1712,20 +1733,20 @@ export const NewServiceWizard: React.FC = () => {
               </div>
 
               <div className="flex justify-between items-center text-slate-700 pt-2">
-                <span>Doorstep Pickup & Delivery:</span>
+                <span>Pickup &amp; delivery</span>
                 {distanceCalc.isFree ? (
-                  <span className="font-semibold text-emerald-700">Free (within {distanceConfig.freeRadiusKm} KM)</span>
+                  <span className="font-semibold text-emerald-700">Free (within {distanceConfig.freeRadiusKm} km)</span>
                 ) : (
                   <span className="font-semibold text-slate-900">
                     {formatINR(distanceCalc.charge)}
                     {distanceConfig.pricingMethod !== 'SLAB' &&
-                      ` (${distanceCalc.chargeableKm} KM × ${formatINR(distanceConfig.perKmRateBeyondFree)})`}
+                      ` (${distanceCalc.chargeableKm} km × ${formatINR(distanceConfig.perKmRateBeyondFree)})`}
                   </span>
                 )}
               </div>
 
               <div className="flex justify-between items-center pt-3 text-base font-extrabold text-ink">
-                <span>Estimated Total on Delivery:</span>
+                <span>Total, paid on delivery</span>
                 {serviceType === 'GETTING' ? (
                   <span className="text-2xl text-ink">{formatINR(finalTotal)}</span>
                 ) : (
@@ -1735,7 +1756,7 @@ export const NewServiceWizard: React.FC = () => {
                 )}
               </div>
               {serviceType === 'GETTING' && useCatalogue && !ownString && stringSummary.price != null && (
-                <p className="pt-2 text-[11px] text-slate-500">
+                <p className="pt-2 text-xs text-slate-500">
                   String list price {formatINR(stringSummary.price)}. The final bill is confirmed by our stringer at pickup.
                 </p>
               )}
@@ -1744,10 +1765,8 @@ export const NewServiceWizard: React.FC = () => {
             <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-900 flex items-start gap-3">
               <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-sm text-emerald-950 mb-0.5">Nothing to pay now</p>
-                <p className="leading-relaxed">
-                  Payment will be collected <b>in-person after delivery</b> via <b>Cash or UPI</b> once you inspect the finished bat.
-                </p>
+                <p className="font-semibold text-sm text-emerald-950 mb-0.5">Nothing to pay now</p>
+                <p className="leading-relaxed">Pay on delivery — cash or UPI, after you have checked your racket.</p>
               </div>
             </div>
           </div>
@@ -1785,14 +1804,14 @@ export const NewServiceWizard: React.FC = () => {
             </Button>
             <Button
               onClick={handleSubmit}
-              variant="primary"
+              variant="accent"
               size="lg"
               isLoading={isSubmitting}
               disabled={isSubmitting}
-              className="px-8 shadow-md"
+              className="px-8"
               rightIcon={<CheckCircle2 className="w-5 h-5" />}
             >
-              {isSubmitting ? 'Submitting…' : 'Submit Service Request'}
+              {isSubmitting ? 'Booking…' : serviceType === 'GETTING' ? 'Book stringing' : 'Book a repair'}
             </Button>
           </div>
         </div>
@@ -1801,18 +1820,15 @@ export const NewServiceWizard: React.FC = () => {
       {/* STEP 5: CONFIRMATION */}
       {currentStep === 5 && submittedRequestId && (
         <div className="text-center py-8 max-w-lg mx-auto space-y-6 animate-in zoom-in-95">
-          <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-lg ring-8 ring-emerald-50">
-            <CheckCircle2 className="w-10 h-10" />
+          <div className="w-16 h-16 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-8 h-8" aria-hidden="true" />
           </div>
 
-          <div>
-            <span className="px-3 py-1 rounded-full bg-paper-deep text-ink text-xs font-bold uppercase tracking-wider">
-              Request received
-            </span>
-            <h2 className="font-display tracking-[0.01em] text-3xl sm:text-4xl font-bold text-slate-900 mt-2">Thanks, we have your request</h2>
+          <div role="status">
+            <h2 className="font-display tracking-[0.01em] text-3xl sm:text-4xl font-bold text-slate-900">Booked — thank you</h2>
             <p className="text-sm text-slate-600 mt-1.5">
-              Your service request ID is{' '}
-              <b className="font-mono text-ink font-extrabold text-base">{submittedRequestId}</b>
+              Your request number is{' '}
+              <b className="text-ink font-semibold text-base tabular-nums">{submittedRequestId}</b>. We will call you before pickup.
             </p>
           </div>
 
@@ -1822,7 +1838,7 @@ export const NewServiceWizard: React.FC = () => {
               <ul className="list-disc pl-4 space-y-1 text-slate-700">
                 <li>Our agent collects your racket on the pickup day you chose.</li>
                 <li>Our technician inspects the damage at the shop.</li>
-                <li>The itemised estimate appears on this request under <b>My Requests</b>.</li>
+                <li>The itemised estimate appears on this request under <b>My requests</b>.</li>
                 <li>Repair begins only after you approve it.</li>
               </ul>
             </div>
@@ -1830,24 +1846,24 @@ export const NewServiceWizard: React.FC = () => {
 
           <div className="p-4 bg-paper rounded-2xl border border-line text-xs text-slate-600 space-y-1 text-left">
             <div className="flex justify-between">
-              <span>Customer:</span>
+              <span>Name</span>
               <span className="font-semibold text-slate-900">{userName}</span>
             </div>
             {userMobile && (
               <div className="flex justify-between">
-                <span>Mobile:</span>
+                <span>Mobile</span>
                 <span className="font-semibold text-slate-900">{formatMobile(userMobile)}</span>
               </div>
             )}
             <div className="flex justify-between">
-              <span>Bat:</span>
+              <span>Racket</span>
               <span className="font-semibold text-slate-900">
                 {batBrand} {batModel}
               </span>
             </div>
             {pickupDate && (
               <div className="flex justify-between">
-                <span>Pickup:</span>
+                <span>Pickup</span>
                 <span className="font-semibold text-slate-900">
                   {formatDay(pickupDate)}
                   {pickupSlot ? ` • ${pickupSlot}` : ''}
@@ -1855,14 +1871,14 @@ export const NewServiceWizard: React.FC = () => {
               </div>
             )}
             <div className="flex justify-between">
-              <span>Pickup Distance:</span>
+              <span>Distance</span>
               <span className="font-semibold text-slate-900">
-                {customDistanceKm} KM ({distanceCalc.isFree ? 'free' : formatINR(distanceCalc.charge)})
+                {customDistanceKm} km ({distanceCalc.isFree ? 'free' : formatINR(distanceCalc.charge)})
               </span>
             </div>
             <div className="flex justify-between">
-              <span>Payment Mode:</span>
-              <span className="font-semibold text-emerald-700">Collected on Doorstep Delivery</span>
+              <span>Payment</span>
+              <span className="font-semibold text-slate-900">Pay on delivery — cash or UPI</span>
             </div>
           </div>
 
@@ -1876,10 +1892,10 @@ export const NewServiceWizard: React.FC = () => {
               size="lg"
               variant="primary"
             >
-              Track Request Status
+              Track this request
             </Button>
             <Button onClick={() => setCustomerSubView('dashboard')} className="flex-1" size="lg" variant="outline">
-              Back to Dashboard
+              Go to dashboard
             </Button>
           </div>
         </div>

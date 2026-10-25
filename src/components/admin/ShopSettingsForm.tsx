@@ -168,11 +168,11 @@ export const ShopSettingsForm: React.FC<{ onSaved?: (s: ShopSettings) => void }>
       </label>
       {input}
       {errors[key] ? (
-        <p id={`shop-${key}-err`} className="text-[11px] text-rose-700 mt-1">
+        <p id={`shop-${key}-err`} className="text-xs text-rose-700 mt-1">
           {errors[key]}
         </p>
       ) : hint ? (
-        <p className="text-[11px] text-slate-500 mt-1">{hint}</p>
+        <p className="text-xs text-slate-500 mt-1">{hint}</p>
       ) : null}
     </div>
   );
@@ -296,7 +296,7 @@ export const ShopSettingsForm: React.FC<{ onSaved?: (s: ShopSettings) => void }>
         >
           Discard changes
         </Button>
-        {dirty && !isSaving && <span className="text-[11px] text-amber-700 font-semibold">Unsaved changes</span>}
+        {dirty && !isSaving && <span className="text-xs text-amber-700 font-semibold">Unsaved changes</span>}
       </div>
     </form>
   );

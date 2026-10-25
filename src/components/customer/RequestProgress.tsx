@@ -143,7 +143,7 @@ export const RequestProgress: React.FC<Props> = ({ request, gettingServices, rep
               <span className={`text-sm pt-0.5 ${done ? 'text-slate-900 font-semibold' : current ? 'text-ink font-bold' : 'text-slate-400'}`}>
                 {m.label}
                 {current && waitingForCustomer && m.reachedAt === 'Repair Approved' && (
-                  <span className="block text-[11px] font-semibold text-amber-700">Waiting for your approval</span>
+                  <span className="block text-xs font-semibold text-amber-700">Waiting for your approval</span>
                 )}
               </span>
             </li>
@@ -154,7 +154,7 @@ export const RequestProgress: React.FC<Props> = ({ request, gettingServices, rep
             <XCircle className="w-6 h-6 text-rose-500 shrink-0" />
             <span className="text-sm font-semibold text-slate-900 pt-0.5">
               Estimate declined
-              <span className="block text-[11px] font-normal text-slate-500">
+              <span className="block text-xs font-normal text-slate-500">
                 {request.status === 'Completed Without Repair'
                   ? 'Your racket was returned without the repair.'
                   : 'We will return your racket without repairing it.'}
@@ -210,16 +210,16 @@ export const RequestProgress: React.FC<Props> = ({ request, gettingServices, rep
       {/* History */}
       {request.timeline.length > 0 && (
         <div>
-          <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">History</h4>
+          <h4 className="text-xs font-semibold text-slate-500 mb-2">History</h4>
           <ol className="space-y-2">
             {[...request.timeline].reverse().map((event, idx) => (
               <li key={`${event.timestamp}-${idx}`} className="p-3 rounded-xl border border-line bg-white text-xs">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                   <span className="font-bold text-slate-900">{tidyRupees(event.label)}</span>
-                  <span className="text-[11px] text-slate-500 whitespace-nowrap">{event.timestamp}</span>
+                  <span className="text-xs text-slate-500 whitespace-nowrap">{event.timestamp}</span>
                 </div>
                 {event.actor && !/^customer\b/i.test(event.actor) && (
-                  <p className="text-[11px] text-slate-500 mt-0.5">By {event.actor}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">By {event.actor}</p>
                 )}
                 {event.notes && <p className="text-slate-600 mt-1.5 leading-relaxed">{tidyRupees(event.notes)}</p>}
               </li>

@@ -279,7 +279,7 @@ const EventThumb: React.FC<{ event: SiteEvent; className?: string }> = ({ event,
       {broken || !event.bannerImageUrl ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-slate-400">
           <ImageOff className="w-5 h-5" />
-          <span className="text-[10px] font-semibold">Photo not found</span>
+          <span className="text-xs font-semibold">Photo not found</span>
         </div>
       ) : (
         <img
@@ -444,7 +444,7 @@ const CategoryChips: React.FC<{
           ))}
         </ul>
       ) : (
-        <p className="text-[11px] text-slate-500">
+        <p className="text-xs text-slate-500">
           No categories — players won’t be asked to pick one. Add them for tournaments (e.g. Men’s Doubles).
         </p>
       )}
@@ -482,11 +482,11 @@ const CategoryChips: React.FC<{
       )}
       <div id={`${inputId}-help`}>
         {shownError ? (
-          <p className="text-[11px] text-rose-600 font-medium" role="alert">
+          <p className="text-xs text-rose-600 font-medium" role="alert">
             {shownError}
           </p>
         ) : (
-          <p className="text-[11px] text-slate-500">
+          <p className="text-xs text-slate-500">
             {value.length}/{LIMITS.categories} · Players choose one when they register on the website.
           </p>
         )}
@@ -498,7 +498,7 @@ const CategoryChips: React.FC<{
               key={s}
               type="button"
               onClick={() => add(s)}
-              className="inline-flex items-center gap-1 min-h-[40px] px-3 rounded-xl border border-dashed border-slate-300 text-[11px] font-semibold text-slate-600 hover:bg-paper hover:border-slate-400"
+              className="inline-flex items-center gap-1 min-h-[40px] px-3 rounded-xl border border-dashed border-slate-300 text-xs font-semibold text-slate-600 hover:bg-paper hover:border-slate-400"
             >
               <Plus className="w-3.5 h-3.5" /> {s}
             </button>
@@ -671,7 +671,7 @@ const FIELD_ORDER: (keyof EventFormState)[] = [
 
 const FormSection: React.FC<{ title: string; children: React.ReactNode; icon?: React.ReactNode }> = ({ title, icon, children }) => (
   <section className="space-y-3">
-    <h4 className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wide text-slate-500 border-b border-line/70 pb-1.5">
+    <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 border-b border-line/70 pb-1.5">
       {icon}
       {title}
     </h4>
@@ -880,7 +880,7 @@ const EventFormModal: React.FC<{
               </Field>
             </div>
             {form.startDate && (
-              <p className="text-[11px] text-slate-600 -mt-1">
+              <p className="text-xs text-slate-600 -mt-1">
                 Shown as <b>{formatEventDates(form.startDate, form.endDate && form.endDate >= form.startDate ? form.endDate : null)}</b>
               </p>
             )}
@@ -979,7 +979,7 @@ const EventFormModal: React.FC<{
                         <Icon className={`w-3.5 h-3.5 shrink-0 ${checked ? 'text-ink' : 'text-slate-400'}`} />
                         {opt.label}
                       </span>
-                      <span className="block text-[11px] text-slate-500 leading-snug mt-0.5">{opt.description}</span>
+                      <span className="block text-xs text-slate-500 leading-snug mt-0.5">{opt.description}</span>
                     </span>
                   </label>
                 );
@@ -1167,21 +1167,21 @@ const EventRow: React.FC<{
 
         <div className="flex-1 min-w-0 space-y-2">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${status.cls}`}>{status.label}</span>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${status.cls}`}>{status.label}</span>
             {!e.isActive && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-300 bg-slate-200 text-slate-700">
+              <span className="inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full border border-slate-300 bg-slate-200 text-slate-700">
                 <EyeOff className="w-3 h-3" /> Hidden · draft
               </span>
             )}
-            <span className="text-[10px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded bg-paper text-sportsBlue border border-line">
+            <span className="text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-paper text-sportsBlue border border-line">
               {EVENT_CATEGORY_LABELS[e.category]}
             </span>
             {inHomepageBanner(e) ? (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-brandYellow text-sportsBlue">
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-brandYellow text-sportsBlue">
                 <Images className="w-3 h-3" /> Shown in homepage banner
               </span>
             ) : (
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border border-line text-slate-500">
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full border border-line text-slate-500">
                 {!e.showAsBanner
                   ? 'Not in homepage banner'
                   : e.status === 'past'
@@ -1227,7 +1227,7 @@ const EventRow: React.FC<{
               </span>
               {e.capacity ? <CapacityBar count={e.registrationCount} capacity={e.capacity} /> : null}
               {e.registrationOpen && e.capacity && e.spotsLeft ? (
-                <span className="text-[11px] text-slate-500">{e.spotsLeft} places left</span>
+                <span className="text-xs text-slate-500">{e.spotsLeft} places left</span>
               ) : null}
             </div>
           )}
@@ -1243,7 +1243,7 @@ const EventRow: React.FC<{
                 leftIcon={<Users className="w-4 h-4" />}
               >
                 Registrations
-                <span className="ml-0.5 text-[10px] min-w-[20px] px-1.5 py-0.5 rounded-full font-bold bg-paper-deep text-sportsBlue">
+                <span className="ml-0.5 text-xs min-w-[20px] px-1.5 py-0.5 rounded-full font-bold bg-paper-deep text-sportsBlue">
                   {e.registrationCount}
                 </span>
               </Button>
@@ -1394,11 +1394,11 @@ const RegistrationsView: React.FC<{
 
   const statusPill = (reg: EventRegistration) =>
     reg.status === 'registered' ? (
-      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
+      <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
         Registered
       </span>
     ) : (
-      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-slate-100 text-slate-600 border-line">
+      <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-slate-100 text-slate-600 border-line">
         Cancelled
       </span>
     );
@@ -1472,8 +1472,8 @@ const RegistrationsView: React.FC<{
       <div className={`${cardClass} p-3 sm:p-4 flex flex-col sm:flex-row gap-3 sm:items-center`}>
         <EventThumb event={event} className="hidden sm:block sm:w-[180px] shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Registrations</p>
-          <h3 className="text-base sm:text-lg font-black text-slate-900 break-words leading-snug">{event.title}</h3>
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Registrations</p>
+          <h3 className="text-base sm:text-lg font-bold text-slate-900 break-words leading-snug">{event.title}</h3>
           <p className="text-xs text-slate-600 mt-0.5 break-words">
             {formatEventDates(event.startDate, event.endDate)} · {event.venue}
           </p>
@@ -1537,21 +1537,21 @@ const RegistrationsView: React.FC<{
         <>
           <div className="grid grid-cols-3 gap-2">
             <div className={`${cardClass} p-3`}>
-              <p className="text-[11px] font-semibold text-slate-500">Registered</p>
-              <p className="text-xl font-black text-slate-900">
+              <p className="text-xs font-semibold text-slate-500">Registered</p>
+              <p className="text-xl font-bold text-slate-900">
                 {active.length}
                 {event.capacity ? <span className="text-sm font-bold text-slate-400"> / {event.capacity}</span> : null}
               </p>
             </div>
             <div className={`${cardClass} p-3`}>
-              <p className="text-[11px] font-semibold text-slate-500">Places left</p>
-              <p className={`text-xl font-black ${capacityFull ? 'text-rose-600' : 'text-emerald-600'}`}>
+              <p className="text-xs font-semibold text-slate-500">Places left</p>
+              <p className={`text-xl font-bold ${capacityFull ? 'text-rose-600' : 'text-emerald-600'}`}>
                 {event.capacity ? Math.max(event.capacity - active.length, 0) : '—'}
               </p>
             </div>
             <div className={`${cardClass} p-3`}>
-              <p className="text-[11px] font-semibold text-slate-500">Cancelled</p>
-              <p className="text-xl font-black text-slate-500">{cancelledCount}</p>
+              <p className="text-xs font-semibold text-slate-500">Cancelled</p>
+              <p className="text-xl font-bold text-slate-500">{cancelledCount}</p>
             </div>
           </div>
 
@@ -1600,7 +1600,7 @@ const RegistrationsView: React.FC<{
               {/* Table (wide screens: the client's 1280px laptop and up) */}
               <div className={`${cardClass} hidden xl:block overflow-x-auto`}>
                 <table className="w-full min-w-[880px] text-xs text-left">
-                  <thead className="bg-paper text-[11px] font-bold text-slate-500 uppercase tracking-wide">
+                  <thead className="bg-paper text-xs font-bold text-slate-500 uppercase tracking-wide">
                     <tr>
                       <th scope="col" className="py-2.5 pl-3 pr-1.5 w-10">#</th>
                       <th scope="col" className="py-2.5 px-2.5">Name &amp; partner</th>
@@ -1623,13 +1623,13 @@ const RegistrationsView: React.FC<{
                               {reg.name}
                             </span>
                             {reg.partnerName && (
-                              <span className="block text-[11px] text-slate-500 break-words">with {reg.partnerName}</span>
+                              <span className="block text-xs text-slate-500 break-words">with {reg.partnerName}</span>
                             )}
                           </td>
                           <td className="py-0.5 px-2.5 align-middle">{phoneLinks(reg)}</td>
                           <td className="py-2 px-2.5 align-middle">
                             {reg.playCategory ? (
-                              <span className="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-paper text-sportsBlue whitespace-nowrap">
+                              <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-lg bg-paper text-sportsBlue whitespace-nowrap">
                                 {reg.playCategory}
                               </span>
                             ) : (
@@ -1649,7 +1649,7 @@ const RegistrationsView: React.FC<{
                             {when ? (
                               <>
                                 <span className="block">{formatDate(when)}</span>
-                                <span className="block text-[11px] text-slate-400">{formatTime(when)}</span>
+                                <span className="block text-xs text-slate-400">{formatTime(when)}</span>
                               </>
                             ) : (
                               reg.createdAt
@@ -1687,14 +1687,14 @@ const RegistrationsView: React.FC<{
                       <div className="mt-1 flex flex-wrap items-center gap-x-2">
                         {phoneLinks(reg)}
                         {reg.playCategory && (
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-paper text-sportsBlue">
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-paper text-sportsBlue">
                             {reg.playCategory}
                           </span>
                         )}
                       </div>
                       {reg.notes && <p className="text-xs text-slate-600 whitespace-pre-line break-words mt-1">{reg.notes}</p>}
                       <div className="mt-2 pt-2 border-t border-line/70 flex items-center justify-between gap-2">
-                        <span className="text-[11px] text-slate-500 inline-flex items-center gap-1">
+                        <span className="text-xs text-slate-500 inline-flex items-center gap-1">
                           <Clock className="w-3 h-3" /> {formatDateTime(reg.createdAt)}
                         </span>
                         {actionButton(reg)}
@@ -1951,20 +1951,20 @@ export const EventsManager: React.FC = () => {
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <div className={`${cardClass} p-3`}>
-                  <p className="text-[11px] font-semibold text-slate-500">Upcoming & ongoing</p>
-                  <p className="text-xl font-black text-slate-900">{stats.live}</p>
+                  <p className="text-xs font-semibold text-slate-500">Upcoming & ongoing</p>
+                  <p className="text-xl font-bold text-slate-900">{stats.live}</p>
                 </div>
                 <div className={`${cardClass} p-3`}>
-                  <p className="text-[11px] font-semibold text-slate-500">In homepage banner</p>
-                  <p className={`text-xl font-black ${stats.banners ? 'text-slate-900' : 'text-amber-600'}`}>{stats.banners}</p>
+                  <p className="text-xs font-semibold text-slate-500">In homepage banner</p>
+                  <p className={`text-xl font-bold ${stats.banners ? 'text-slate-900' : 'text-amber-600'}`}>{stats.banners}</p>
                 </div>
                 <div className={`${cardClass} p-3`}>
-                  <p className="text-[11px] font-semibold text-slate-500">Registration open</p>
-                  <p className="text-xl font-black text-emerald-600">{stats.open}</p>
+                  <p className="text-xs font-semibold text-slate-500">Registration open</p>
+                  <p className="text-xl font-bold text-emerald-600">{stats.open}</p>
                 </div>
                 <div className={`${cardClass} p-3`}>
-                  <p className="text-[11px] font-semibold text-slate-500">Website registrations</p>
-                  <p className="text-xl font-black text-slate-900">{stats.registrations}</p>
+                  <p className="text-xs font-semibold text-slate-500">Website registrations</p>
+                  <p className="text-xl font-bold text-slate-900">{stats.registrations}</p>
                 </div>
               </div>
 

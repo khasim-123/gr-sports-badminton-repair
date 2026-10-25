@@ -51,7 +51,7 @@ export const QrMarketingModal: React.FC = () => {
     try {
       await navigator.share({
         title: `${shop.name} — racket stringing & repair`,
-        text: `Badminton racket stringing & repair with free doorstep pickup within ${distanceConfig.freeRadiusKm} KM.`,
+        text: `Badminton racket stringing & repair with free doorstep pickup within ${distanceConfig.freeRadiusKm} km.`,
         url: shareUrl,
       });
     } catch {
@@ -96,7 +96,7 @@ export const QrMarketingModal: React.FC = () => {
               <RefreshCw className="w-5 h-5 animate-spin text-ink" />
             )}
           </div>
-          <p className="text-center text-[11px] font-mono text-slate-500 break-all">{shareUrl}</p>
+          <p className="text-center text-xs font-mono text-slate-500 break-all">{shareUrl}</p>
 
           <div className={`grid gap-2 ${canShare ? 'grid-cols-2' : 'grid-cols-1'}`}>
             <Button

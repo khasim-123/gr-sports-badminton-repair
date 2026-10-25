@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        sportsBlue: '#002B49',
+        sportsBlue: '#0F1B2B', // same navy as `ink` (older components use this name)
         brandYellow: '#FCD116',
         actionGreen: '#00A859',
         flameRed: '#E53E3E',
@@ -50,7 +50,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'Manrope', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['"Barlow Condensed"', 'Inter', 'system-ui', 'sans-serif'],
       },
       borderRadius: {

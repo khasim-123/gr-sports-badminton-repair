@@ -137,3 +137,43 @@
 .slide-in-from-right-4 {
   animation-name: slideFromRight4;
 }
+
+/* ------------------------------------------------------------------ app-wide polish (additive) */
+
+/* One visible keyboard focus style everywhere (mouse clicks don't show it). Components that set
+   their own focus-visible ring keep it; this is the fallback. */
+:where(a, button, input, select, textarea, summary, [role='button'], [role='tab'], [role='radio'], [tabindex]):focus-visible {
+  outline: 2px solid #0f1b2b;
+  outline-offset: 2px;
+}
+/* On dark surfaces (ink bars, dark dialogs headers) the ink outline would vanish. */
+.focus-on-dark :where(a, button, input, select, textarea, [role='button']):focus-visible {
+  outline-color: #fcd116;
+}
+
+/* Calm loading shimmer for skeletons (falls back to a flat tint with reduced motion). */
+@keyframes skeletonShimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #edeae2 25%, #f6f4ef 50%, #edeae2 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+
+/* Respect the operating system's "reduce motion" setting. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

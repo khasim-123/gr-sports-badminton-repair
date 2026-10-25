@@ -7,27 +7,10 @@
  * `useAdminOrders` is owned by AdminPortal (sidebar badge + dashboard card) and passed in here,
  * so there is one list of orders for the whole console.
  */
+import { PageHeader } from './PageHeader';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  AlertTriangle,
-  Ban,
-  CheckCircle2,
-  Download,
-  ExternalLink,
-  Eye,
-  HandCoins,
-  MapPin,
-  Package,
-  PackageCheck,
-  Phone,
-  RefreshCw,
-  Search,
-  ShoppingBag,
-  Store,
-  Truck,
-  X,
-} from 'lucide-react';
+import { AlertTriangle, Ban, CheckCircle2, ChevronRight, Download, ExternalLink, Eye, HandCoins, MapPin, Package, PackageCheck, Phone, RefreshCw, Search, ShoppingBag, Store, Truck, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { shopService } from '../../services/shopService';
 import type { FulfilmentMethod, OrderLine, OrderStatus, ShopOrder } from '../../types/shop';
@@ -213,7 +196,7 @@ const inputCls =
 const cardCls = 'bg-white rounded-2xl border border-line shadow-xs';
 const thCls = 'py-3 px-3 whitespace-nowrap';
 const tdCls = 'py-3 px-3 align-top';
-const sectionLabel = 'font-bold text-slate-500 uppercase tracking-wider text-[10px]';
+const sectionLabel = 'font-bold text-slate-500 uppercase tracking-wider text-xs';
 
 const TelLink: React.FC<{ phone: string; className?: string }> = ({ phone, className = '' }) => {
   const href = mobileTelHref(phone);
@@ -251,7 +234,7 @@ const FulfilmentTag: React.FC<{ order: ShopOrder }> = ({ order }) =>
   ) : (
     <span className="inline-flex items-center gap-1 text-slate-700 font-semibold whitespace-nowrap">
       <Truck className="w-3.5 h-3.5 text-slate-500" /> Delivery
-      {typeof order.distanceKm === 'number' && <span className="text-slate-500 font-normal">· {order.distanceKm} KM</span>}
+      {typeof order.distanceKm === 'number' && <span className="text-slate-500 font-normal">· {order.distanceKm} km</span>}
     </span>
   );
 
@@ -496,12 +479,12 @@ const OrderDetailDialog: React.FC<{
         >
           <div className="flex justify-between items-start gap-3 p-4 sm:p-6 pb-3 border-b border-line/70 shrink-0">
             <div className="min-w-0">
-              <h3 id="order-detail-title" className="text-lg font-bold text-slate-900 flex flex-wrap items-center gap-2">
+              <h3 id="order-detail-title" className="text-lg font-semibold text-ink flex flex-wrap items-center gap-2">
                 <span className="font-mono">{orderId}</span>
                 {order && <OrderStatusPill status={order.status} />}
               </h3>
               {order && (
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-[13px] text-slate-500 mt-0.5">
                   {FULFILMENT_LABEL[order.fulfilment] || order.fulfilment} · {itemCount(order)}{' '}
                   {itemCount(order) === 1 ? 'item' : 'items'} · Placed {formatDateTime(order.createdAt)}
                 </p>
@@ -518,7 +501,7 @@ const OrderDetailDialog: React.FC<{
             </button>
           </div>
 
-          <div className="overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4 text-xs">
+          <div className="overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4 text-[13px]">
             {loadError && (
               <div role="alert" className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-between gap-2">
                 <span className="flex items-start gap-1.5">
@@ -569,7 +552,7 @@ const OrderDetailDialog: React.FC<{
                     <dt className="font-bold text-slate-900 border-t border-line/70 pt-1 text-sm">Total</dt>
                     <dd className="text-right font-bold text-slate-900 border-t border-line/70 pt-1 text-sm">{formatINR(order.total)}</dd>
                     <dt className="text-slate-500">Payment</dt>
-                    <dd className={`text-right font-semibold ${order.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                    <dd className={`text-right font-semibold ${order.paymentStatus === 'Paid' ? 'text-emerald-700' : order.status === 'Cancelled' ? 'text-slate-500' : 'text-amber-700'}`}>
                       {paymentLabel(order)}
                     </dd>
                     {order.paymentStatus === 'Paid' && order.paidAt && (
@@ -603,7 +586,7 @@ const OrderDetailDialog: React.FC<{
                         {order.address.landmark && <p className="text-slate-500 break-words">Landmark: {order.address.landmark}</p>}
                         {typeof km === 'number' && (
                           <p className="font-semibold text-slate-700">
-                            {km} KM from the shop
+                            {km} km from the shop
                             {order.address.distanceSource && (
                               <span className="font-normal text-slate-500">
                                 {' '}
@@ -640,7 +623,7 @@ const OrderDetailDialog: React.FC<{
                   <div className="p-3 border border-line bg-paper rounded-xl space-y-3">
                     <p className={sectionLabel}>Next step</p>
                     {actionError && (
-                      <p role="alert" className="text-[11px] text-rose-700 flex items-start gap-1 font-medium">
+                      <p role="alert" className="text-xs text-rose-700 flex items-start gap-1 font-medium">
                         <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                         <span>
                           {actionError} {step ? '' : 'The order has been refreshed — check its status above.'}
@@ -682,12 +665,12 @@ const OrderDetailDialog: React.FC<{
                       (payment ? (
                         <form className="space-y-2 bg-white border border-emerald-200 rounded-xl p-3" onSubmit={submitPayment} noValidate>
                           <p className="font-bold text-slate-900 text-sm">{paymentActionLabel(order)}</p>
-                          <p className="text-[11px] text-slate-500">
+                          <p className="text-xs text-slate-500">
                             Order total {formatINR(order.total)}.{' '}
                             {paymentCompletes(order) ? 'Saving completes the order.' : 'The order keeps its current status.'}
                           </p>
                           <div className="grid grid-cols-2 gap-2">
-                            <label className="text-[11px] font-bold text-slate-600">
+                            <label className="text-xs font-bold text-slate-600">
                               Amount received (₹)
                               <input
                                 type="number"
@@ -703,7 +686,7 @@ const OrderDetailDialog: React.FC<{
                                 disabled={busy === 'payment'}
                               />
                             </label>
-                            <label className="text-[11px] font-bold text-slate-600">
+                            <label className="text-xs font-bold text-slate-600">
                               Method
                               <select
                                 value={payment.method}
@@ -717,7 +700,7 @@ const OrderDetailDialog: React.FC<{
                               </select>
                             </label>
                           </div>
-                          <label className="block text-[11px] font-bold text-slate-600">
+                          <label className="block text-xs font-bold text-slate-600">
                             {amountDiffers ? 'Note (required — why is the amount different?)' : 'Note (optional, e.g. UPI reference)'}
                             <input
                               type="text"
@@ -732,7 +715,7 @@ const OrderDetailDialog: React.FC<{
                             />
                           </label>
                           {paymentError && (
-                            <p role="alert" className="text-[11px] text-rose-700 flex items-start gap-1 font-medium">
+                            <p role="alert" className="text-xs text-rose-700 flex items-start gap-1 font-medium">
                               <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {paymentError}
                             </p>
                           )}
@@ -788,7 +771,7 @@ const OrderDetailDialog: React.FC<{
                           </button>
                         ) : (
                           <div className="space-y-2">
-                            <label className="block text-[11px] font-bold text-slate-600">
+                            <label className="block text-xs font-bold text-slate-600">
                               Reason for cancelling (the customer sees this)
                               <input
                                 type="text"
@@ -805,7 +788,7 @@ const OrderDetailDialog: React.FC<{
                               />
                             </label>
                             {cancelError && (
-                              <p role="alert" className="text-[11px] text-rose-700 flex items-start gap-1 font-medium">
+                              <p role="alert" className="text-xs text-rose-700 flex items-start gap-1 font-medium">
                                 <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {cancelError}
                               </p>
                             )}
@@ -848,11 +831,11 @@ const OrderDetailDialog: React.FC<{
                         <li key={i} className="relative">
                           <span className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-ink border-2 border-white" />
                           <p className="font-semibold text-slate-900">{ev.label || ev.status}</p>
-                          <p className="text-[11px] text-slate-500">
+                          <p className="text-xs text-slate-500">
                             {ev.timestamp}
                             {ev.actor ? ` · ${ev.actor}` : ''}
                           </p>
-                          {ev.notes && <p className="text-[11px] text-slate-600 break-words">{ev.notes}</p>}
+                          {ev.notes && <p className="text-xs text-slate-600 break-words">{ev.notes}</p>}
                         </li>
                       ))}
                     </ol>
@@ -1006,7 +989,7 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({ data, preset, onPreset
         'Paid at',
         'Status',
         'Delivery address',
-        'Distance (KM)',
+        'Distance (km)',
         'Customer note',
         'Cancel reason',
       ]),
@@ -1052,14 +1035,11 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({ data, preset, onPreset
   const detailFallback = detailId ? orders.find((o) => o.id === detailId) || null : null;
 
   const pageHeader = (
-    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-      <div className="min-w-0">
-        <h2 className="font-display tracking-[0.01em] text-3xl sm:text-4xl font-bold text-slate-900">Orders</h2>
-        <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-          Online shop orders — T-shirts & apparel, rackets and string sets. Customers pay on delivery or at pickup.
-        </p>
-      </div>
-      <div className="flex flex-wrap gap-2 shrink-0 print:hidden">
+    <PageHeader
+      title="Shop orders"
+      subtitle="Online orders for T-shirts & apparel, rackets and string sets. Customers pay on delivery or at pickup."
+      actions={
+      <>
         <Button
           onClick={() => reload()}
           variant="outline"
@@ -1080,8 +1060,9 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({ data, preset, onPreset
         >
           Export {filtersActive ? `${filtered.length} shown` : 'all'} (CSV)
         </Button>
-      </div>
-    </div>
+      </>
+      }
+    />
   );
 
   // ---- states before there is a list ----
@@ -1151,26 +1132,26 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({ data, preset, onPreset
             type="button"
             aria-pressed={statusFilter === c.id}
             onClick={() => setStatusFilter((cur) => (cur === c.id ? 'ALL' : c.id))}
-            className={`text-left bg-white p-3 sm:p-4 rounded-2xl border shadow-2xs transition-colors min-w-0 ${
-              statusFilter === c.id ? 'border-ink ring-1 ring-ink' : 'border-slate-200/90 hover:border-slate-300'
+            className={`flex flex-col text-left bg-white p-4 sm:p-5 rounded-2xl border transition-colors duration-150 min-w-0 ${
+              statusFilter === c.id ? 'border-ink ring-1 ring-ink' : 'border-line hover:border-ink/30'
             }`}
           >
-            <p className="text-xs font-semibold text-slate-500 truncate">{c.label}</p>
-            <p className={`text-2xl font-black mt-0.5 ${c.tone}`}>{c.count}</p>
-            <p className="text-[11px] text-slate-500 mt-1 truncate">{c.detail}</p>
+            <p className="text-[13px] font-semibold text-slate-500 truncate">{c.label}</p>
+            <p className={`font-display text-[32px] leading-tight font-bold tabular-nums mt-1 ${c.tone}`}>{c.count}</p>
+            <p className="text-[13px] text-slate-500 mt-0.5 leading-snug">{c.detail}</p>
           </button>
         ))}
         <button
           type="button"
           aria-pressed={paymentFilter === 'UNPAID'}
           onClick={() => setPaymentFilter((cur) => (cur === 'UNPAID' ? 'ALL' : 'UNPAID'))}
-          className={`col-span-2 lg:col-span-1 text-left bg-white p-3 sm:p-4 rounded-2xl border shadow-2xs transition-colors min-w-0 ${
-            paymentFilter === 'UNPAID' ? 'border-ink ring-1 ring-ink' : 'border-slate-200/90 hover:border-amber-300'
+          className={`col-span-2 lg:col-span-1 flex flex-col text-left bg-white p-4 sm:p-5 rounded-2xl border transition-colors duration-150 min-w-0 ${
+            paymentFilter === 'UNPAID' ? 'border-ink ring-1 ring-ink' : 'border-line hover:border-ink/30'
           }`}
         >
-          <p className="text-xs font-semibold text-slate-500">To be collected</p>
-          <p className="text-2xl font-black mt-0.5 text-amber-600">{formatINR(summary.unpaidTotal)}</p>
-          <p className="text-[11px] text-slate-500 mt-1 truncate">
+          <p className="text-[13px] font-semibold text-slate-500">To be collected</p>
+          <p className="font-display text-[32px] leading-tight font-bold tabular-nums mt-1 text-amber-700">{formatINR(summary.unpaidTotal)}</p>
+          <p className="text-[13px] text-slate-500 mt-0.5 truncate">
             {summary.unpaidCount} unpaid {summary.unpaidCount === 1 ? 'order' : 'orders'}
           </p>
         </button>
@@ -1261,7 +1242,7 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({ data, preset, onPreset
             <div className="flex items-start justify-between gap-2">
               <button type="button" onClick={() => setDetailId(o.id)} className="text-left min-w-0">
                 <span className="block font-mono font-bold text-ink text-sm">{o.id}</span>
-                <span className="block text-[11px] text-slate-500">{formatDateTime(o.createdAt)}</span>
+                <span className="block text-xs text-slate-500">{formatDateTime(o.createdAt)}</span>
               </button>
               <OrderStatusPill status={o.status} />
             </div>
@@ -1274,7 +1255,7 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({ data, preset, onPreset
               <FulfilmentTag order={o} />
               <span className="text-right">
                 <span className="font-bold text-slate-900">{formatINR(o.total)}</span>
-                <span className={`block text-[11px] ${o.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-slate-500'}`}>
+                <span className={`block text-xs ${o.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-slate-500'}`}>
                   {o.paymentStatus === 'Paid' ? `Paid${o.paymentMethod ? ` · ${o.paymentMethod}` : ''}` : o.status === 'Cancelled' ? 'Not due' : 'Unpaid'}
                 </span>
               </span>
@@ -1292,10 +1273,10 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({ data, preset, onPreset
 
       {/* Desktop: table */}
       <div className={`${cardCls} overflow-hidden hidden md:block`}>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] text-left border-collapse text-xs">
+        <div className="overflow-auto lg:max-h-[calc(100vh-9rem)]">
+          <table className="w-full min-w-[820px] text-left border-collapse text-[13px]">
             <thead>
-              <tr className="bg-paper border-b border-line text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+              <tr className="text-slate-500 font-semibold uppercase tracking-[0.06em] text-xs [&>th]:sticky [&>th]:top-0 [&>th]:z-10 [&>th]:bg-paper [&>th]:shadow-[inset_0_-1px_0_#E3DFD6]">
                 <th className={thCls}>Order</th>
                 <th className={thCls}>Customer</th>
                 <th className={thCls}>Items</th>
@@ -1321,19 +1302,19 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({ data, preset, onPreset
                     <button type="button" onClick={() => setDetailId(o.id)} className="font-mono font-bold text-ink hover:underline whitespace-nowrap">
                       {o.id}
                     </button>
-                    <p className="text-[11px] text-slate-500 whitespace-nowrap">{formatDate(o.createdAt)}</p>
+                    <p className="text-xs text-slate-500 whitespace-nowrap">{formatDate(o.createdAt)}</p>
                   </td>
                   <td className={tdCls}>
                     <p className="font-bold text-slate-900 max-w-[11rem] truncate" title={o.customerName}>
                       {o.customerName}
                     </p>
-                    <TelLink phone={o.customerMobile} className="text-[11px] font-medium" />
+                    <TelLink phone={o.customerMobile} className="text-xs font-medium" />
                   </td>
                   <td className={`${tdCls} max-w-[16rem]`}>
                     <p className="text-slate-800 line-clamp-2 break-words" title={(o.items || []).map(lineText).join('\n')}>
                       {itemsSummary(o)}
                     </p>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-xs text-slate-500">
                       {itemCount(o)} {itemCount(o) === 1 ? 'item' : 'items'}
                     </p>
                   </td>
@@ -1342,7 +1323,7 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({ data, preset, onPreset
                   </td>
                   <td className={`${tdCls} text-right whitespace-nowrap`}>
                     <p className="font-bold text-slate-900">{formatINR(o.total)}</p>
-                    <p className={`text-[11px] ${o.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-slate-500'}`}>
+                    <p className={`text-xs ${o.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-slate-500'}`}>
                       {o.paymentStatus === 'Paid' ? `Paid${o.paymentMethod ? ` · ${o.paymentMethod}` : ''}` : o.status === 'Cancelled' ? 'Not due' : 'Unpaid'}
                     </p>
                   </td>
@@ -1353,9 +1334,9 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({ data, preset, onPreset
                     <button
                       type="button"
                       onClick={() => setDetailId(o.id)}
-                      className="min-h-[40px] px-3 inline-flex items-center gap-1 rounded-lg border border-line text-slate-700 font-bold hover:text-ink hover:bg-paper transition-colors"
+                      className="min-h-[36px] px-3 inline-flex items-center gap-1 rounded-lg border border-line bg-white text-slate-700 font-semibold hover:text-ink hover:border-slate-400 transition-colors duration-150"
                     >
-                      <Eye className="w-3.5 h-3.5" /> Open
+                      Open <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </td>
                 </tr>

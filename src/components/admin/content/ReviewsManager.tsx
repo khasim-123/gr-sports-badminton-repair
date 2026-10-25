@@ -69,17 +69,17 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review: r, busyAction, onModera
             <Stars rating={r.rating} />
             <span className="font-bold text-sm text-slate-900 break-words">{r.authorName}</span>
             {r.isVerified && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                 <BadgeCheck className="w-3 h-3" /> Verified customer
               </span>
             )}
             {r.isFeatured && r.status === 'approved' && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-brandYellow text-sportsBlue">
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded bg-brandYellow text-sportsBlue">
                 <Star className="w-3 h-3" /> Featured
               </span>
             )}
           </div>
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[11px] text-slate-500">
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-slate-500">
             <span>{formatDate(r.createdAt)}</span>
             {r.location && (
               <span className="inline-flex items-center gap-0.5">
@@ -99,7 +99,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review: r, busyAction, onModera
           </div>
         </div>
         <span
-          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+          className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
             r.status === 'pending'
               ? 'bg-amber-50 text-amber-800 border-amber-200'
               : r.status === 'approved'
@@ -115,7 +115,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review: r, busyAction, onModera
 
       {r.adminReply && !replyOpen && (
         <div className="ml-3 pl-3 border-l-2 border-line">
-          <p className="text-[11px] font-bold text-ink">Reply from GR Sports</p>
+          <p className="text-xs font-bold text-ink">Reply from GR Sports</p>
           <p className="text-xs text-slate-600 whitespace-pre-line break-words">{r.adminReply}</p>
         </div>
       )}

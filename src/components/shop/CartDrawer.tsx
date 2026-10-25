@@ -196,13 +196,16 @@ export const CartDrawer: React.FC = () => {
               </ul>
             </div>
 
-            <div className="shrink-0 space-y-3 border-t border-line bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-5">
+            <div className="shrink-0 space-y-2.5 border-t border-line bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
               <p className="sr-only" aria-live="polite">
                 {q.status === 'loading' ? 'Checking prices' : quoteReady ? 'Prices checked' : ''}
               </p>
               {unavailableCount > 0 && (
-                <p className="rounded-lg bg-rose-50 px-3 py-2 text-[14px] text-rose-800" role="status">
-                  {unavailableCount === 1 ? 'One item is' : `${unavailableCount} items are`} no longer available. Remove {unavailableCount === 1 ? 'it' : 'them'} to check out.
+                <p className="flex items-start gap-2 rounded-lg bg-rose-50 px-3 py-2 text-[14px] leading-snug text-rose-800" role="status">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span>
+                    {unavailableCount === 1 ? 'One item is' : `${unavailableCount} items are`} no longer available. Remove {unavailableCount === 1 ? 'it' : 'them'} to check out.
+                  </span>
                 </p>
               )}
               {q.status === 'error' && (
@@ -212,7 +215,7 @@ export const CartDrawer: React.FC = () => {
                 <span className="text-[15px] text-ink-soft">Subtotal</span>
                 <span className={cx('font-display text-[26px] font-semibold tabular-nums', q.status === 'loading' && 'opacity-60')}>{formatInr(subtotal)}</span>
               </div>
-              <p className="text-[13px] leading-relaxed text-ink-muted">
+              <p className="text-[13px] leading-snug text-ink-muted">
                 Delivery {free > 0 ? `is free within ${free} km of the shop` : 'charge depends on your address'}, or collect from the shop. Pay when it's delivered or at the
                 shop — cash or UPI.
               </p>
@@ -225,7 +228,7 @@ export const CartDrawer: React.FC = () => {
                 Checkout
               </button>
               {staff && <p className="text-[13px] text-ink-muted">Orders are placed from a customer account.</p>}
-              {!isLoggedIn && <p className="text-center text-[13px] text-ink-muted">You'll log in with your mobile number first.</p>}
+              {!isLoggedIn && <p className="-mt-0.5 text-center text-[13px] text-ink-muted">You'll log in with your mobile number first.</p>}
             </div>
           </>
         )}

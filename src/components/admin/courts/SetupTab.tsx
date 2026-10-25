@@ -198,13 +198,13 @@ const PhotoTile: React.FC<{ url: string; index: number; count: number; onMove: (
         {broken ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-slate-400 p-2 text-center">
             <ImageOff className="w-6 h-6" />
-            <span className="text-[10px] font-semibold">Can't load this photo</span>
+            <span className="text-xs font-semibold">Can't load this photo</span>
           </div>
         ) : (
           <img src={url} alt={`Venue photo ${index + 1}`} loading="lazy" onError={() => setBroken(true)} className="absolute inset-0 w-full h-full object-cover" />
         )}
         <span
-          className={`absolute top-1.5 left-1.5 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded ${
+          className={`absolute top-1.5 left-1.5 text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${
             index === 0 ? 'bg-accent text-ink' : 'bg-white/90 border border-line text-slate-600'
           }`}
         >
@@ -360,7 +360,7 @@ const VenueFormModal: React.FC<{
           <div className="space-y-2">
             <div className="flex items-baseline justify-between gap-2">
               <span className="block text-xs font-semibold text-slate-700">Photos</span>
-              <span className={`text-[11px] font-bold ${form.photos.length >= MAX_PHOTOS ? 'text-amber-700' : 'text-slate-500'}`}>
+              <span className={`text-xs font-bold ${form.photos.length >= MAX_PHOTOS ? 'text-amber-700' : 'text-slate-500'}`}>
                 {form.photos.length}/{MAX_PHOTOS}
               </span>
             </div>
@@ -371,7 +371,7 @@ const VenueFormModal: React.FC<{
                 ))}
               </ul>
             ) : (
-              <p className="text-[11px] text-slate-500">No photos yet — real photos of the courts help customers choose.</p>
+              <p className="text-xs text-slate-500">No photos yet — real photos of the courts help customers choose.</p>
             )}
             <div hidden={form.photos.length >= MAX_PHOTOS}>
               <MediaUpload
@@ -434,7 +434,7 @@ const VenueFormModal: React.FC<{
                     key={s}
                     type="button"
                     onClick={() => addAmenity(s)}
-                    className="inline-flex items-center gap-1 px-2.5 min-h-[32px] rounded-full border border-dashed border-slate-300 text-[11px] font-semibold text-slate-600 hover:bg-paper"
+                    className="inline-flex items-center gap-1 px-2.5 min-h-[32px] rounded-full border border-dashed border-slate-300 text-xs font-semibold text-slate-600 hover:bg-paper"
                   >
                     <Plus className="w-3 h-3" /> {s}
                   </button>
@@ -660,7 +660,7 @@ const CourtsEditor: React.FC<{ venue: CourtVenue; onCourtsChange: (courts: Court
     <div className={`${cardCls} p-4 sm:p-5 space-y-3`}>
       <div>
         <h3 className="text-sm font-bold text-slate-900">Courts</h3>
-        <p className="text-[11px] text-slate-500">The order here is the column order in the day view and on the booking page.</p>
+        <p className="text-xs text-slate-500">The order here is the column order in the day view and on the booking page.</p>
       </div>
       {error && <InlineError>{error}</InlineError>}
       {courts.length === 0 ? (
@@ -700,7 +700,7 @@ const CourtsEditor: React.FC<{ venue: CourtVenue; onCourtsChange: (courts: Court
                 <>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-bold truncate ${c.isActive ? 'text-slate-900' : 'text-slate-400'}`}>{c.name}</p>
-                    <p className="text-[11px] text-slate-500 truncate">
+                    <p className="text-xs text-slate-500 truncate">
                       {!c.isActive && <span className="font-bold text-slate-600">Off · </span>}
                       {c.surface || 'No surface noted'}
                     </p>
@@ -879,12 +879,12 @@ const BlockFormModal: React.FC<{ venue: CourtVenue; onClose: () => void; onSaved
                     { label: 'Sat & Sun', days: [5, 6] },
                     { label: 'Every day', days: [0, 1, 2, 3, 4, 5, 6] },
                   ].map((p) => (
-                    <button key={p.label} type="button" onClick={() => setWeekdays(p.days)} className="min-h-[32px] px-2.5 rounded-full border border-dashed border-slate-300 text-[11px] font-semibold text-slate-600 hover:bg-paper">
+                    <button key={p.label} type="button" onClick={() => setWeekdays(p.days)} className="min-h-[32px] px-2.5 rounded-full border border-dashed border-slate-300 text-xs font-semibold text-slate-600 hover:bg-paper">
                       {p.label}
                     </button>
                   ))}
                 </div>
-                {errors.weekdays && <p className="text-[11px] text-rose-600 mt-1 font-medium">{errors.weekdays}</p>}
+                {errors.weekdays && <p className="text-xs text-rose-600 mt-1 font-medium">{errors.weekdays}</p>}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="From" htmlFor={`${uid}-from`} required error={errors.fromDate}>
@@ -936,7 +936,7 @@ const BlockFormModal: React.FC<{ venue: CourtVenue; onClose: () => void; onSaved
               className={`${inputClass} ${errors.reason ? inputErrorClass : ''}`}
             />
           </Field>
-          <p className="text-[11px] text-slate-500">Existing bookings in this time are not cancelled — check the day view and call those customers if needed.</p>
+          <p className="text-xs text-slate-500">Existing bookings in this time are not cancelled — check the day view and call those customers if needed.</p>
         </form>
       </Modal>
     </Portal>
@@ -1005,7 +1005,7 @@ const BlocksEditor: React.FC<{ venue: CourtVenue; onChanged: () => void }> = ({ 
       </span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-slate-900 break-words">{b.reason}</p>
-        <p className="text-[11px] text-slate-600">
+        <p className="text-xs text-slate-600">
           {describeBlockDays(b)} · {fmtRange(b.startTime, b.endTime)} · {courtName(b.courtId)}
           {dim ? ' · over' : ''}
         </p>
@@ -1026,7 +1026,7 @@ const BlocksEditor: React.FC<{ venue: CourtVenue; onChanged: () => void }> = ({ 
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-sm font-bold text-slate-900">Blocked times</h3>
-          <p className="text-[11px] text-slate-500">Times customers can't book (shown hatched in the day view).</p>
+          <p className="text-xs text-slate-500">Times customers can't book (shown hatched in the day view).</p>
         </div>
         <Button type="button" size="sm" variant="outline" className="min-h-[40px] shrink-0" leftIcon={<Plus className="w-4 h-4" />} onClick={() => setAdding(true)} disabled={!venueBoundaries(venue).length}>
           Block time
@@ -1152,24 +1152,24 @@ export const SetupTab: React.FC<{
                 ) : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 gap-1">
                     <ImageOff className="w-6 h-6" />
-                    <span className="text-[10px] font-semibold">No photos yet</span>
+                    <span className="text-xs font-semibold">No photos yet</span>
                   </div>
                 )}
                 {venue.photos?.length > 1 && (
-                  <span className="absolute bottom-1.5 right-1.5 text-[10px] font-black bg-slate-900/75 text-white px-1.5 rounded">{venue.photos.length} photos</span>
+                  <span className="absolute bottom-1.5 right-1.5 text-xs font-bold bg-slate-900/75 text-white px-1.5 rounded">{venue.photos.length} photos</span>
                 )}
               </div>
               <div className="flex-1 min-w-0 p-4 sm:p-5 space-y-2">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <h3 className="text-lg font-black text-slate-900 break-words">{venue.name}</h3>
+                    <h3 className="text-lg font-bold text-slate-900 break-words">{venue.name}</h3>
                     <p className="text-xs text-slate-600 flex items-start gap-1 break-words">
                       <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {venue.address}
                       {venue.area ? `, ${venue.area}` : ''}
                     </p>
                   </div>
                   <span
-                    className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                    className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
                       venue.isActive ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-600 border-line'
                     }`}
                   >
@@ -1203,7 +1203,7 @@ export const SetupTab: React.FC<{
                 {venue.amenities?.length > 0 && (
                   <ul className="flex flex-wrap gap-1">
                     {venue.amenities.map((a) => (
-                      <li key={a} className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-paper border border-line text-slate-700">
+                      <li key={a} className="text-xs font-semibold px-2 py-0.5 rounded-full bg-paper border border-line text-slate-700">
                         {a}
                       </li>
                     ))}

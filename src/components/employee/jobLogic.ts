@@ -182,6 +182,65 @@ export const nextStepText = (r: ServiceRequest, mine: boolean): string => {
   }
 };
 
+/** Short headline for a job card; amounts are shown next to it, not inside it. */
+export const nextStepTitle = (r: ServiceRequest, mine: boolean): string => {
+  if (!mine && isNewRequest(r)) return 'New request';
+  switch (r.status) {
+    case 'Submitted':
+    case 'Accepted':
+    case 'Employee Assigned':
+    case 'Pickup Scheduled':
+      return 'Collect the racket';
+    case 'Bat Picked Up':
+      return r.serviceType === 'REPAIR' ? 'Inspect and send estimate' : 'String the racket';
+    case 'Inspection':
+    case 'Repair Estimate':
+      return 'Inspect and send estimate';
+    case 'Getting in Progress':
+      return 'Stringing in progress';
+    case 'Awaiting Customer Approval':
+      return 'Waiting for approval';
+    case 'Repair Approved':
+      return 'Approved — start the repair';
+    case 'Repair in Progress':
+      return 'Repair in progress';
+    case 'Getting Completed':
+    case 'Repair Completed':
+      return 'Ready to deliver';
+    case 'Repair Declined':
+      return 'Return the racket';
+    case 'Out for Delivery':
+    case 'Delivered':
+    case 'Payment Pending':
+      if (r.paymentStatus === 'Paid') return 'Paid';
+      return wasDeclined(r) ? 'Returning the racket' : 'Out for delivery';
+    case 'Cancelled':
+      return 'Cancelled';
+    case 'Completed Without Repair':
+      return 'Returned without repair';
+    default:
+      return 'Completed';
+  }
+};
+
+/** The money figure a job card shows beside its headline (null when there is none yet). */
+export const cardAmount = (r: ServiceRequest): { label: string; value: string; strong: boolean } | null => {
+  const stage = stageOf(r);
+  if (stage === 'done') {
+    return r.paymentRecord ? { label: `Paid · ${r.paymentRecord.method}`, value: formatINR(r.paymentRecord.amount), strong: false } : null;
+  }
+  if (stage === 'approval') {
+    return r.repairEstimate ? { label: 'Estimate', value: formatINR(r.repairEstimate.totalEstimate), strong: false } : null;
+  }
+  if (r.serviceType === 'REPAIR' && !r.repairEstimate && !wasDeclined(r)) return null;
+  const due = amountDue(r);
+  if (stage === 'deliver') {
+    if (r.paymentStatus === 'Paid') return null;
+    return due > 0 ? { label: 'To collect', value: formatINR(due), strong: true } : { label: 'To collect', value: 'Nothing', strong: false };
+  }
+  return due > 0 ? { label: 'On delivery', value: formatINR(due), strong: false } : null;
+};
+
 // ---------------------------------------------------------------------------
 // Dates
 // ---------------------------------------------------------------------------

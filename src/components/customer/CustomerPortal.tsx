@@ -7,7 +7,25 @@ import { RequestDetailView } from './RequestDetailView';
 import { Checkout } from '../shop/Checkout';
 import { MyOrders } from '../shop/MyOrders';
 import { MyCourtBookings } from '../courts/MyCourtBookings';
-import { User, Phone, ShieldCheck, PlusCircle, Trash2, X, Save, CheckCircle2, AlertCircle, Smartphone, LogOut } from 'lucide-react';
+import {
+  User,
+  Phone,
+  ShieldCheck,
+  PlusCircle,
+  Trash2,
+  X,
+  Save,
+  CheckCircle2,
+  AlertCircle,
+  Smartphone,
+  LogOut,
+  Home,
+  ClipboardList,
+  ShoppingBag,
+  CalendarDays,
+  MapPin,
+  ChevronRight,
+} from 'lucide-react';
 import { Button } from '../common/Button';
 import { formatMobile } from '../../utils/phone';
 import { formatINR } from '../../utils/format';
@@ -16,14 +34,13 @@ import { Address } from '../../types';
 import { CustomerEmptyState } from './requestDisplay';
 import { localityOf, phoneDisplay, telHref, useShopSettings } from '../../hooks/useShopSettings';
 
+/** Phone / tablet section tabs. Profile and addresses are in the account menu (navbar). */
 const TABS = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'wizard', label: '+ Book' },
-  { id: 'requests', label: 'Requests' },
-  { id: 'orders', label: 'Orders' },
-  { id: 'courts', label: 'Courts' },
-  { id: 'addresses', label: 'Addresses' },
-  { id: 'profile', label: 'Profile' },
+  { id: 'dashboard', label: 'Home', icon: Home },
+  { id: 'wizard', label: 'Book', icon: PlusCircle },
+  { id: 'requests', label: 'Requests', icon: ClipboardList },
+  { id: 'orders', label: 'Orders', icon: ShoppingBag },
+  { id: 'courts', label: 'Courts', icon: CalendarDays },
 ];
 
 const inputClass =
@@ -154,21 +171,27 @@ export const CustomerPortal: React.FC = () => {
   return (
     <div>
       {/* Section tabs on phones / tablets (desktop uses the navbar). Sticks under the navbar. */}
-      <nav className="lg:hidden sticky top-16 z-30 bg-white/95 backdrop-blur border-b border-line" aria-label="Your account">
-        <div className="max-w-6xl mx-auto px-3 sm:px-6 flex overflow-x-auto no-scrollbar gap-1 py-1.5 text-xs font-semibold">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setCustomerSubView(tab.id)}
-              aria-current={activeTab === tab.id ? 'page' : undefined}
-              className={`flex-1 px-2.5 min-h-[40px] rounded-xl whitespace-nowrap transition-all ${
-                activeTab === tab.id ? 'bg-ink text-white font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+      <nav className="lg:hidden sticky top-16 z-30 bg-white/95 backdrop-blur border-b border-line" aria-label="Your account sections">
+        <div className="max-w-2xl mx-auto px-2 sm:px-6 grid grid-cols-5 gap-1 py-1">
+          {TABS.map((tab) => {
+            const active = activeTab === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setCustomerSubView(tab.id)}
+                aria-current={active ? 'page' : undefined}
+                className={`relative flex flex-col items-center justify-center gap-0.5 min-h-[52px] rounded-xl text-xs transition-colors duration-150 ${
+                  active ? 'text-ink font-semibold bg-paper' : 'text-slate-600 hover:text-ink hover:bg-paper/70'
+                }`}
+              >
+                <Icon className={`w-5 h-5 ${active ? 'text-ink' : 'text-slate-500'}`} aria-hidden="true" />
+                {tab.label}
+                {active && <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-ink" aria-hidden="true" />}
+              </button>
+            );
+          })}
         </div>
       </nav>
 
@@ -185,8 +208,8 @@ export const CustomerPortal: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h1 className="font-display tracking-[0.01em] text-3xl font-bold text-slate-900">Pickup addresses</h1>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              <h1 className="font-display tracking-[0.01em] text-3xl sm:text-4xl font-bold text-slate-900">Pickup addresses</h1>
+              <p className="text-sm text-slate-600 mt-1">
                 Saved addresses make booking quicker. They are stored on this device only and are cleared when you log out.
               </p>
             </div>
@@ -209,25 +232,23 @@ export const CustomerPortal: React.FC = () => {
                 const calc = calculateDistanceCharge(addr.distanceKm);
                 const outside = maxServiceKm > 0 && addr.distanceKm > maxServiceKm;
                 return (
-                  <li key={addr.id} className="bg-white p-4 sm:p-5 rounded-2xl border border-line shadow-2xs flex flex-col gap-2">
+                  <li key={addr.id} className="bg-white p-4 sm:p-5 rounded-2xl border border-line flex flex-col gap-2">
                     <div className="flex justify-between items-center gap-2">
                       <span className="flex items-center gap-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-ink bg-paper-deep px-2.5 py-0.5 rounded-md">
-                          {addr.label}
-                        </span>
+                        <span className="text-[15px] font-semibold text-slate-900">{addr.label}</span>
                         {addr.isDefault && (
-                          <span className="text-[11px] bg-emerald-50 text-emerald-800 font-bold px-2 py-0.5 rounded border border-emerald-200">
+                          <span className="text-xs bg-paper text-ink font-semibold px-2 py-0.5 rounded-full border border-line">
                             Default
                           </span>
                         )}
                       </span>
-                      <span className="text-xs font-semibold text-slate-600">~{addr.distanceKm} KM away</span>
+                      <span className="text-[13px] text-slate-500 tabular-nums">About {addr.distanceKm} km</span>
                     </div>
-                    <p className="text-sm text-slate-800">{formatAddress(addr)}</p>
+                    <p className="text-[15px] text-slate-800 leading-relaxed">{formatAddress(addr)}</p>
                     {addr.landmark && <p className="text-xs text-slate-500">Landmark: {addr.landmark}</p>}
-                    <p className={`text-xs font-semibold ${outside ? 'text-rose-700' : calc.isFree ? 'text-emerald-700' : 'text-amber-700'}`}>
+                    <p className={`text-[13px] font-medium ${outside ? 'text-rose-700' : calc.isFree ? 'text-emerald-700' : 'text-slate-700'}`}>
                       {outside
-                        ? `Outside our ${maxServiceKm} KM pickup area`
+                        ? `Outside our ${maxServiceKm} km pickup area`
                         : calc.isFree
                         ? 'Free pickup & delivery'
                         : `Pickup & delivery ${formatINR(calc.charge)}`}
@@ -282,13 +303,13 @@ export const CustomerPortal: React.FC = () => {
       {customerSubView === 'profile' && (
         <div className="max-w-2xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-5">
           <div>
-            <h1 className="font-display tracking-[0.01em] text-3xl font-bold text-slate-900">Profile</h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Your name and the mobile number you sign in with.</p>
+            <h1 className="font-display tracking-[0.01em] text-3xl sm:text-4xl font-bold text-slate-900">Profile</h1>
+            <p className="text-sm text-slate-600 mt-1">Your name and the mobile number you sign in with.</p>
           </div>
 
-          <form onSubmit={handleSaveProfile} className="bg-white p-4 sm:p-6 rounded-2xl border border-line shadow-2xs space-y-4 text-sm">
+          <form onSubmit={handleSaveProfile} className="bg-white p-4 sm:p-6 rounded-2xl border border-line space-y-5 text-sm">
             <div>
-              <label htmlFor="profile-name" className="block text-xs font-bold text-slate-700 mb-1">
+              <label htmlFor="profile-name" className="block text-sm font-semibold text-slate-800 mb-1.5">
                 Full name
               </label>
               <div className="relative">
@@ -303,19 +324,19 @@ export const CustomerPortal: React.FC = () => {
                   }}
                   maxLength={80}
                   autoComplete="name"
-                  className={`${inputClass} pl-9 font-semibold`}
+                  className={`${inputClass} pl-9 text-[15px]`}
                 />
               </div>
-              <p className="text-[11px] text-slate-500 mt-1">Used on your bookings and shown to our pickup agent.</p>
+              <p className="text-[13px] text-slate-500 mt-1.5">Used on your bookings and shown to our pickup agent.</p>
             </div>
 
             <div>
-              <span className="block text-xs font-bold text-slate-700 mb-1">Mobile number (sign-in)</span>
-              <div className="flex items-center gap-2 px-3.5 min-h-[44px] rounded-xl border border-line bg-paper font-semibold text-slate-800">
+              <span className="block text-sm font-semibold text-slate-800 mb-1.5">Mobile number</span>
+              <div className="flex items-center gap-2 px-3.5 min-h-[44px] rounded-xl border border-line bg-paper text-[15px] text-slate-800 tabular-nums">
                 <Phone className="w-4 h-4 text-slate-400" />
                 <span>{formatMobile(userMobile) || '—'}</span>
               </div>
-              <p className="text-[11px] text-slate-500 mt-1">
+              <p className="text-[13px] text-slate-500 mt-1.5">
                 You sign in with this number and our pickup agent calls it. To change it, call the shop on{' '}
                 <a href={telHref(shop.phone)} className="font-semibold text-ink whitespace-nowrap">
                   {phoneDisplay(shop.phone)}
@@ -324,10 +345,10 @@ export const CustomerPortal: React.FC = () => {
               </p>
             </div>
 
-            <div className="p-3 bg-paper rounded-2xl border border-line text-xs text-slate-600 flex items-start gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <p className="text-[13px] text-slate-600 flex items-start gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
               <span>This number was verified with an SMS code when you signed in.</span>
-            </div>
+            </p>
 
             {profileError && (
               <p className="text-xs text-rose-700 flex items-center gap-1.5" role="alert">
@@ -337,7 +358,7 @@ export const CustomerPortal: React.FC = () => {
 
             <div className="pt-1 flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3">
               {profileSaved ? (
-                <span className="text-emerald-700 font-bold flex items-center gap-1.5 text-xs" role="status">
+                <span className="text-emerald-700 font-semibold flex items-center gap-1.5 text-[13px]" role="status">
                   <CheckCircle2 className="w-4 h-4" /> Name saved
                 </span>
               ) : (
@@ -349,7 +370,7 @@ export const CustomerPortal: React.FC = () => {
                 size="md"
                 isLoading={profileSaving}
                 disabled={profileSaving || editName.trim() === (userName || '').trim()}
-                className="font-bold min-h-[44px]"
+                className="min-h-[44px]"
                 leftIcon={<Save className="w-4 h-4" />}
               >
                 Save name
@@ -357,8 +378,27 @@ export const CustomerPortal: React.FC = () => {
             </div>
           </form>
 
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-line shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-start gap-2 text-xs text-slate-600">
+          <button
+            type="button"
+            onClick={() => setCustomerSubView('addresses')}
+            className="w-full bg-white p-4 sm:p-5 rounded-2xl border border-line hover:border-slate-300 hover:bg-paper/40 transition-colors duration-150 flex items-center gap-3 text-left"
+          >
+            <span className="w-10 h-10 rounded-xl bg-paper border border-line flex items-center justify-center shrink-0" aria-hidden="true">
+              <MapPin className="w-5 h-5 text-ink" />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[15px] font-semibold text-slate-900">Pickup addresses</span>
+              <span className="block text-[13px] text-slate-500">
+                {savedAddresses.length > 0
+                  ? `${savedAddresses.length} saved on this device`
+                  : 'Save the address we collect your racket from'}
+              </span>
+            </span>
+            <ChevronRight className="w-5 h-5 text-slate-400" aria-hidden="true" />
+          </button>
+
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2 text-[13px] text-slate-600">
               <Smartphone className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
               <span>
                 {savedAddresses.length > 0
@@ -377,27 +417,27 @@ export const CustomerPortal: React.FC = () => {
       {addressModalOpen && (
         <div
           onClick={() => setAddressModalOpen(false)}
-          className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto animate-in fade-in"
+          className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 bg-ink/60 overflow-y-auto animate-in fade-in"
           role="dialog"
           aria-modal="true"
           aria-labelledby="add-address-title"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl border border-line my-auto flex flex-col max-h-[calc(100dvh-1.5rem)] animate-in zoom-in-95"
+            className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-xl border border-line my-auto flex flex-col max-h-[calc(100dvh-1.5rem)] animate-in zoom-in-95"
           >
-            <div className="bg-ink text-white px-5 py-4 flex items-start justify-between gap-3 shrink-0">
+            <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-3 shrink-0 border-b border-line/70">
               <div>
-                <h3 id="add-address-title" className="text-lg font-bold">
+                <h3 id="add-address-title" className="font-display tracking-[0.01em] text-2xl font-semibold text-slate-900">
                   Add pickup address
                 </h3>
-                <p className="text-xs text-white/70 mt-0.5">Saved on this device. Free pickup within {distanceConfig.freeRadiusKm} KM.</p>
+                <p className="text-[13px] text-slate-500 mt-0.5">Saved on this device. Free pickup within {distanceConfig.freeRadiusKm} km.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setAddressModalOpen(false)}
                 aria-label="Close"
-                className="w-10 h-10 -mr-2 -mt-1 flex items-center justify-center rounded-full text-white/70 hover:text-white hover:bg-white/10 shrink-0"
+                className="w-11 h-11 -mr-2 -mt-1 flex items-center justify-center rounded-full text-slate-500 hover:text-ink hover:bg-paper shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -405,7 +445,7 @@ export const CustomerPortal: React.FC = () => {
 
             <form onSubmit={handleCreateAddress} className="px-4 sm:px-5 pt-4 sm:pt-5 space-y-3.5 text-sm overflow-y-auto" noValidate>
               <div className="space-y-1">
-                <span className="block text-xs font-bold text-slate-700">Address type</span>
+                <span className="block text-sm font-semibold text-slate-800">Address type</span>
                 <div className="grid grid-cols-3 gap-2">
                   {(['Home', 'Office', 'Other'] as const).map((l) => (
                     <button
@@ -424,38 +464,38 @@ export const CustomerPortal: React.FC = () => {
               </div>
 
               <label className="block space-y-1">
-                <span className="block text-xs font-bold text-slate-700">Flat / house / building *</span>
-                <input type="text" value={addrHouseFlat} onChange={(e) => setAddrHouseFlat(e.target.value)} placeholder="e.g. Flat 302, Sai Residency" className={inputClass} />
+                <span className="block text-sm font-semibold text-slate-800">Flat / house / building *</span>
+                <input type="text" value={addrHouseFlat} onChange={(e) => setAddrHouseFlat(e.target.value)} placeholder="e.g. Flat 302, Sai Residency" autoComplete="address-line1" className={inputClass} />
               </label>
               <label className="block space-y-1">
-                <span className="block text-xs font-bold text-slate-700">Street / road</span>
-                <input type="text" value={addrStreet} onChange={(e) => setAddrStreet(e.target.value)} placeholder="e.g. Beach Road" className={inputClass} />
+                <span className="block text-sm font-semibold text-slate-800">Street / road</span>
+                <input type="text" value={addrStreet} onChange={(e) => setAddrStreet(e.target.value)} placeholder="e.g. Beach Road" autoComplete="address-line2" className={inputClass} />
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="block space-y-1">
-                  <span className="block text-xs font-bold text-slate-700">Area / locality *</span>
-                  <input type="text" value={addrArea} onChange={(e) => setAddrArea(e.target.value)} placeholder="e.g. MVP Colony" className={inputClass} />
+                  <span className="block text-sm font-semibold text-slate-800">Area / locality *</span>
+                  <input type="text" value={addrArea} onChange={(e) => setAddrArea(e.target.value)} placeholder="e.g. MVP Colony" autoComplete="address-level3" className={inputClass} />
                 </label>
                 <label className="block space-y-1">
-                  <span className="block text-xs font-bold text-slate-700">Pincode *</span>
+                  <span className="block text-sm font-semibold text-slate-800">Pincode *</span>
                   <input
                     type="text"
                     value={addrPincode}
                     onChange={(e) => setAddrPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     inputMode="numeric"
                     maxLength={6}
-                    placeholder="e.g. 530017"
+                    placeholder="e.g. 530017" autoComplete="postal-code"
                     className={inputClass}
                   />
                 </label>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="block space-y-1">
-                  <span className="block text-xs font-bold text-slate-700">City</span>
+                  <span className="block text-sm font-semibold text-slate-800">City</span>
                   <input type="text" value={addrCity} onChange={(e) => setAddrCity(e.target.value)} className={inputClass} />
                 </label>
                 <label className="block space-y-1">
-                  <span className="block text-xs font-bold text-slate-700">Landmark</span>
+                  <span className="block text-sm font-semibold text-slate-800">Landmark</span>
                   <input type="text" value={addrLandmark} onChange={(e) => setAddrLandmark(e.target.value)} placeholder="Optional" className={inputClass} />
                 </label>
               </div>
@@ -465,7 +505,7 @@ export const CustomerPortal: React.FC = () => {
                   <label htmlFor="addr-distance" className="font-bold text-slate-700">
                     Approx. distance from our {localityOf(shop)} shop
                   </label>
-                  <span className="font-bold font-mono text-ink">{addrDistance} KM</span>
+                  <span className="font-bold font-mono text-ink">{addrDistance} km</span>
                 </div>
                 <input
                   id="addr-distance"
@@ -483,9 +523,9 @@ export const CustomerPortal: React.FC = () => {
                   }`}
                 >
                   {maxServiceKm > 0 && addrDistance > maxServiceKm
-                    ? `Outside our ${maxServiceKm} KM pickup area — please drop your racket at the shop.`
+                    ? `Outside our ${maxServiceKm} km pickup area — please drop your racket at the shop.`
                     : addrCalc.isFree
-                    ? `Free pickup & delivery (within ${distanceConfig.freeRadiusKm} KM)`
+                    ? `Free pickup & delivery (within ${distanceConfig.freeRadiusKm} km)`
                     : `Pickup & delivery ${formatINR(addrCalc.charge)}`}
                 </p>
               </div>

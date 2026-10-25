@@ -274,7 +274,7 @@ export const AvailabilityManager: React.FC = () => {
           <h4 id="avail-days" className="text-sm font-bold text-slate-900">
             Open days
           </h4>
-          <p className="text-[11px] text-slate-500">Days of the week you collect rackets.</p>
+          <p className="text-xs text-slate-500">Days of the week you collect rackets.</p>
         </div>
         <div className="grid grid-cols-4 min-[420px]:grid-cols-7 gap-1.5" role="group" aria-label="Open weekdays">
           {WEEKDAYS.map((d) => {
@@ -305,7 +305,7 @@ export const AvailabilityManager: React.FC = () => {
           })}
         </div>
         {errors.openWeekdays && (
-          <p className="text-[11px] text-rose-600 font-medium" role="alert">
+          <p className="text-xs text-rose-600 font-medium" role="alert">
             {errors.openWeekdays}
           </p>
         )}
@@ -383,7 +383,7 @@ export const AvailabilityManager: React.FC = () => {
           <h4 id="avail-slots" className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
             <Clock3 className="w-4 h-4 text-ink" /> Pickup time slots
           </h4>
-          <p className="text-[11px] text-slate-500">Customers pick one of these when booking.</p>
+          <p className="text-xs text-slate-500">Customers pick one of these when booking.</p>
         </div>
         {form.pickupSlots.length === 0 ? (
           <p className="text-xs text-slate-500 italic">No slots — customers will only choose a date.</p>
@@ -409,7 +409,7 @@ export const AvailabilityManager: React.FC = () => {
         )}
         <div className="flex flex-wrap items-end gap-2">
           <div>
-            <label htmlFor="slot-from" className="block text-[11px] font-semibold text-slate-600 mb-1">
+            <label htmlFor="slot-from" className="block text-xs font-semibold text-slate-600 mb-1">
               From
             </label>
             <input
@@ -424,7 +424,7 @@ export const AvailabilityManager: React.FC = () => {
             />
           </div>
           <div>
-            <label htmlFor="slot-to" className="block text-[11px] font-semibold text-slate-600 mb-1">
+            <label htmlFor="slot-to" className="block text-xs font-semibold text-slate-600 mb-1">
               To
             </label>
             <input
@@ -443,7 +443,7 @@ export const AvailabilityManager: React.FC = () => {
           </Button>
         </div>
         {slotError && (
-          <p className="text-[11px] text-rose-600 font-medium" role="alert">
+          <p className="text-xs text-rose-600 font-medium" role="alert">
             {slotError}
           </p>
         )}
@@ -456,7 +456,7 @@ export const AvailabilityManager: React.FC = () => {
             <h4 id="avail-closed" className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
               <CalendarX2 className="w-4 h-4 text-rose-600" /> Closed dates
             </h4>
-            <p className="text-[11px] text-slate-500">Holidays and days off — no pickups on these dates.</p>
+            <p className="text-xs text-slate-500">Holidays and days off — no pickups on these dates.</p>
           </div>
           {pastCount > 0 && (
             <Button
@@ -498,7 +498,7 @@ export const AvailabilityManager: React.FC = () => {
                       past ? 'text-slate-400' : 'text-slate-700'
                     }`}
                   />
-                  {past && <span className="text-[10px] font-semibold text-slate-400 shrink-0 hidden min-[420px]:inline">Past</span>}
+                  {past && <span className="text-xs font-semibold text-slate-400 shrink-0 hidden min-[420px]:inline">Past</span>}
                   <button
                     type="button"
                     aria-label={`Remove closed date ${formatDate(c.date)}`}
@@ -515,7 +515,7 @@ export const AvailabilityManager: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-[170px_1fr_auto] gap-2 items-end">
           <div>
-            <label htmlFor="closed-date" className="block text-[11px] font-semibold text-slate-600 mb-1">
+            <label htmlFor="closed-date" className="block text-xs font-semibold text-slate-600 mb-1">
               Date
             </label>
             <input
@@ -531,7 +531,7 @@ export const AvailabilityManager: React.FC = () => {
             />
           </div>
           <div>
-            <label htmlFor="closed-reason" className="block text-[11px] font-semibold text-slate-600 mb-1">
+            <label htmlFor="closed-reason" className="block text-xs font-semibold text-slate-600 mb-1">
               Reason (optional)
             </label>
             <input
@@ -553,7 +553,7 @@ export const AvailabilityManager: React.FC = () => {
           </Button>
         </div>
         {closedError && (
-          <p className="text-[11px] text-rose-600 font-medium" role="alert">
+          <p className="text-xs text-rose-600 font-medium" role="alert">
             {closedError}
           </p>
         )}
@@ -575,14 +575,14 @@ export const AvailabilityManager: React.FC = () => {
           placeholder="e.g. Closed 1–3 Nov for Diwali. Pickups resume 4 Nov."
           className={`${inputClass} resize-y`}
         />
-        <p className="text-[11px] text-slate-500">
+        <p className="text-xs text-slate-500">
           Shown to customers when they choose a pickup date. Leave empty to show nothing. {form.notice.trim().length} characters.
         </p>
       </section>
 
       {/* Mobile sticky save bar */}
       <div className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-line px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex items-center gap-2">
-        <p className={`text-[11px] font-semibold flex-1 min-w-0 ${dirty ? 'text-amber-700' : 'text-slate-500'}`} role="status">
+        <p className={`text-xs font-semibold flex-1 min-w-0 ${dirty ? 'text-amber-700' : 'text-slate-500'}`} role="status">
           {dirty ? 'Unsaved changes' : 'All changes saved'}
         </p>
         {dirty && (

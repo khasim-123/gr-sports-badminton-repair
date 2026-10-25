@@ -48,7 +48,7 @@ export const StringsSection: React.FC<StringsSectionProps> = ({ strings, status,
   const brandNames = brands.map(([b]) => b);
 
   return (
-    <section id={SECTION_IDS.strings} aria-labelledby="strings-title" className="scroll-mt-20 bg-white py-16 sm:py-24">
+    <section id={SECTION_IDS.strings} aria-labelledby="strings-title" className="scroll-mt-20 border-t border-line bg-white py-16 sm:py-24">
       <div className={container}>
         <SectionHeader
           id="strings-title"
@@ -76,7 +76,7 @@ export const StringsSection: React.FC<StringsSectionProps> = ({ strings, status,
         {status === 'loading' && (
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-hidden="true">
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="h-[440px] animate-pulse rounded-xl bg-paper" />
+              <div key={i} className="h-[440px] animate-pulse rounded-xl bg-paper-deep motion-reduce:animate-none" />
             ))}
           </div>
         )}

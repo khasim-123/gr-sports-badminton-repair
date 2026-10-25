@@ -428,7 +428,7 @@ const VariantTile: React.FC<{
           </div>
         )}
         {!v.inStock && (
-          <span className="absolute top-1.5 left-1.5 text-[9px] font-black uppercase tracking-wide bg-rose-600 text-white px-1.5 py-0.5 rounded">
+          <span className="absolute top-1.5 left-1.5 text-xs font-bold uppercase tracking-wide bg-rose-600 text-white px-1.5 py-0.5 rounded">
             Sold out
           </span>
         )}
@@ -712,20 +712,20 @@ export const StringsManager: React.FC = () => {
           {/* Summary */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div className={`${cardClass} p-3`}>
-              <p className="text-[11px] font-semibold text-slate-500">Strings</p>
-              <p className="text-xl font-black text-slate-900">{products.length}</p>
+              <p className="text-xs font-semibold text-slate-500">Strings</p>
+              <p className="text-xl font-bold text-slate-900">{products.length}</p>
             </div>
             <div className={`${cardClass} p-3`}>
-              <p className="text-[11px] font-semibold text-slate-500">Colours</p>
-              <p className="text-xl font-black text-slate-900">{stats.colours}</p>
+              <p className="text-xs font-semibold text-slate-500">Colours</p>
+              <p className="text-xl font-bold text-slate-900">{stats.colours}</p>
             </div>
             <div className={`${cardClass} p-3`}>
-              <p className="text-[11px] font-semibold text-slate-500">Colours out of stock</p>
-              <p className={`text-xl font-black ${stats.out ? 'text-rose-600' : 'text-emerald-600'}`}>{stats.out}</p>
+              <p className="text-xs font-semibold text-slate-500">Colours out of stock</p>
+              <p className={`text-xl font-bold ${stats.out ? 'text-rose-600' : 'text-emerald-600'}`}>{stats.out}</p>
             </div>
             <div className={`${cardClass} p-3`}>
-              <p className="text-[11px] font-semibold text-slate-500">No price yet</p>
-              <p className={`text-xl font-black ${stats.noPrice ? 'text-amber-600' : 'text-emerald-600'}`}>
+              <p className="text-xs font-semibold text-slate-500">No price yet</p>
+              <p className={`text-xl font-bold ${stats.noPrice ? 'text-amber-600' : 'text-emerald-600'}`}>
                 {stats.noPrice}
               </p>
             </div>
@@ -825,29 +825,29 @@ export const StringsManager: React.FC = () => {
                         <div className="flex flex-wrap items-center gap-1.5">
                           <span className="font-bold text-sm text-slate-900 break-words">{p.name}</span>
                           {p.isFeatured && (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-brandYellow text-sportsBlue">
+                            <span className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded bg-brandYellow text-sportsBlue">
                               <Star className="w-3 h-3" /> Featured
                             </span>
                           )}
                           {!p.isActive && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-600">
+                            <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-600">
                               Hidden
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-slate-500 truncate">
+                        <p className="text-xs text-slate-500 truncate">
                           {[p.brand, p.code, p.gauge].filter(Boolean).join(' · ')}
                         </p>
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
                           {hasPrice(p) ? (
                             <span className="text-xs font-bold text-slate-900">{formatPrice(p.price as number)}</span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-800">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-800">
                               <IndianRupee className="w-3 h-3" /> No price — shows “Price on request”
                             </span>
                           )}
                           <span
-                            className={`text-[11px] font-semibold ${
+                            className={`text-xs font-semibold ${
                               total === 0 ? 'text-slate-400' : inStock === total ? 'text-emerald-700' : inStock === 0 ? 'text-rose-600' : 'text-amber-700'
                             }`}
                           >

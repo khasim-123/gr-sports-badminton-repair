@@ -103,7 +103,7 @@ const PhotoTile: React.FC<{
         {broken ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-slate-400 p-2 text-center">
             <ImageOff className="w-6 h-6" />
-            <span className="text-[10px] font-semibold">Can't load this photo</span>
+            <span className="text-xs font-semibold">Can't load this photo</span>
           </div>
         ) : (
           <img
@@ -115,7 +115,7 @@ const PhotoTile: React.FC<{
           />
         )}
         <span
-          className={`absolute top-1.5 left-1.5 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded ${
+          className={`absolute top-1.5 left-1.5 text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${
             isMain ? 'bg-brandYellow text-sportsBlue' : 'bg-white/90 border border-line text-slate-600'
           }`}
         >
@@ -215,7 +215,7 @@ const PhotosEditor: React.FC<{
     <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
         <span className="block text-xs font-semibold text-slate-700">Photos</span>
-        <span className={`text-[11px] font-bold ${full ? 'text-amber-700' : 'text-slate-500'}`}>
+        <span className={`text-xs font-bold ${full ? 'text-amber-700' : 'text-slate-500'}`}>
           {images.length}/{MAX_RACKET_PHOTOS}
         </span>
       </div>
@@ -234,7 +234,7 @@ const PhotosEditor: React.FC<{
           ))}
         </ul>
       ) : (
-        <p className="text-[11px] text-slate-500">
+        <p className="text-xs text-slate-500">
           No photos yet — the website shows a 🏸 placeholder until you add one.
         </p>
       )}
@@ -252,7 +252,7 @@ const PhotosEditor: React.FC<{
         />
       </div>
       {full && (
-        <p className="text-[11px] text-amber-700 font-medium">
+        <p className="text-xs text-amber-700 font-medium">
           Maximum of {MAX_RACKET_PHOTOS} photos reached — remove one to add another.
         </p>
       )}
@@ -590,7 +590,7 @@ const RacketThumb: React.FC<{ racket: Racket }> = ({ racket }) => {
         </span>
       )}
       {photos.length > 1 && (
-        <span className="absolute bottom-1 right-1 text-[9px] font-black bg-slate-900/75 text-white px-1 rounded">
+        <span className="absolute bottom-1 right-1 text-xs font-bold bg-slate-900/75 text-white px-1 rounded">
           {photos.length} photos
         </span>
       )}
@@ -613,41 +613,41 @@ const RacketRow: React.FC<{
         <RacketThumb racket={r} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded bg-paper text-sportsBlue border border-line">
+            <span className="text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-paper text-sportsBlue border border-line">
               {r.brand}
             </span>
             {r.tag && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 max-w-[12rem] truncate">
+              <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 max-w-[12rem] truncate">
                 {r.tag}
               </span>
             )}
             {r.isFeatured && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-brandYellow text-sportsBlue">
+              <span className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded bg-brandYellow text-sportsBlue">
                 <Star className="w-3 h-3" /> Featured
               </span>
             )}
             {r.isActive ? (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">
+              <span className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">
                 <Eye className="w-3 h-3" /> On website
               </span>
             ) : (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-600">
+              <span className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-600">
                 <EyeOff className="w-3 h-3" /> Hidden
               </span>
             )}
           </div>
           <p className="font-bold text-sm text-slate-900 mt-1 break-words">{r.name}</p>
-          {specs.length > 0 && <p className="text-[11px] text-slate-500 break-words">{specs.join(' · ')}</p>}
+          {specs.length > 0 && <p className="text-xs text-slate-500 break-words">{specs.join(' · ')}</p>}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
             {hasPrice(r) ? (
               <span className="text-xs font-bold text-slate-900">{formatPrice(r.price as number)}</span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-800">
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-800">
                 <IndianRupee className="w-3 h-3" /> No price — shows “Price on request”
               </span>
             )}
             {noPhoto && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border border-slate-300 bg-paper text-slate-600">
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded border border-slate-300 bg-paper text-slate-600">
                 <ImageOff className="w-3 h-3" /> No photo yet
               </span>
             )}
@@ -859,20 +859,20 @@ export const RacketsManager: React.FC = () => {
           {/* Summary */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div className={`${cardClass} p-3`}>
-              <p className="text-[11px] font-semibold text-slate-500">Rackets</p>
-              <p className="text-xl font-black text-slate-900">{rackets.length}</p>
+              <p className="text-xs font-semibold text-slate-500">Rackets</p>
+              <p className="text-xl font-bold text-slate-900">{rackets.length}</p>
             </div>
             <div className={`${cardClass} p-3`}>
-              <p className="text-[11px] font-semibold text-slate-500">Out of stock</p>
-              <p className={`text-xl font-black ${stats.out ? 'text-rose-600' : 'text-emerald-600'}`}>{stats.out}</p>
+              <p className="text-xs font-semibold text-slate-500">Out of stock</p>
+              <p className={`text-xl font-bold ${stats.out ? 'text-rose-600' : 'text-emerald-600'}`}>{stats.out}</p>
             </div>
             <div className={`${cardClass} p-3`}>
-              <p className="text-[11px] font-semibold text-slate-500">No price yet</p>
-              <p className={`text-xl font-black ${stats.noPrice ? 'text-amber-600' : 'text-emerald-600'}`}>{stats.noPrice}</p>
+              <p className="text-xs font-semibold text-slate-500">No price yet</p>
+              <p className={`text-xl font-bold ${stats.noPrice ? 'text-amber-600' : 'text-emerald-600'}`}>{stats.noPrice}</p>
             </div>
             <div className={`${cardClass} p-3`}>
-              <p className="text-[11px] font-semibold text-slate-500">No photo yet</p>
-              <p className={`text-xl font-black ${stats.noPhoto ? 'text-amber-600' : 'text-emerald-600'}`}>{stats.noPhoto}</p>
+              <p className="text-xs font-semibold text-slate-500">No photo yet</p>
+              <p className={`text-xl font-bold ${stats.noPhoto ? 'text-amber-600' : 'text-emerald-600'}`}>{stats.noPhoto}</p>
             </div>
           </div>
 

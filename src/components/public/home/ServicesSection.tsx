@@ -17,7 +17,7 @@ interface ServicesProps {
   onBook: (service: 'stringing' | 'repair') => void;
 }
 
-const priceRow = 'grid grid-cols-[1fr_auto] gap-x-6 py-5';
+const priceRow = 'grid grid-cols-[1fr_auto] items-baseline gap-x-6 py-5';
 
 export const StringingSection: React.FC<ServicesProps> = ({ gettingServices, onBook }) => {
   const SHOP = useShop();
@@ -115,10 +115,10 @@ export const RepairsSection: React.FC<ServicesProps> = ({ repairCategories, onBo
               {categories.map((c) => (
                 <li key={c.id} className={priceRow}>
                   <h3 className="font-display text-[24px] font-semibold leading-tight text-ink">{c.name}</h3>
-                  <p className="text-right leading-tight">
+                  <p className="whitespace-nowrap text-right leading-tight">
                     {c.basePrice > 0 ? (
                       <>
-                        <span className="block text-[13px] text-ink-muted">from</span>
+                        <span className="mr-1.5 text-[14px] text-ink-muted">from</span>
                         <span className="font-display text-[26px] font-semibold text-ink tabular-nums">{formatInr(c.basePrice)}</span>
                       </>
                     ) : (

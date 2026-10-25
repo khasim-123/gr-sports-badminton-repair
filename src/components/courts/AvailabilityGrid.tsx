@@ -74,7 +74,11 @@ export const AvailabilityGrid: React.FC<Props> = ({ availability, selection, onT
       {/* Wide screens: table */}
       <div className="hidden md:block">
         {passedNote && <div className="mb-3">{passedNote}</div>}
-        <table className="w-full table-fixed border-separate border-spacing-x-2 border-spacing-y-1.5 -mx-2">
+        {/* Columns stay a readable width when there are only a few courts. */}
+        <table
+          className="w-full table-fixed border-separate border-spacing-x-2 border-spacing-y-1.5 -mx-2"
+          style={{ maxWidth: 166 + courts.length * 300 }}
+        >
           <caption className="sr-only">Court times. Free times can be chosen.</caption>
           <thead>
             <tr>
@@ -215,8 +219,13 @@ const SlotButton: React.FC<{ court: CourtAvailability; cell: AvailabilityCell; s
     >
       {free || selected ? (
         <>
-          <span className="font-semibold tabular-nums">{formatPrice(cell.price)}</span>
-          {selected ? <Check className="h-4 w-4" aria-hidden="true" /> : <span className="text-[12px] text-ink-muted">Free</span>}
+          <span className={cx('text-[13px]', selected ? 'font-semibold text-white' : 'font-medium text-ink-soft')}>
+            {selected ? 'Your choice' : 'Free'}
+          </span>
+          <span className="inline-flex items-center gap-1.5 font-semibold tabular-nums">
+            {selected && <Check className="h-4 w-4" aria-hidden="true" />}
+            {formatPrice(cell.price)}
+          </span>
         </>
       ) : (
         <span className="truncate">{cell.state === 'past' ? 'Passed' : 'Not available'}</span>

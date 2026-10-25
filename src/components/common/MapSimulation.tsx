@@ -47,11 +47,11 @@ export const MapSimulation: React.FC<MapSimulationProps> = ({ distanceKm, source
         <div className="flex items-center gap-2">
           {outsideArea ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-              <AlertCircle className="w-3.5 h-3.5" /> Outside our {maxServiceKm} KM pickup area
+              <AlertCircle className="w-3.5 h-3.5" /> Outside our {maxServiceKm} km pickup area
             </span>
           ) : calculation.isFree ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Free within {distanceConfig.freeRadiusKm} KM
+              <CheckCircle2 className="w-3.5 h-3.5" /> Free within {distanceConfig.freeRadiusKm} km
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
@@ -100,7 +100,7 @@ export const MapSimulation: React.FC<MapSimulationProps> = ({ distanceKm, source
             fontWeight="600"
             letterSpacing="0.05em"
           >
-            {distanceConfig.freeRadiusKm} KM FREE PICKUP ZONE
+            Free pickup within {distanceConfig.freeRadiusKm} km
           </text>
 
           {/* Route Connection Path */}
@@ -156,20 +156,20 @@ export const MapSimulation: React.FC<MapSimulationProps> = ({ distanceKm, source
             fontSize="10"
             fontWeight="bold"
           >
-            You ({distanceKm} KM)
+            You ({distanceKm} km)
           </text>
         </svg>
 
-        <span className="absolute bottom-2 right-3 text-[10px] text-slate-500">Diagram, not to scale</span>
+        <span className="absolute bottom-2 right-3 text-xs text-slate-500">Diagram, not to scale</span>
 
         {/* Floating Distance Badge on map */}
         <div className="absolute top-3 left-3 bg-ink/85 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-700/80 text-xs">
-          <p className="text-[11px] text-slate-400">About</p>
+          <p className="text-xs text-slate-400">About</p>
           <p className="text-base font-extrabold text-white mt-0.5 flex items-center gap-1.5">
             <Navigation className="w-4 h-4 text-emerald-400 rotate-45" />
-            {distanceKm} KM
+            {distanceKm} km
           </p>
-          {sourceLabel && <p className="text-[10px] text-slate-400 mt-0.5">{sourceLabel}</p>}
+          {sourceLabel && <p className="text-xs text-slate-400 mt-0.5">{sourceLabel}</p>}
         </div>
       </div>
 
@@ -179,11 +179,11 @@ export const MapSimulation: React.FC<MapSimulationProps> = ({ distanceKm, source
         <div className="bg-ink/60 p-3.5 rounded-xl border border-white/10 text-xs space-y-2">
           <div className="flex justify-between items-center">
             <span className="text-slate-400">Distance:</span>
-            <span className="font-semibold text-white">{distanceKm} KM</span>
+            <span className="font-semibold text-white">{distanceKm} km</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-slate-400">Free radius:</span>
-            <span className="font-semibold text-emerald-400">{distanceConfig.freeRadiusKm} KM</span>
+            <span className="font-semibold text-emerald-400">{distanceConfig.freeRadiusKm} km</span>
           </div>
 
           {calculation.isFree ? (
@@ -196,13 +196,13 @@ export const MapSimulation: React.FC<MapSimulationProps> = ({ distanceKm, source
               <div className="flex justify-between items-center">
                 <span className="text-slate-400">Beyond the free radius:</span>
                 <span className="font-semibold text-amber-400">
-                  {calculation.chargeableKm} KM
+                  {calculation.chargeableKm} km
                 </span>
               </div>
               {!isSlab && (
-                <div className="flex justify-between items-center text-slate-300 text-[11px]">
+                <div className="flex justify-between items-center text-slate-300 text-xs">
                   <span>Rate beyond the free radius:</span>
-                  <span>{formatINR(distanceConfig.perKmRateBeyondFree)} / KM</span>
+                  <span>{formatINR(distanceConfig.perKmRateBeyondFree)} / km</span>
                 </div>
               )}
               <div className="pt-2 border-t border-white/10 flex justify-between items-center gap-3 text-amber-300 font-bold">
@@ -210,7 +210,7 @@ export const MapSimulation: React.FC<MapSimulationProps> = ({ distanceKm, source
                 <span className="text-sm text-right">
                   {isSlab
                     ? formatINR(calculation.charge)
-                    : `${calculation.chargeableKm} KM × ${formatINR(distanceConfig.perKmRateBeyondFree)} = ${formatINR(calculation.charge)}`}
+                    : `${calculation.chargeableKm} km × ${formatINR(distanceConfig.perKmRateBeyondFree)} = ${formatINR(calculation.charge)}`}
                 </span>
               </div>
             </>

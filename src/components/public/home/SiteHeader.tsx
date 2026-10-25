@@ -109,8 +109,14 @@ const NavGroup: React.FC<{
           className={cx('absolute inset-x-3 bottom-1.5 h-[2px] rounded-full bg-accent transition-opacity', current ? 'opacity-100' : 'opacity-0')}
         />
       </button>
-      {open && (
-        <div id={panelId} className="absolute left-0 top-full z-50 pt-2">
+      {/* Kept mounted so it can fade in; `invisible` takes the closed panel out of the tab order. */}
+      <div
+        id={panelId}
+        className={cx(
+          'absolute left-0 top-full z-50 pt-2 transition-[opacity,transform,visibility] duration-150 ease-out motion-reduce:transition-none',
+          open ? 'visible translate-y-0 opacity-100' : 'pointer-events-none invisible -translate-y-1 opacity-0',
+        )}
+      >
           <ul className="w-72 rounded-xl border border-line bg-white p-1.5 shadow-lg shadow-ink/10">
             {links.map((l) => (
               <li key={l.key}>
@@ -123,18 +129,18 @@ const NavGroup: React.FC<{
                   }}
                   aria-current={l.current ? 'true' : undefined}
                   className={cx(
-                    'block rounded-lg px-3 py-2.5 transition-colors hover:bg-paper focus-visible:bg-paper focus-visible:outline-none',
+                    'block rounded-lg px-3 py-2.5 transition-colors hover:bg-paper focus-visible:bg-paper',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sportsBlue',
                     l.current && 'bg-paper',
                   )}
                 >
                   <span className="block text-[15px] font-semibold text-ink">{l.label}</span>
-                  <span className="block text-[13px] text-ink-muted">{l.note}</span>
+                  <span className="mt-0.5 block text-[13px] leading-snug text-ink-muted">{l.note}</span>
                 </a>
               </li>
             ))}
           </ul>
-        </div>
-      )}
+      </div>
     </li>
   );
 };

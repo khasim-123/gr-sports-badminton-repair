@@ -7,6 +7,7 @@
  * A notification for a court booking puts its id ("CRT-…") in AppContext.selectedRequestId;
  * AdminPortal switches to this page and the panel opens the booking.
  */
+import { PageHeader } from './PageHeader';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { CalendarDays, LandPlot, List, RefreshCw, Settings2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -125,12 +126,7 @@ export const CourtsPanel: React.FC<{
   const openBooking = (b: CourtBooking) => setDetail({ id: b.id, fallback: b });
 
   const pageHeader = (
-    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-      <div className="min-w-0">
-        <h2 className="font-display tracking-[0.01em] text-3xl sm:text-4xl font-bold text-slate-900">Courts</h2>
-        <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Badminton court bookings — customers book a slot online and pay at the venue (cash / UPI).</p>
-      </div>
-    </div>
+    <PageHeader title="Courts" subtitle="Badminton court bookings. Customers book a slot online and pay at the venue — cash or UPI." />
   );
 
   if (!loaded) {
@@ -180,7 +176,7 @@ export const CourtsPanel: React.FC<{
     <div className="space-y-4 animate-in fade-in min-w-0">
       {pageHeader}
 
-      <div role="tablist" aria-label="Courts sections" className="flex gap-1 p-1 bg-white rounded-2xl border border-line shadow-2xs overflow-x-auto max-w-full no-scrollbar">
+      <div role="tablist" aria-label="Courts sections" className="flex gap-1 border-b border-line overflow-x-auto max-w-full no-scrollbar">
         {TABS.map((t) => {
           const Icon = t.icon;
           const on = t.id === tab;
@@ -193,11 +189,11 @@ export const CourtsPanel: React.FC<{
               aria-selected={on}
               aria-controls={`courts-panel-${t.id}`}
               onClick={() => setTab(t.id)}
-              className={`shrink-0 flex-1 sm:flex-none inline-flex items-center justify-center gap-2 min-h-[42px] px-4 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
-                on ? 'bg-ink text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              className={`shrink-0 flex-1 sm:flex-none -mb-px inline-flex items-center justify-center gap-2 min-h-[44px] px-3 sm:px-4 border-b-2 text-sm font-semibold whitespace-nowrap transition-colors duration-150 ${
+                on ? 'border-ink text-ink' : 'border-transparent text-slate-500 hover:text-ink hover:border-line'
               }`}
             >
-              <Icon className={`w-4 h-4 ${on ? 'text-accent' : ''}`} />
+              <Icon className={`w-4 h-4 ${on ? 'text-ink' : 'text-slate-400'}`} />
               {t.label}
             </button>
           );

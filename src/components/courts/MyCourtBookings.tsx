@@ -243,7 +243,7 @@ const BookingDetail: React.FC<{ id: string; known: CourtBooking | null; onBack: 
 
   if (!booking) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-4">
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-4">
         {back}
         {loadError ? (
           <div className={cx(card, 'p-5 text-[15px] text-ink-soft')}>Booking {id} couldn't be loaded. Please try again later.</div>
@@ -256,7 +256,7 @@ const BookingDetail: React.FC<{ id: string; known: CourtBooking | null; onBack: 
 
   const upcoming = isUpcoming(booking);
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-5">
+    <div className="max-w-4xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-5">
       {back}
       <section className={cx(card, 'p-4 sm:p-6')}>
         <div className="flex flex-wrap items-center gap-2">

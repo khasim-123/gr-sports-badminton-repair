@@ -55,7 +55,7 @@ export const MobileInput: React.FC<MobileInputProps> = ({
         name={name}
         type="tel"
         inputMode="numeric"
-        autoComplete="tel"
+        autoComplete="tel-national"
         value={value}
         onChange={(e) => onChange(sanitizeMobileInput(e.target.value))}
         placeholder={placeholder}

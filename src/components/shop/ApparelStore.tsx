@@ -157,7 +157,8 @@ export const ApparelStore: React.FC = () => {
           <nav aria-label="T-shirt shop" className="hidden md:block">
             <ul className="flex items-center gap-0.5 text-[15px] font-medium">
               {[
-                hasProducts ? { id: 'products', label: 'Shop' } : null,
+                // Shown while the list loads too, so the menu doesn't shift when it arrives.
+                hasProducts || state.status === 'loading' ? { id: 'products', label: 'Shop' } : null,
                 { id: 'team', label: 'Team orders' },
                 { id: 'delivery', label: 'Delivery & payment' },
               ]
@@ -220,7 +221,7 @@ export const ApparelStore: React.FC = () => {
                 and colour here; we deliver, or you collect from the shop.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                {hasProducts ? (
+                {hasProducts || state.status === 'loading' ? (
                   <a
                     href="#products"
                     onClick={(e) => {
@@ -238,7 +239,7 @@ export const ApparelStore: React.FC = () => {
                     e.preventDefault();
                     scrollToSection('team', { focus: true });
                   }}
-                  className={cx(btn.base, hasProducts ? btn.secondary : btn.primary)}
+                  className={cx(btn.base, hasProducts || state.status === 'loading' ? btn.secondary : btn.primary)}
                 >
                   Team T-shirts
                 </a>
@@ -280,9 +281,10 @@ export const ApparelStore: React.FC = () => {
                 <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4" aria-hidden="true">
                   {[0, 1, 2, 3].map((i) => (
                     <div key={i}>
-                      <div className="aspect-[4/5] animate-pulse rounded-xl bg-paper" />
-                      <div className="mt-3 h-4 w-3/4 animate-pulse rounded bg-paper" />
-                      <div className="mt-2 h-4 w-1/3 animate-pulse rounded bg-paper" />
+                      <div className="aspect-[4/5] animate-pulse rounded-xl bg-paper-deep motion-reduce:animate-none" />
+                      <div className="mt-3 h-4 w-3/4 animate-pulse rounded bg-paper-deep motion-reduce:animate-none" />
+                      <div className="mt-2 h-4 w-1/3 animate-pulse rounded bg-paper-deep motion-reduce:animate-none" />
+                      <div className="mt-3 h-3.5 w-1/2 animate-pulse rounded bg-paper-deep motion-reduce:animate-none" />
                     </div>
                   ))}
                 </div>

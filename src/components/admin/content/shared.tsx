@@ -88,11 +88,11 @@ export const Field: React.FC<FieldProps> = ({ label, htmlFor, hint, error, requi
     </label>
     {children}
     {error ? (
-      <p className="text-[11px] text-rose-600 mt-1 font-medium" role="alert">
+      <p className="text-xs text-rose-600 mt-1 font-medium" role="alert">
         {error}
       </p>
     ) : hint ? (
-      <p className="text-[11px] text-slate-500 mt-1 leading-snug">{hint}</p>
+      <p className="text-xs text-slate-500 mt-1 leading-snug">{hint}</p>
     ) : null}
   </div>
 );
@@ -128,7 +128,7 @@ export const Switch: React.FC<SwitchProps> = ({
         <span id={`${id}-label`} className="block text-xs font-semibold text-slate-700">
           {label}
         </span>
-        {description && <span className="block text-[11px] text-slate-500 leading-snug">{description}</span>}
+        {description && <span className="block text-xs text-slate-500 leading-snug">{description}</span>}
       </div>
       <button
         type="button"
@@ -140,7 +140,7 @@ export const Switch: React.FC<SwitchProps> = ({
         className="shrink-0 inline-flex items-center gap-2 min-h-[40px] px-1 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 disabled:opacity-50"
       >
         {(onLabel || offLabel) && (
-          <span className={`text-[11px] font-bold ${checked ? 'text-emerald-700' : 'text-slate-500'}`}>
+          <span className={`text-xs font-bold ${checked ? 'text-emerald-700' : 'text-slate-500'}`}>
             {checked ? onLabel : offLabel}
           </span>
         )}
@@ -379,7 +379,7 @@ export function Pills<T extends string>({
             {opt.label}
             {opt.count !== undefined && (
               <span
-                className={`text-[10px] min-w-[20px] px-1.5 py-0.5 rounded-full font-bold ${
+                className={`text-xs min-w-[20px] px-1.5 py-0.5 rounded-full font-bold ${
                   active
                     ? 'bg-brandYellow text-sportsBlue'
                     : opt.highlight && opt.count > 0
@@ -405,7 +405,7 @@ export const SectionHeader: React.FC<{ title: string; description: string; actio
 }) => (
   <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
     <div className="min-w-0">
-      <h3 className="text-lg font-black text-slate-900">{title}</h3>
+      <h3 className="text-lg font-bold text-slate-900">{title}</h3>
       <p className="text-xs text-slate-500 mt-0.5 max-w-2xl">{description}</p>
     </div>
     {actions && <div className="flex flex-wrap gap-2 shrink-0">{actions}</div>}

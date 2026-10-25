@@ -8,6 +8,9 @@ import {
   Bell,
   User,
   KeyRound,
+  ChevronDown,
+  MapPin,
+  UserRound,
 } from 'lucide-react';
 import { formatMobile } from '../../utils/phone';
 import { useShopSettings } from '../../hooks/useShopSettings';
@@ -19,15 +22,35 @@ import { ChangePasswordModal } from './ChangePasswordModal';
 import { CartButton } from '../shop/CartButton';
 import { useStaffJobs } from '../employee/useStaffJobs';
 
+/** Main customer sections. Profile and saved addresses live in the account menu (right). */
 const CUSTOMER_TABS = [
   { id: 'dashboard', label: 'Dashboard' },
-  { id: 'wizard', label: 'Book Service' },
-  { id: 'requests', label: 'My Requests' },
-  { id: 'orders', label: 'Orders' },
-  { id: 'courts', label: 'Courts' },
-  { id: 'addresses', label: 'Addresses' },
-  { id: 'profile', label: 'Profile' },
+  { id: 'wizard', label: 'Book a service' },
+  { id: 'requests', label: 'My requests' },
+  { id: 'orders', label: 'My orders' },
+  { id: 'courts', label: 'My courts' },
 ];
+
+/** Closes a popover on a click/tap outside `ref` or on Esc. */
+const useDismiss = (open: boolean, ref: React.RefObject<HTMLElement>, close: () => void) => {
+  React.useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: MouseEvent | TouchEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) close();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('touchstart', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('touchstart', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open, ref, close]);
+};
 
 export const Navbar: React.FC = () => {
   const {
@@ -53,6 +76,18 @@ export const Navbar: React.FC = () => {
     setSelectedRequestId,
   } = useApp();
   const shop = useShopSettings();
+
+  // Customer account menu (profile, addresses, log out).
+  const [accountOpen, setAccountOpen] = React.useState(false);
+  const accountRef = React.useRef<HTMLDivElement>(null);
+  const closeAccount = React.useCallback(() => setAccountOpen(false), []);
+  useDismiss(accountOpen, accountRef, closeAccount);
+  const firstName = (userName || '').trim().split(/\s+/)[0];
+  const openCustomerSection = (id: string) => {
+    setAccountOpen(false);
+    setActiveView('customer_portal');
+    setCustomerSubView(id);
+  };
 
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const bellRef = React.useRef<HTMLDivElement>(null);
@@ -186,15 +221,15 @@ export const Navbar: React.FC = () => {
                         setCustomerSubView(tab.id);
                       }}
                       aria-current={active ? 'page' : undefined}
-                      className={`px-3 min-h-[40px] rounded-xl transition-colors flex items-center gap-1 whitespace-nowrap shrink-0 ${
+                      className={`px-3.5 min-h-[40px] rounded-xl transition-colors duration-150 flex items-center gap-1.5 whitespace-nowrap shrink-0 text-sm ${
                         active
-                          ? 'bg-ink text-white font-bold'
+                          ? 'bg-ink text-white font-semibold'
                           : tab.id === 'wizard'
-                          ? 'text-ink hover:bg-paper font-bold'
-                          : 'text-slate-600 hover:bg-slate-100'
+                          ? 'text-ink hover:bg-paper font-semibold'
+                          : 'text-slate-600 hover:text-ink hover:bg-paper font-medium'
                       }`}
                     >
-                      {tab.id === 'wizard' && <PlusCircle className="w-3.5 h-3.5" />}
+                      {tab.id === 'wizard' && <PlusCircle className="w-4 h-4" aria-hidden="true" />}
                       {tab.label}
                     </button>
                   );
@@ -239,9 +274,9 @@ export const Navbar: React.FC = () => {
                       setActiveView('admin_portal');
                       setAdminSubView('dashboard');
                     }}
-                    className={`px-3 py-1.5 rounded-xl transition-colors ${
+                    className={`px-3 min-h-[40px] rounded-xl transition-colors ${
                       activeView === 'admin_portal' && adminSubView === 'dashboard'
-                        ? 'bg-purple-600 text-white font-bold'
+                        ? 'bg-ink text-white font-semibold'
                         : 'text-slate-600 hover:bg-slate-100'
                     }`}
                   >
@@ -252,9 +287,9 @@ export const Navbar: React.FC = () => {
                       setActiveView('admin_portal');
                       setAdminSubView('requests');
                     }}
-                    className={`px-3 py-1.5 rounded-xl transition-colors ${
+                    className={`px-3 min-h-[40px] rounded-xl transition-colors ${
                       activeView === 'admin_portal' && adminSubView === 'requests'
-                        ? 'bg-purple-600 text-white font-bold'
+                        ? 'bg-ink text-white font-semibold'
                         : 'text-slate-600 hover:bg-slate-100'
                     }`}
                   >
@@ -265,9 +300,9 @@ export const Navbar: React.FC = () => {
                       setActiveView('admin_portal');
                       setAdminSubView('sla_monitor');
                     }}
-                    className={`px-3 py-1.5 rounded-xl transition-colors ${
+                    className={`px-3 min-h-[40px] rounded-xl transition-colors ${
                       activeView === 'admin_portal' && adminSubView === 'sla_monitor'
-                        ? 'bg-purple-600 text-white font-bold'
+                        ? 'bg-ink text-white font-semibold'
                         : 'text-slate-600 hover:bg-slate-100'
                     }`}
                   >
@@ -278,12 +313,12 @@ export const Navbar: React.FC = () => {
                       setActiveView('admin_portal');
                       setAdminSubView('distance');
                     }}
-                    className={`px-3 py-1.5 rounded-xl transition-colors ${
+                    className={`px-3 min-h-[40px] rounded-xl transition-colors ${
                       activeView === 'admin_portal' &&
                       (adminSubView === 'distance' ||
                         adminSubView === 'getting_config' ||
                         adminSubView === 'repair_config')
-                        ? 'bg-purple-600 text-white font-bold'
+                        ? 'bg-ink text-white font-semibold'
                         : 'text-slate-600 hover:bg-slate-100'
                     }`}
                   >
@@ -294,9 +329,9 @@ export const Navbar: React.FC = () => {
                       setActiveView('admin_portal');
                       setAdminSubView('team');
                     }}
-                    className={`px-3 py-1.5 rounded-xl transition-colors ${
+                    className={`px-3 min-h-[40px] rounded-xl transition-colors ${
                       activeView === 'admin_portal' && adminSubView === 'team'
-                        ? 'bg-purple-600 text-white font-bold'
+                        ? 'bg-ink text-white font-semibold'
                         : 'text-slate-600 hover:bg-slate-100'
                     }`}
                   >
@@ -320,21 +355,20 @@ export const Navbar: React.FC = () => {
                     setActiveView('landing');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="px-3 min-h-[40px] rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-800 font-semibold text-xs flex items-center gap-1 transition-colors"
-                  title="Back to Home"
+                  className="px-3 min-h-[44px] min-w-[44px] justify-center rounded-xl border border-line hover:bg-paper text-slate-800 font-semibold text-sm flex items-center gap-1.5 transition-colors duration-150"
+                  aria-label="Back to home"
                 >
-                  <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
+                  <ArrowLeft className="w-4 h-4 text-slate-500" aria-hidden="true" />
                   <span className="hidden sm:inline">Home</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={() => openAuthModal('CUSTOMER')}
-                  className="flex items-center gap-1.5 px-2.5 sm:px-3 min-h-[40px] rounded-lg border border-line hover:border-slate-300 text-slate-800 hover:bg-slate-100 transition-colors font-semibold text-xs sm:text-sm"
-                  title="Login / Register"
+                  className="flex items-center gap-1.5 px-3 min-h-[44px] rounded-xl border border-line hover:border-slate-300 text-slate-800 hover:bg-paper transition-colors duration-150 font-semibold text-sm"
                 >
-                  <User className="w-4 h-4 text-slate-700" />
-                  <span className="whitespace-nowrap">Login / Register</span>
+                  <User className="w-4 h-4 text-slate-700" aria-hidden="true" />
+                  <span className="whitespace-nowrap">Sign in</span>
                 </button>
               )}
             </div>
@@ -353,9 +387,9 @@ export const Navbar: React.FC = () => {
                   aria-label={roleUnreadCount > 0 ? `Notifications (${roleUnreadCount} unread)` : 'Notifications'}
                   aria-expanded={notificationsOpen}
                 >
-                  <Bell className="w-4 h-4" />
+                  <Bell className="w-[18px] h-[18px]" aria-hidden="true" />
                   {roleUnreadCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center">
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-rose-600 text-white text-[11px] font-bold tabular-nums flex items-center justify-center ring-2 ring-white" aria-hidden="true">
                       {roleUnreadCount > 9 ? '9+' : roleUnreadCount}
                     </span>
                   )}
@@ -369,9 +403,9 @@ export const Navbar: React.FC = () => {
                     <div className="flex items-center justify-between pb-2 border-b border-line/70">
                       <div className="flex items-center gap-2">
                         <Bell className="w-4 h-4 text-ink" />
-                        <h4 className="text-xs font-bold text-slate-900">Notifications</h4>
+                        <h4 className="text-sm font-semibold text-slate-900">Notifications</h4>
                         {roleUnreadCount > 0 && (
-                          <span className="text-[10px] font-bold bg-paper-deep text-ink px-2 py-0.2 rounded-full">
+                          <span className="text-xs font-semibold bg-paper-deep text-ink px-2 py-0.5 rounded-full">
                             {roleUnreadCount} new
                           </span>
                         )}
@@ -380,7 +414,7 @@ export const Navbar: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => markAllNotificationsRead()}
-                          className="text-[11px] text-ink hover:underline font-semibold min-h-[32px] px-1"
+                          className="text-xs text-ink hover:underline font-semibold min-h-[36px] px-1.5 rounded-lg"
                         >
                           Mark all as read
                         </button>
@@ -388,14 +422,22 @@ export const Navbar: React.FC = () => {
                     </div>
 
                     {roleNotifications.length === 0 ? (
-                      <p className="text-xs text-slate-500 py-6 text-center">
-                        No new notifications right now.
+                      <p className="text-sm text-slate-500 py-6 text-center">
+                        You're all caught up.
                       </p>
                     ) : (
                       <div className="max-h-[60vh] sm:max-h-72 overflow-y-auto space-y-2 pr-1">
                         {roleNotifications.map((notif) => (
                           <div
                             key={notif.id}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                (e.currentTarget as HTMLElement).click();
+                              }
+                            }}
                             onClick={() => {
                               markNotificationRead(notif.id);
                               if (isOrderId(notif.requestId) && canOpenOrder) {
@@ -409,26 +451,27 @@ export const Navbar: React.FC = () => {
                                 setNotificationsOpen(false);
                               }
                             }}
-                            className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${
+                            className={`p-3 rounded-xl border text-[13px] cursor-pointer transition-colors duration-150 ${
                               !notif.isRead
-                                ? 'bg-paper border-line'
-                                : 'bg-paper/50 border-line/70 hover:bg-slate-100'
+                                ? 'bg-paper border-line hover:border-slate-300'
+                                : 'bg-white border-line/70 hover:bg-paper'
                             }`}
                           >
                             <div className="flex justify-between items-start gap-2">
-                              <p className={`font-bold ${!notif.isRead ? 'text-ink' : 'text-slate-800'}`}>
+                              <p className={`flex items-start gap-1.5 ${!notif.isRead ? 'font-semibold text-ink' : 'font-medium text-slate-700'}`}>
+                                {!notif.isRead && <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" aria-label="Unread" />}
                                 {tidyRupees(notif.title)}
                               </p>
-                              <span className="text-[10px] text-slate-400 shrink-0 font-mono">
+                              <span className="text-xs text-slate-500 shrink-0 tabular-nums">
                                 {notif.timestamp}
                               </span>
                             </div>
-                            <p className="text-slate-600 mt-1 text-[11px] leading-relaxed">
+                            <p className="text-slate-600 mt-1 text-xs leading-relaxed">
                               {tidyRupees(notif.message.replace(/\+91\d{10}\b/g, (m) => formatMobile(m)))}
                             </p>
                             {notif.requestId && (requests.some((r) => r.id === notif.requestId) || canOpenLinked(notif.requestId)) && (
-                              <span className="inline-block mt-1 text-[10px] font-mono font-bold text-ink bg-white px-1.5 py-0.2 rounded border border-line">
-                                View {notif.requestId} →
+                              <span className="inline-block mt-1.5 text-xs font-semibold text-ink underline underline-offset-2">
+                                Open {notif.requestId}
                               </span>
                             )}
                           </div>
@@ -439,23 +482,89 @@ export const Navbar: React.FC = () => {
                 )}
               </div>
 
-              {/* User Profile Pill */}
-              <div
-                className={`hidden ${
-                  currentRole === 'CUSTOMER' ? 'xl:flex' : 'sm:flex'
-                } items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-line text-xs`}
-              >
-                <div className={`w-2 h-2 rounded-full ${
-                  currentRole === 'CUSTOMER' ? 'bg-ink' : currentRole === 'EMPLOYEE' ? 'bg-emerald-600' : 'bg-purple-600'
-                }`} />
-                <div className="text-left">
-                  <p className="font-bold text-slate-900 leading-tight">{userName || formatMobile(userMobile) || 'Signed in'}</p>
-                  <p className="text-[10px] text-slate-500 leading-tight whitespace-nowrap">
-                    {currentRole === 'CUSTOMER' ? 'Player' : currentRole === 'EMPLOYEE' ? 'Staff' : 'Admin'}
-                    {userName && userMobile ? ` • ${formatMobile(userMobile)}` : ''}
-                  </p>
+              {/* Customers: one account menu (profile, addresses, log out) keeps the header uncluttered. */}
+              {currentRole === 'CUSTOMER' && (
+                <div className="relative" ref={accountRef}>
+                  <button
+                    type="button"
+                    onClick={() => setAccountOpen((o) => !o)}
+                    aria-haspopup="menu"
+                    aria-expanded={accountOpen}
+                    aria-label={`Your account${userName ? ` (${userName})` : ''}`}
+                    className={`flex items-center gap-2 min-h-[44px] min-w-[44px] justify-center xl:justify-start pl-1.5 pr-1.5 xl:pr-2.5 rounded-xl border transition-colors duration-150 ${
+                      accountOpen || (activeView === 'customer_portal' && ['profile', 'addresses'].includes(customerSubView))
+                        ? 'border-ink bg-paper'
+                        : 'border-line bg-white hover:bg-paper'
+                    }`}
+                  >
+                    <span className="w-8 h-8 rounded-lg bg-ink text-white font-display text-base font-semibold flex items-center justify-center" aria-hidden="true">
+                      {firstName ? firstName.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
+                    </span>
+                    <span className="hidden xl:block text-sm font-semibold text-slate-800 max-w-[8rem] truncate">{firstName || 'Account'}</span>
+                    <ChevronDown className={`hidden xl:block w-4 h-4 text-slate-500 transition-transform duration-150 ${accountOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                  </button>
+
+                  {accountOpen && (
+                    <div
+                      role="menu"
+                      aria-label="Your account"
+                      className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-line shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 origin-top-right"
+                    >
+                      <div className="px-3 py-2.5 border-b border-line/70 mb-1">
+                        <p className="text-sm font-semibold text-slate-900 truncate">{userName || 'Signed in'}</p>
+                        {userMobile && <p className="text-xs text-slate-500 tabular-nums mt-0.5">{formatMobile(userMobile)}</p>}
+                      </div>
+                      {[
+                        { id: 'profile', label: 'Profile', icon: <UserRound className="w-4 h-4" /> },
+                        { id: 'addresses', label: 'Pickup addresses', icon: <MapPin className="w-4 h-4" /> },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          role="menuitem"
+                          onClick={() => openCustomerSection(item.id)}
+                          className={`w-full flex items-center gap-2.5 px-3 min-h-[44px] rounded-xl text-sm text-left transition-colors duration-150 ${
+                            activeView === 'customer_portal' && customerSubView === item.id
+                              ? 'bg-paper text-ink font-semibold'
+                              : 'text-slate-700 hover:bg-paper'
+                          }`}
+                        >
+                          <span className="text-slate-500" aria-hidden="true">{item.icon}</span>
+                          {item.label}
+                        </button>
+                      ))}
+                      <div className="border-t border-line/70 mt-1 pt-1">
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setAccountOpen(false);
+                            logout();
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 min-h-[44px] rounded-xl text-sm text-left text-rose-700 hover:bg-rose-50 transition-colors duration-150"
+                        >
+                          <LogOut className="w-4 h-4" aria-hidden="true" />
+                          Log out
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* Staff / admin identity pill */}
+              {currentRole !== 'CUSTOMER' && (
+                <div className="hidden sm:flex items-center gap-2 px-3 min-h-[44px] rounded-xl bg-paper border border-line text-xs">
+                  <div className={`w-2 h-2 rounded-full ${currentRole === 'EMPLOYEE' ? 'bg-emerald-600' : 'bg-ink'}`} aria-hidden="true" />
+                  <div className="text-left">
+                    <p className="font-semibold text-slate-900 leading-tight">{userName || formatMobile(userMobile) || 'Signed in'}</p>
+                    <p className="text-xs text-slate-500 leading-tight whitespace-nowrap tabular-nums">
+                      {currentRole === 'EMPLOYEE' ? 'Staff' : 'Admin'}
+                      {userName && userMobile ? ` · ${formatMobile(userMobile)}` : ''}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {isStaffSession && (
                 <button
@@ -463,24 +572,26 @@ export const Navbar: React.FC = () => {
                   onClick={() => setPasswordOpen(true)}
                   title="Change your password"
                   aria-label="Change password"
-                  className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] px-2.5 sm:px-3 rounded-xl text-slate-700 bg-white hover:bg-slate-100 transition-colors border border-line text-xs font-bold"
+                  className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] px-2.5 sm:px-3 rounded-xl text-slate-700 bg-white hover:bg-paper transition-colors duration-150 border border-line text-[13px] font-semibold"
                 >
-                  <KeyRound className="w-4 h-4" />
+                  <KeyRound className="w-4 h-4" aria-hidden="true" />
                   <span className="hidden lg:inline">Password</span>
                 </button>
               )}
 
-              {/* Logout Button */}
+              {/* Logout Button (staff and admins; customers log out from the account menu) */}
+              {currentRole !== 'CUSTOMER' && (
               <button
                 type="button"
                 onClick={logout}
                 title={`Sign out (${[userName, formatMobile(userMobile)].filter(Boolean).join(', ')}). Returns to landing screen.`}
                 aria-label="Log out"
-                className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] px-2.5 sm:px-3 rounded-xl text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors border border-rose-200 text-xs font-bold"
+                className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] px-2.5 sm:px-3 rounded-xl text-rose-700 bg-white hover:bg-rose-50 transition-colors duration-150 border border-line text-[13px] font-semibold"
               >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Logout</span>
+                <LogOut className="w-4 h-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Log out</span>
               </button>
+              )}
             </div>
           )}
         </div>

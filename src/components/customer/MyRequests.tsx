@@ -46,8 +46,8 @@ export const MyRequests: React.FC = () => {
     <div className="max-w-5xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="font-display tracking-[0.01em] text-3xl font-bold text-slate-900">My Requests</h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+          <h1 className="font-display tracking-[0.01em] text-3xl sm:text-4xl font-bold text-slate-900">My requests</h1>
+          <p className="text-sm text-slate-600 mt-1">
             Every stringing and repair you have booked, newest first. Open one for its progress and charges.
           </p>
         </div>
@@ -64,7 +64,7 @@ export const MyRequests: React.FC = () => {
 
       {requests.length > 0 && (
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center justify-between">
-          <div className="flex overflow-x-auto no-scrollbar gap-1 bg-slate-100 p-1 rounded-2xl border border-line text-xs font-semibold" role="tablist">
+          <div className="flex overflow-x-auto no-scrollbar gap-1 bg-paper-deep/70 p-1 rounded-2xl border border-line text-[13px] font-medium" role="tablist" aria-label="Filter requests">
             {TABS.map((tab) => {
               const count = requests.filter((r) => matchesTab(r, tab)).length;
               const active = activeTab === tab;
@@ -76,11 +76,11 @@ export const MyRequests: React.FC = () => {
                   aria-selected={active}
                   onClick={() => setActiveTab(tab)}
                   className={`px-3 min-h-[40px] rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                    active ? 'bg-white text-ink shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                    active ? 'bg-white text-ink shadow-2xs font-semibold' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   {tab}
-                  <span className={`text-[10px] px-1.5 rounded-full ${active ? 'bg-paper-deep text-ink' : 'bg-slate-200 text-slate-600'}`}>
+                  <span className={`text-xs px-1.5 rounded-full tabular-nums ${active ? 'bg-paper-deep text-ink' : 'bg-white/70 text-slate-600'}`}>
                     {count}
                   </span>
                 </button>
@@ -149,29 +149,29 @@ export const MyRequests: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => openRequestDetail(req.id)}
-                  className={`w-full text-left bg-white rounded-2xl sm:rounded-2xl border p-4 sm:p-5 hover:border-ink/30 hover:shadow-lg transition-all group grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_12rem_auto] items-center gap-x-4 gap-y-3 ${
-                    approval ? 'border-amber-300 ring-1 ring-amber-200' : 'border-line'
+                  className={`w-full text-left bg-white rounded-2xl border p-4 sm:p-5 hover:border-slate-300 hover:bg-paper/40 transition-colors duration-150 group grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_12rem_auto] items-center gap-x-4 gap-y-3 ${
+                    approval ? 'border-amber-300 bg-amber-50/40' : 'border-line'
                   }`}
                 >
                   <ServiceTypeTile type={req.serviceType} />
 
                   <span className="min-w-0">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="font-mono text-xs font-bold text-ink bg-paper px-2 py-0.5 rounded-md border border-line">
+                      <span className="text-xs font-semibold text-ink bg-paper px-2 py-0.5 rounded-md border border-line tabular-nums">
                         {req.id}
                       </span>
-                      <span className="text-base font-extrabold text-slate-900 group-hover:text-ink">
+                      <span className="text-base font-semibold text-slate-900 group-hover:text-ink">
                         {req.batBrand} {req.batModel}
                       </span>
                     </span>
                     <span className="block text-xs font-semibold text-slate-700 mt-1">{serviceSummary(req, gettingServices)}</span>
-                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 mt-1">
+                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 mt-1">
                       <span className="inline-flex items-center gap-1">
                         <CalendarDays className="w-3.5 h-3.5" /> Booked {formatDate(req.createdAt)}
                       </span>
                       {req.pickupAddress?.area && (
                         <span className="inline-flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5" /> {req.pickupAddress.area} ({req.distanceKm} KM)
+                          <MapPin className="w-3.5 h-3.5" /> {req.pickupAddress.area} ({req.distanceKm} km)
                         </span>
                       )}
                     </span>
@@ -180,8 +180,8 @@ export const MyRequests: React.FC = () => {
                   <span className="col-span-2 sm:col-span-1 flex sm:flex-col items-center sm:items-end justify-between gap-1 border-t sm:border-t-0 border-line/70 pt-3 sm:pt-0">
                     <StatusBadge status={req.status} size="sm" />
                     <span className="text-right">
-                      <span className="block text-sm font-extrabold text-slate-900">{priceLabel(req)}</span>
-                      <span className="block text-[11px] text-slate-500">{paymentLabel(req)}</span>
+                      <span className="block text-sm font-semibold text-slate-900 tabular-nums">{priceLabel(req)}</span>
+                      <span className="block text-xs text-slate-500">{paymentLabel(req)}</span>
                     </span>
                   </span>
 

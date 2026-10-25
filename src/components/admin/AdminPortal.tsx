@@ -25,7 +25,6 @@ import {
   UserCheck,
   AlertTriangle,
   CheckCircle2,
-  Eye,
   ChevronRight,
   MapPin,
   Edit3,
@@ -62,6 +61,7 @@ import {
   downloadCsv,
 } from '../../utils/format';
 import { VisitorReports } from './reports/VisitorReports';
+import { PageHeader } from './PageHeader';
 import { employeeService } from '../../services/employeeService';
 import { useRequestPhotos } from '../../hooks/useRequestPhotos';
 import type { PaymentMethod } from '../../types';
@@ -199,8 +199,8 @@ const fromDistForm = (f: DistForm): { config?: DistancePricingConfig; error?: st
   if (!f.shopLocationName.trim()) return { error: 'Enter the workshop address.' };
   if (!Number.isFinite(lat) || lat < -90 || lat > 90) return { error: 'Latitude must be a number between -90 and 90.' };
   if (!Number.isFinite(lng) || lng < -180 || lng > 180) return { error: 'Longitude must be a number between -180 and 180.' };
-  if (!Number.isFinite(free) || free <= 0 || free > 100) return { error: 'Free radius must be between 0 and 100 KM.' };
-  if (!Number.isFinite(rate) || rate < 0) return { error: 'Rate per KM must be 0 or more.' };
+  if (!Number.isFinite(free) || free <= 0 || free > 100) return { error: 'Free radius must be between 0 and 100 km.' };
+  if (!Number.isFinite(rate) || rate < 0) return { error: 'Rate per km must be 0 or more.' };
   if (!Number.isFinite(max) || max <= free) return { error: 'Max serviceable radius must be larger than the free radius.' };
   const slabs: DistancePricingConfig['slabs'] = [{ minKm: 0, maxKm: free, price: 0 }];
   let prevMax = free;
@@ -208,13 +208,13 @@ const fromDistForm = (f: DistForm): { config?: DistancePricingConfig; error?: st
     const sMax = num(f.slabs[i].maxKm);
     const sPrice = num(f.slabs[i].price);
     if (!Number.isFinite(sMax) || sMax <= prevMax) {
-      return { error: `Slab ${i + 2}: "up to" KM must be more than ${prevMax} KM.` };
+      return { error: `Slab ${i + 2}: "up to" km must be more than ${prevMax} km.` };
     }
     if (!Number.isFinite(sPrice) || sPrice < 0) return { error: `Slab ${i + 2}: enter a price of ₹0 or more.` };
     slabs.push({ minKm: +(prevMax + 0.1).toFixed(1), maxKm: sMax, price: sPrice });
     prevMax = sMax;
   }
-  if (f.pricingMethod === 'SLAB' && slabs.length < 2) return { error: 'Add at least one paid slab, or use per-KM pricing.' };
+  if (f.pricingMethod === 'SLAB' && slabs.length < 2) return { error: 'Add at least one paid slab, or use per-km pricing.' };
   return {
     config: {
       shopLocationName: f.shopLocationName.trim(),
@@ -628,7 +628,7 @@ export const AdminPortal: React.FC = () => {
         'Racket',
         'Status',
         'Assigned staff',
-        'Distance (KM)',
+        'Distance (km)',
         'Pickup & delivery charge (INR)',
         'Total amount (INR)',
         'Payment',
@@ -720,50 +720,70 @@ export const AdminPortal: React.FC = () => {
 
   const setDist = (patch: Partial<DistForm>) => setDistForm((f) => ({ ...f, ...patch }));
 
-  const navItems: { id: string; label: string; icon: React.ElementType; badge?: number; badgeTitle?: string; alert?: boolean }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'requests', label: 'Service Requests', icon: FileSpreadsheet, badge: openRequests.length, badgeTitle: 'Open requests' },
+  type NavItem = {
+    id: string;
+    label: string;
+    icon: React.ElementType;
+    badge?: number;
+    badgeTitle?: string;
+    alert?: boolean;
+    /** Other views that keep this item highlighted (the three pricing pages share one item). */
+    also?: string[];
+  };
+  const navGroups: { label?: string; items: NavItem[] }[] = [
+    { items: [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }] },
     {
-      id: 'orders',
-      label: 'Orders',
-      icon: ShoppingBag,
-      badge: shopOrders.loaded && !shopOrders.unavailable && !(shopOrders.error && shopOrders.orders.length === 0) ? shopSummary.open : undefined,
-      badgeTitle: 'Open shop orders (not delivered, picked up or cancelled)',
+      label: 'Daily work',
+      items: [
+        { id: 'requests', label: 'Service requests', icon: FileSpreadsheet, badge: openRequests.length, badgeTitle: 'Open requests' },
+        {
+          id: 'orders',
+          label: 'Shop orders',
+          icon: ShoppingBag,
+          badge:
+            shopOrders.loaded && !shopOrders.unavailable && !(shopOrders.error && shopOrders.orders.length === 0)
+              ? shopSummary.open
+              : undefined,
+          badgeTitle: 'Open shop orders (not delivered, picked up or cancelled)',
+        },
+        {
+          id: 'courts',
+          label: 'Courts',
+          icon: LandPlot,
+          badge: courtsReady ? courtsSummary.remaining : undefined,
+          badgeTitle: "Today's court bookings still to play",
+        },
+        {
+          id: 'sla_monitor',
+          label: 'Repair deadlines',
+          icon: Clock,
+          badge: slaOverdue + slaDueSoon || undefined,
+          badgeTitle: 'Repairs overdue or due within 2 days',
+          alert: slaOverdue > 0,
+        },
+        { id: 'payments', label: 'Payments', icon: DollarSign, badge: unpaidRequests.length || undefined, badgeTitle: 'Unpaid requests' },
+      ],
     },
     {
-      id: 'courts',
-      label: 'Courts',
-      icon: LandPlot,
-      badge: courtsReady ? courtsSummary.remaining : undefined,
-      badgeTitle: "Today's court bookings still to play",
+      label: 'Records',
+      items: [
+        { id: 'customers', label: 'Customers', icon: Users },
+        { id: 'reports', label: 'Reports & activity', icon: BarChart3 },
+      ],
     },
-    { id: 'customers', label: 'Customers', icon: Users },
     {
-      id: 'sla_monitor',
-      label: 'Repair SLA Monitor',
-      icon: Clock,
-      badge: slaOverdue + slaDueSoon || undefined,
-      badgeTitle: 'Repairs overdue or due within 2 days',
-      alert: slaOverdue > 0,
+      label: 'Setup',
+      items: [
+        { id: 'getting_config', label: 'Prices & delivery', icon: Wrench, also: ['repair_config', 'distance'] },
+        { id: 'website_content', label: 'Website content', icon: LayoutTemplate },
+        { id: 'team', label: 'Staff & admins', icon: UserCheck, badge: activeEmployees.length, badgeTitle: 'Active staff accounts' },
+        { id: 'settings', label: 'Shop settings', icon: Settings },
+      ],
     },
-    { id: 'payments', label: 'Payments', icon: DollarSign, badge: unpaidRequests.length || undefined, badgeTitle: 'Unpaid requests' },
-    { id: 'distance', label: 'Delivery & Free Radius', icon: Compass },
-    { id: 'getting_config', label: 'Stringing Packages', icon: Wrench },
-    { id: 'repair_config', label: 'Repair Categories', icon: Wrench },
-    { id: 'reports', label: 'Reports & Activity', icon: BarChart3 },
-    { id: 'website_content', label: 'Website Content', icon: LayoutTemplate },
-    { id: 'team', label: 'Staff & Admins', icon: UserCheck, badge: activeEmployees.length, badgeTitle: 'Active staff accounts' },
-    { id: 'settings', label: 'Shop Settings', icon: Settings },
   ];
 
-  const pageHeader = (title: string, subtitle: React.ReactNode, actions?: React.ReactNode) => (
-    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-      <div className="min-w-0">
-        <h2 className="font-display tracking-[0.01em] text-3xl sm:text-4xl font-bold text-slate-900">{title}</h2>
-        <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{subtitle}</p>
-      </div>
-      {actions && <div className="flex flex-wrap gap-2 shrink-0 print:hidden">{actions}</div>}
-    </div>
+  const pageHeader = (title: string, subtitle: React.ReactNode, actions?: React.ReactNode, eyebrow?: React.ReactNode) => (
+    <PageHeader title={title} subtitle={subtitle} actions={actions} eyebrow={eyebrow} />
   );
 
   const emptyRow = (cols: number, text: string) => (
@@ -779,56 +799,128 @@ export const AdminPortal: React.FC = () => {
 
   const visibleActivity = auditLogs.filter((l) => showSignIns || !/login|sign[- ]?in|logout/i.test(l.action));
 
+  // Dashboard: today at a glance (all values computed from server data)
+  const ordersReady = shopOrders.loaded && !shopOrders.unavailable && !(shopOrders.error && shopOrders.orders.length === 0);
+  const newStageCount = stageCounts.find((s) => s.id === 'new')?.count ?? 0;
+  const courtsTodayCount = courtsToday.bookings.filter((b) => b.status !== 'Cancelled').length;
+  const toCollectTotal =
+    pendingCollection + (ordersReady ? shopSummary.unpaidTotal : 0) + (courtsReady ? courtsSummary.unpaidTotal : 0);
+  const toCollectParts = [
+    `Services ${formatINR(pendingCollection)}`,
+    ...(ordersReady ? [`Orders ${formatINR(shopSummary.unpaidTotal)}`] : []),
+    ...(courtsReady ? [`Courts today ${formatINR(courtsSummary.unpaidTotal)}`] : []),
+  ];
+  // Service requests created per day over the last 14 days (today last).
+  const trendDays = (() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const days = Array.from({ length: 14 }, (_, i) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() - (13 - i));
+      return { key: date.toDateString(), date, count: 0 };
+    });
+    const byKey = new Map(days.map((d) => [d.key, d]));
+    for (const r of requests) {
+      const created = parseDate(r.createdAt);
+      const day = created ? byKey.get(created.toDateString()) : undefined;
+      if (day) day.count += 1;
+    }
+    return days;
+  })();
+  const trendTotal = trendDays.reduce((acc, d) => acc + d.count, 0);
+  const trendMax = Math.max(1, ...trendDays.map((d) => d.count));
+  const linkBtnCls =
+    'inline-flex items-center gap-0.5 text-sm font-semibold text-ink hover:underline underline-offset-2 min-h-[40px] px-1 shrink-0';
+  const statTile = (t: {
+    label: string;
+    value: React.ReactNode;
+    detail: React.ReactNode;
+    onClick: () => void;
+    tone?: string;
+    wide?: boolean;
+  }) => (
+    <button
+      key={t.label}
+      type="button"
+      onClick={t.onClick}
+      className={`group flex flex-col text-left bg-white p-4 sm:p-5 rounded-2xl border border-line hover:border-ink/30 transition-colors duration-150 min-w-0 ${
+        t.wide ? 'col-span-2 lg:col-span-1' : ''
+      }`}
+    >
+      <span className="flex items-center justify-between gap-2 text-[13px] font-semibold text-slate-500">
+        <span className="truncate">{t.label}</span>
+        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-ink transition-colors duration-150 shrink-0" />
+      </span>
+      <span className={`block mt-1 font-display text-[34px] leading-tight font-bold tabular-nums truncate ${t.tone || 'text-ink'}`}>
+        {t.value}
+      </span>
+      <span className="block text-[13px] text-slate-500 mt-1 leading-snug">{t.detail}</span>
+    </button>
+  );
+
   return (
     <div className="flex flex-col lg:flex-row lg:h-full lg:min-h-0 bg-paper border-t border-line print:block print:h-auto">
       {/* Sidebar: fixed full-height column on desktop (scrolls on its own only if the menu is taller than the
           screen); horizontal scroller on mobile */}
-      <aside className="w-full lg:w-64 lg:h-full lg:overflow-y-auto sidebar-scroll bg-ink text-white/75 border-r border-white/10 shrink-0 select-none z-20 print:hidden">
-        <div className="p-3 lg:p-3 flex flex-col gap-2">
-          <div className="px-3 py-1 lg:py-2 lg:mb-1 lg:border-b border-white/10">
-            <h3 className="font-display text-xl font-bold text-white tracking-[0.01em]">GR Sports Admin</h3>
-            <p className="text-[11px] text-white/50 hidden lg:block">Shop management</p>
-          </div>
-
-          <nav
-            ref={navRef}
-            aria-label="Admin sections"
-            className="flex lg:flex-col overflow-x-auto lg:overflow-visible gap-1.5 lg:gap-0.5 pb-1 lg:pb-0 no-scrollbar scroll-smooth"
-          >
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = adminSubView === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  data-active={isActive}
-                  aria-current={isActive ? 'page' : undefined}
-                  onClick={() => goTo(item.id)}
-                  className={`flex items-center justify-between gap-2 px-3 min-h-[40px] lg:min-h-[36px] rounded-xl text-xs font-semibold transition-all whitespace-nowrap shrink-0 lg:w-full ${
-                    isActive ? 'bg-accent text-ink font-bold' : 'text-white/75 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  <span className="flex items-center gap-2.5">
-                    <Icon className="w-4 h-4" />
-                    <span>{item.label}</span>
-                  </span>
-                  {item.badge !== undefined && (
-                    <span
-                      title={item.badgeTitle}
-                      className={`text-[10px] min-w-[20px] text-center px-1.5 py-0.5 rounded-full font-bold ${
-                        item.alert ? 'bg-rose-600 text-white' : isActive ? 'bg-ink text-white' : 'bg-white/10 text-white/80'
-                      }`}
-                    >
-                      {item.badge}
+      <aside className="w-full lg:w-60 lg:h-full lg:overflow-y-auto sidebar-scroll bg-ink text-white/75 border-r border-white/10 shrink-0 select-none z-20 print:hidden">
+        <h2 className="sr-only">Admin menu</h2>
+        <nav
+          ref={navRef}
+          aria-label="Admin sections"
+          className="flex lg:flex-col overflow-x-auto lg:overflow-visible gap-1.5 lg:gap-0 px-3 py-2.5 lg:py-3 no-scrollbar scroll-smooth"
+        >
+          {navGroups.map((group, gi) => (
+            <div
+              key={group.label || 'main'}
+              role="group"
+              aria-label={group.label || 'Overview'}
+              className={`flex lg:flex-col gap-1.5 lg:gap-px shrink-0 ${gi > 0 ? 'lg:mt-2 lg:pt-2.5 lg:border-t lg:border-white/[0.08]' : ''}`}
+            >
+              {group.label && (
+                <p className="hidden lg:block px-3 pb-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-white/40">
+                  {group.label}
+                </p>
+              )}
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = adminSubView === item.id || !!item.also?.includes(adminSubView);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    data-active={isActive}
+                    aria-current={isActive ? 'page' : undefined}
+                    onClick={() => goTo(item.id)}
+                    className={`relative flex items-center justify-between gap-2 px-3 min-h-[40px] lg:min-h-[32px] rounded-xl lg:rounded-lg text-[13px] transition-colors duration-150 whitespace-nowrap shrink-0 lg:w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                      isActive
+                        ? 'bg-accent text-ink font-semibold lg:bg-white/[0.09] lg:text-white lg:before:absolute lg:before:left-0 lg:before:top-1.5 lg:before:bottom-1.5 lg:before:w-[3px] lg:before:rounded-full lg:before:bg-accent'
+                        : 'font-medium text-white/70 hover:text-white hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'lg:text-accent' : 'text-white/50'}`} />
+                      <span>{item.label}</span>
                     </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-
-        </div>
+                    {item.badge !== undefined && (
+                      <span
+                        title={item.badgeTitle}
+                        className={`text-xs leading-none min-w-[22px] text-center px-1.5 py-1 rounded-full font-semibold tabular-nums ${
+                          item.alert
+                            ? 'bg-rose-600 text-white'
+                            : isActive
+                            ? 'bg-ink text-white lg:bg-white/15'
+                            : 'bg-white/[0.08] text-white/70'
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
       </aside>
 
       {/* Main work area */}
@@ -837,8 +929,12 @@ export const AdminPortal: React.FC = () => {
         className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 min-w-0 lg:h-full lg:overflow-y-auto print:h-auto print:overflow-visible"
       >
         {isDataLoading && (
-          <p className="text-xs text-slate-500 flex items-center gap-2 print:hidden" role="status">
-            <span className="w-3 h-3 border-2 border-ink border-t-transparent rounded-full animate-spin" />
+          // Floats in the corner so the page doesn't jump when the data arrives.
+          <p
+            className="fixed bottom-4 right-4 z-30 text-[13px] text-slate-600 flex items-center gap-2 bg-white border border-line rounded-full px-3.5 py-2 shadow-sm print:hidden"
+            role="status"
+          >
+            <span className="w-3 h-3 border-2 border-ink border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
             Loading the latest data…
           </p>
         )}
@@ -850,7 +946,7 @@ export const AdminPortal: React.FC = () => {
           <div className="space-y-6 animate-in fade-in">
             {pageHeader(
               'Dashboard',
-              'Live figures from your service requests, payments and repair deadlines.',
+              'What needs attention today — live from service requests, shop orders and court bookings.',
               <>
                 <Button
                   onClick={() => exportRequestsCsv(requests)}
@@ -859,335 +955,372 @@ export const AdminPortal: React.FC = () => {
                   className="min-h-[40px]"
                   leftIcon={<Download className="w-4 h-4" />}
                 >
-                  Export CSV
+                  Export requests (CSV)
                 </Button>
-                <Button onClick={() => goTo('requests')} variant="primary" size="sm" className="min-h-[40px]">
-                  View all requests
+                <Button onClick={() => setNewBooking({})} size="sm" className="min-h-[40px]" leftIcon={<Plus className="w-4 h-4" />}>
+                  New booking
                 </Button>
-              </>
+              </>,
+              today.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
             )}
 
-            {/* KPI cards */}
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
-                <p className="text-xs font-semibold text-slate-500">Total requests</p>
-                <p className="text-2xl font-black text-slate-900 mt-1">{requests.length}</p>
-                <p className="text-[11px] text-slate-500 mt-2">
-                  {openRequests.length} open · Stringing {gettingCount} · Repair {repairCount}
-                </p>
-              </div>
-
-              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
-                <p className="text-xs font-semibold text-slate-500">Collected</p>
-                <p className="text-2xl font-black text-emerald-600 mt-1">{formatINR(totalCollected)}</p>
-                <p className="text-[11px] text-slate-500 mt-2">
-                  From {paidRequests.length} paid {paidRequests.length === 1 ? 'request' : 'requests'}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => goTo('payments')}
-                className="text-left bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-amber-300 transition-colors"
-              >
-                <p className="text-xs font-semibold text-slate-500">To be collected</p>
-                <p className="text-2xl font-black text-amber-600 mt-1">{formatINR(pendingCollection)}</p>
-                <p className="text-[11px] text-slate-500 mt-2">
-                  {unpaidRequests.length} unpaid {unpaidRequests.length === 1 ? 'request' : 'requests'} (collected on delivery)
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => goTo('sla_monitor')}
-                className="text-left bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-rose-300 transition-colors"
-              >
-                <p className="text-xs font-semibold text-slate-500">Repair deadlines</p>
-                <p className={`text-2xl font-black mt-1 ${slaOverdue > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
-                  {slaOverdue} overdue
-                </p>
-                <p className="text-[11px] text-slate-500 mt-2">
-                  {slaDueSoon} due within 2 days · {repairSlaItems.length} active repairs
-                </p>
-              </button>
+            {/* Today at a glance: each tile opens the page behind it */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+              {statTile({
+                label: 'New requests',
+                value: newStageCount,
+                detail: `To accept & assign · ${openRequests.length} open in total`,
+                onClick: () => openStage('new'),
+              })}
+              {statTile({
+                label: 'Repairs overdue',
+                value: slaOverdue,
+                tone: slaOverdue > 0 ? 'text-rose-600' : undefined,
+                detail: `${slaDueSoon} due within 2 days · ${repairSlaItems.length} active`,
+                onClick: () => goTo('sla_monitor'),
+              })}
+              {ordersReady &&
+                statTile({
+                  label: 'Shop orders open',
+                  value: shopSummary.open,
+                  detail: `${shopSummary.placed} to confirm · ${shopSummary.confirmed} to pack`,
+                  onClick: () => goTo('orders'),
+                })}
+              {courtsReady &&
+                statTile({
+                  label: 'Courts still to play',
+                  value: courtsSummary.remaining,
+                  detail: courtsSummary.next
+                    ? `Next ${fmtCourtTime(courtsSummary.next.startTime)} · ${courtsSummary.next.courtName}`
+                    : 'No more bookings today',
+                  onClick: () => goTo('courts'),
+                })}
+              {statTile({
+                label: 'Money to collect',
+                value: formatINR(toCollectTotal),
+                tone: toCollectTotal > 0 ? 'text-amber-700' : undefined,
+                detail: toCollectParts.join(' · '),
+                onClick: () => goTo('payments'),
+                wide: (2 + (ordersReady ? 1 : 0) + (courtsReady ? 1 : 0)) % 2 === 0,
+              })}
             </div>
 
-            {/* Online shop orders (real numbers only; hidden until the server has orders) */}
-            {shopOrders.loaded && !shopOrders.unavailable && (
-              <div className={`${cardCls} p-5 sm:p-6 space-y-3`}>
-                <div className="flex justify-between items-start gap-3">
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <ShoppingBag className="w-4 h-4 text-ink" /> Online orders
-                    </h3>
-                    <p className="text-[11px] text-slate-500">
-                      {shopOrders.error && shopOrders.orders.length === 0
-                        ? "Couldn't load the shop orders."
-                        : `${shopSummary.open} open ${shopSummary.open === 1 ? 'order' : 'orders'} · tap a stage to see them.`}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => goTo('orders')}
-                    className="text-xs text-ink font-bold hover:underline min-h-[40px] px-2 shrink-0"
-                  >
-                    Open orders
-                  </button>
-                </div>
-                {!(shopOrders.error && shopOrders.orders.length === 0) && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
-                    {[
-                      { status: 'Placed', label: 'To confirm', count: shopSummary.placed, dot: 'bg-amber-500' },
-                      { status: 'Confirmed', label: 'To pack', count: shopSummary.confirmed, dot: 'bg-ink' },
-                      { status: 'Packed', label: 'Packed', count: shopSummary.packed, dot: 'bg-violet-500' },
-                      { status: 'Out for Delivery', label: 'Out for delivery', count: shopSummary.outForDelivery, dot: 'bg-teal-500' },
-                      { status: 'Ready for Pickup', label: 'Ready for pickup', count: shopSummary.readyForPickup, dot: 'bg-teal-500' },
-                    ].map((s) => (
-                      <button
-                        key={s.status}
-                        type="button"
-                        onClick={() => {
-                          setOrdersPreset((p) => ({ status: s.status, n: (p?.n || 0) + 1 }));
-                          goTo('orders');
-                        }}
-                        className="min-h-[56px] text-left p-2.5 rounded-xl border border-line hover:bg-paper transition-colors min-w-0"
-                      >
-                        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 truncate">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${s.dot}`} />
-                          {s.label}
-                        </span>
-                        <span className="block text-lg font-black text-slate-900">{s.count}</span>
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOrdersPreset((p) => ({ status: 'UNPAID', n: (p?.n || 0) + 1 }));
-                        goTo('orders');
-                      }}
-                      className="min-h-[56px] text-left p-2.5 rounded-xl border border-amber-200 bg-amber-50/50 hover:bg-amber-50 transition-colors min-w-0"
-                    >
-                      <span className="block text-[11px] font-semibold text-slate-600 truncate">Unpaid (to collect)</span>
-                      <span className="block text-lg font-black text-amber-600">{formatINR(shopSummary.unpaidTotal)}</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Court bookings today (real numbers only; hidden until the server has court booking) */}
-            {courtsReady && (
-              <div className={`${cardCls} p-5 sm:p-6 space-y-3`}>
-                <div className="flex justify-between items-start gap-3">
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <LandPlot className="w-4 h-4 text-ink" /> Courts today
-                    </h3>
-                    <p className="text-[11px] text-slate-500">
-                      {courtsToday.bookings.filter((b) => b.status !== 'Cancelled').length} court{' '}
-                      {courtsToday.bookings.filter((b) => b.status !== 'Cancelled').length === 1 ? 'booking' : 'bookings'} today
-                      {courtsSummary.playing > 0 ? ` · ${courtsSummary.playing} playing now` : ''}.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => goTo('courts')}
-                    className="text-xs text-ink font-bold hover:underline min-h-[40px] px-2 shrink-0"
-                  >
-                    Open courts
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => goTo('courts')}
-                    className="min-h-[56px] text-left p-2.5 rounded-xl border border-line hover:bg-paper transition-colors min-w-0"
-                  >
-                    <span className="block text-[11px] font-semibold text-slate-600 truncate">Still to play</span>
-                    <span className="block text-lg font-black text-slate-900">{courtsSummary.remaining}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => goTo('courts')}
-                    className="min-h-[56px] text-left p-2.5 rounded-xl border border-line hover:bg-paper transition-colors min-w-0"
-                  >
-                    <span className="block text-[11px] font-semibold text-slate-600 truncate">Next booking</span>
-                    <span className="block text-lg font-black text-slate-900 truncate">
-                      {courtsSummary.next ? fmtCourtTime(courtsSummary.next.startTime) : '—'}
-                    </span>
-                    {courtsSummary.next && (
-                      <span className="block text-[11px] text-slate-500 truncate">
-                        {courtsSummary.next.courtName} · {courtsSummary.next.customerName}
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => goTo('courts')}
-                    className="min-h-[56px] text-left p-2.5 rounded-xl border border-amber-200 bg-amber-50/50 hover:bg-amber-50 transition-colors min-w-0"
-                  >
-                    <span className="block text-[11px] font-semibold text-slate-600 truncate">Unpaid (to collect)</span>
-                    <span className="block text-lg font-black text-amber-600">{formatINR(courtsSummary.unpaidTotal)}</span>
-                    <span className="block text-[11px] text-slate-500 truncate">
-                      {courtsSummary.unpaidCount} {courtsSummary.unpaidCount === 1 ? 'booking' : 'bookings'}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            )}
-
             <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-              {/* Work queue by stage */}
-              <div className={`${cardCls} p-5 sm:p-6 space-y-3 xl:col-span-2`}>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">Work queue by stage</h3>
-                  <p className="text-[11px] text-slate-500">Tap a stage to see those requests.</p>
+              {/* Bookings trend: service requests created per day (last 14 days) */}
+              <section className={`${cardCls} p-5 sm:p-6 xl:col-span-3 min-w-0`} aria-labelledby="dash-trend-title">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <h3 id="dash-trend-title" className="text-base font-semibold text-ink">
+                    Service requests booked
+                  </h3>
+                  <p className="text-[13px] text-slate-500 tabular-nums">
+                    Last 14 days · <span className="font-semibold text-ink">{trendTotal}</span> in total
+                  </p>
                 </div>
-                <div className="divide-y divide-line/70">
+                <div className="mt-6 flex gap-2">
+                  <div className="flex flex-col justify-between text-xs text-slate-400 tabular-nums h-36 -mt-2 text-right w-5 shrink-0" aria-hidden="true">
+                    <span>{trendMax}</span>
+                    <span className="-mb-2">0</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className="relative h-36 flex items-end gap-1 sm:gap-1.5 border-b border-line"
+                      role="img"
+                      aria-label={`Service requests booked per day over the last 14 days: ${trendTotal} in total, at most ${trendMax} on one day.`}
+                    >
+                      <div className="absolute inset-x-0 top-0 border-t border-dashed border-line" aria-hidden="true" />
+                      {trendDays.map((d, i) => {
+                        const isToday = i === trendDays.length - 1;
+                        const label = `${d.date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })} · ${d.count} ${
+                          d.count === 1 ? 'request' : 'requests'
+                        }`;
+                        return (
+                          <div key={d.key} className="group relative flex-1 h-full flex items-end justify-center">
+                            <div
+                              className={`w-full max-w-[32px] rounded-t-[4px] transition-colors duration-150 ${
+                                d.count === 0 ? 'bg-line' : isToday ? 'bg-ink' : 'bg-ink/75 group-hover:bg-ink'
+                              }`}
+                              style={{ height: d.count === 0 ? 2 : `${(d.count / trendMax) * 100}%` }}
+                            />
+                            <span
+                              className={`pointer-events-none absolute bottom-full mb-1 whitespace-nowrap rounded-lg bg-ink text-white text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10 shadow-sm ${
+                                i < 3 ? 'left-0' : i > 10 ? 'right-0' : 'left-1/2 -translate-x-1/2'
+                              }`}
+                            >
+                              {label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex gap-1 sm:gap-1.5 mt-1.5" aria-hidden="true">
+                      {trendDays.map((d, i) => (
+                        <span
+                          key={d.key}
+                          className={`flex-1 text-center text-xs tabular-nums ${
+                            i === trendDays.length - 1 ? 'font-semibold text-ink' : 'text-slate-400'
+                          } ${i % 2 === 0 ? 'invisible sm:visible' : ''}`}
+                        >
+                          {d.date.getDate()}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                      {trendDays[0].date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} to today, by the day each request
+                      was created. Hover a bar for the count.
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Work queue by stage */}
+              <section className={`${cardCls} p-5 sm:p-6 xl:col-span-2 min-w-0`} aria-labelledby="dash-queue-title">
+                <h3 id="dash-queue-title" className="text-base font-semibold text-ink">
+                  Work queue
+                </h3>
+                <p className="text-[13px] text-slate-500">Service requests by stage. Open a stage to see them.</p>
+                <div className="mt-3 divide-y divide-line/70">
                   {stageCounts.map((s) => (
                     <button
                       key={s.id}
                       type="button"
                       onClick={() => openStage(s.id)}
-                      className="w-full min-h-[44px] flex items-center justify-between gap-3 py-2 text-left hover:bg-paper rounded-lg px-2 -mx-2"
+                      className="w-full min-h-[40px] flex items-center justify-between gap-3 py-1.5 text-left hover:bg-paper rounded-lg px-2 -mx-2 transition-colors duration-150"
                     >
-                      <span className="flex items-center gap-2.5 text-sm text-slate-700">
-                        <span className={`w-2.5 h-2.5 rounded-full ${s.dot}`} />
+                      <span className={`flex items-center gap-2.5 text-sm ${s.count ? 'text-slate-800' : 'text-slate-500'}`}>
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${s.dot}`} />
                         {s.label}
                       </span>
-                      <span className="flex items-center gap-1 text-sm font-bold text-slate-900">
+                      <span className={`flex items-center gap-1 text-sm tabular-nums ${s.count ? 'font-semibold text-ink' : 'text-slate-400'}`}>
                         {s.count}
-                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                        <ChevronRight className="w-4 h-4 text-slate-300" />
                       </span>
                     </button>
                   ))}
                 </div>
-              </div>
+              </section>
+            </div>
 
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               {/* Repair deadlines */}
-              <div className={`${cardCls} p-5 sm:p-6 space-y-3 xl:col-span-3`}>
+              <section className={`${cardCls} p-5 sm:p-6 min-w-0`} aria-labelledby="dash-sla-title">
                 <div className="flex justify-between items-center gap-3">
-                  <h3 className="text-sm font-bold text-slate-900">Repair deadlines</h3>
-                  <button
-                    type="button"
-                    onClick={() => goTo('sla_monitor')}
-                    className="text-xs text-ink font-bold hover:underline min-h-[40px] px-2"
-                  >
-                    Open SLA monitor
+                  <h3 id="dash-sla-title" className="text-base font-semibold text-ink">
+                    Repair deadlines
+                  </h3>
+                  <button type="button" onClick={() => goTo('sla_monitor')} className={linkBtnCls}>
+                    See all <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
 
                 {repairSlaItems.length === 0 ? (
-                  <p className="text-sm text-slate-500 py-6 text-center">No repairs in progress.</p>
+                  <p className="text-sm text-slate-500 py-6">No repairs in progress.</p>
                 ) : (
-                  <div className="divide-y divide-line/70">
+                  <div className="mt-2 divide-y divide-line/70">
                     {repairSlaItems.slice(0, 5).map((item) => (
                       <button
                         key={item.request.id}
                         type="button"
                         onClick={() => setDetailRequestId(item.request.id)}
-                        className="w-full py-3 flex items-center justify-between gap-3 text-left hover:bg-paper rounded-lg px-2 -mx-2"
+                        className="w-full py-2.5 flex items-center justify-between gap-3 text-left hover:bg-paper rounded-lg px-2 -mx-2 transition-colors duration-150"
                       >
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-x-2">
-                            <span className="font-mono text-xs font-bold text-ink">{item.request.id}</span>
-                            <span className="text-xs font-bold text-slate-900">
-                              {item.request.batBrand} {item.request.batModel}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-500 truncate">
-                            {item.request.customerName}
+                          <p className="text-sm font-semibold text-ink truncate">
+                            {item.request.batBrand} {item.request.batModel}
+                          </p>
+                          <p className="text-[13px] text-slate-500 truncate">
+                            <span className="font-mono text-xs">{item.request.id}</span> · {item.request.customerName}
                             {item.request.repairIssue ? ` · ${item.request.repairIssue}` : ''}
                           </p>
                         </div>
                         <div className="text-right shrink-0">
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold ${SLA_STATE_CLASS[item.state]}`}>
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${SLA_STATE_CLASS[item.state]}`}>
                             {slaLabel(item)}
                           </span>
-                          <p className="text-[11px] text-slate-500 mt-0.5">
-                            {item.due ? `Due ${formatDate(item.due)}` : 'Not picked up yet'}
-                          </p>
+                          <p className="text-xs text-slate-500 mt-0.5">{item.due ? `Due ${formatDate(item.due)}` : 'Not picked up yet'}</p>
                         </div>
                       </button>
                     ))}
                   </div>
+                )}
+              </section>
+
+              <div className="space-y-6 min-w-0">
+                {/* Court bookings today (hidden until the server has court booking) */}
+                {courtsReady && (
+                  <section className={`${cardCls} p-5 sm:p-6`} aria-labelledby="dash-courts-title">
+                    <div className="flex justify-between items-center gap-3">
+                      <div className="min-w-0">
+                        <h3 id="dash-courts-title" className="text-base font-semibold text-ink">
+                          Courts today
+                        </h3>
+                        <p className="text-[13px] text-slate-500">
+                          {courtsTodayCount} {courtsTodayCount === 1 ? 'booking' : 'bookings'} today
+                          {courtsSummary.playing > 0 ? ` · ${courtsSummary.playing} playing now` : ''}
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => goTo('courts')} className={linkBtnCls}>
+                        Open courts <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <dl className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {[
+                        { label: 'Still to play', value: String(courtsSummary.remaining), sub: undefined as string | undefined, amber: false },
+                        {
+                          label: 'Next booking',
+                          value: courtsSummary.next ? fmtCourtTime(courtsSummary.next.startTime) : '—',
+                          sub: courtsSummary.next ? `${courtsSummary.next.courtName} · ${courtsSummary.next.customerName}` : undefined,
+                          amber: false,
+                        },
+                        {
+                          label: 'To collect',
+                          value: formatINR(courtsSummary.unpaidTotal),
+                          sub: `${courtsSummary.unpaidCount} ${courtsSummary.unpaidCount === 1 ? 'booking' : 'bookings'}`,
+                          amber: courtsSummary.unpaidTotal > 0,
+                        },
+                      ].map((c) => (
+                        <div key={c.label} className={`rounded-xl bg-paper/70 border border-line/70 p-3 min-w-0 ${c.label === 'To collect' ? 'col-span-2 sm:col-span-1' : ''}`}>
+                          <dt className="text-xs font-semibold text-slate-500 truncate">{c.label}</dt>
+                          <dd className={`text-lg font-semibold tabular-nums truncate ${c.amber ? 'text-amber-700' : 'text-ink'}`}>{c.value}</dd>
+                          {c.sub && <dd className="text-xs text-slate-500 truncate">{c.sub}</dd>}
+                        </div>
+                      ))}
+                    </dl>
+                  </section>
+                )}
+
+                {/* Online shop orders by stage (hidden until the server has orders) */}
+                {shopOrders.loaded && !shopOrders.unavailable && (
+                  <section className={`${cardCls} p-5 sm:p-6`} aria-labelledby="dash-orders-title">
+                    <div className="flex justify-between items-center gap-3">
+                      <div className="min-w-0">
+                        <h3 id="dash-orders-title" className="text-base font-semibold text-ink">
+                          Shop orders
+                        </h3>
+                        <p className="text-[13px] text-slate-500">
+                          {shopOrders.error && shopOrders.orders.length === 0
+                            ? "Couldn't load the shop orders."
+                            : `${shopSummary.open} open ${shopSummary.open === 1 ? 'order' : 'orders'} · open a stage to see them`}
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => goTo('orders')} className={linkBtnCls}>
+                        Open orders <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {!(shopOrders.error && shopOrders.orders.length === 0) && (
+                      <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {[
+                          { status: 'Placed', label: 'To confirm', count: String(shopSummary.placed), dot: 'bg-amber-500', amber: false },
+                          { status: 'Confirmed', label: 'To pack', count: String(shopSummary.confirmed), dot: 'bg-ink', amber: false },
+                          { status: 'Packed', label: 'Packed', count: String(shopSummary.packed), dot: 'bg-violet-500', amber: false },
+                          { status: 'Out for Delivery', label: 'Out for delivery', count: String(shopSummary.outForDelivery), dot: 'bg-teal-500', amber: false },
+                          { status: 'Ready for Pickup', label: 'Ready for pickup', count: String(shopSummary.readyForPickup), dot: 'bg-teal-500', amber: false },
+                          { status: 'UNPAID', label: 'Unpaid', count: formatINR(shopSummary.unpaidTotal), dot: '', amber: shopSummary.unpaidTotal > 0 },
+                        ].map((s) => (
+                          <button
+                            key={s.status}
+                            type="button"
+                            onClick={() => {
+                              setOrdersPreset((p) => ({ status: s.status, n: (p?.n || 0) + 1 }));
+                              goTo('orders');
+                            }}
+                            className="text-left p-3 rounded-xl bg-paper/70 border border-line/70 hover:border-ink/30 transition-colors duration-150 min-w-0"
+                          >
+                            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 truncate">
+                              {s.dot && <span className={`w-2 h-2 rounded-full shrink-0 ${s.dot}`} />}
+                              {s.label}
+                            </span>
+                            <span className={`block text-lg font-semibold tabular-nums ${s.amber ? 'text-amber-700' : 'text-ink'}`}>{s.count}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </section>
                 )}
               </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Service mix & free radius */}
-              <div className={`${cardCls} p-5 sm:p-6 space-y-4`}>
-                <h3 className="text-sm font-bold text-slate-900">Service mix</h3>
+              <section className={`${cardCls} p-5 sm:p-6 space-y-4`} aria-labelledby="dash-mix-title">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+                  <h3 id="dash-mix-title" className="text-base font-semibold text-ink">
+                    All service requests
+                  </h3>
+                  <p className="text-[13px] text-slate-500 tabular-nums">
+                    {requests.length} in total · {formatINR(totalCollected)} collected
+                  </p>
+                </div>
                 {[
-                  { label: 'Stringing (getting)', count: gettingCount, bar: 'bg-ink', text: 'text-ink' },
-                  { label: 'Repairs', count: repairCount, bar: 'bg-amber-500', text: 'text-amber-700' },
+                  { label: 'Stringing', count: gettingCount, bar: 'bg-ink' },
+                  { label: 'Repairs', count: repairCount, bar: 'bg-amber-500' },
                 ].map((row) => (
                   <div key={row.label}>
-                    <div className="flex justify-between text-xs font-semibold mb-1">
-                      <span>{row.label}</span>
-                      <span className={row.text}>
-                        {row.count} ({pct(row.count, requests.length)}%)
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-slate-700">{row.label}</span>
+                      <span className="font-semibold text-ink tabular-nums">
+                        {row.count} <span className="font-normal text-slate-500">({pct(row.count, requests.length)}%)</span>
                       </span>
                     </div>
-                    <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                       <div className={`${row.bar} h-full rounded-full`} style={{ width: `${pct(row.count, requests.length)}%` }} />
                     </div>
                   </div>
                 ))}
 
                 {requests.length > 0 && (
-                  <div className="p-3 bg-paper rounded-xl border border-line/70 text-xs text-slate-600">
-                    <b>Free radius:</b> {withinFreeRadius} of {requests.length} requests (
-                    {pct(withinFreeRadius, requests.length)}%) are within the current {distanceConfig.freeRadiusKm} KM free
-                    pickup & delivery radius.
-                  </div>
+                  <p className="text-[13px] text-slate-600 pt-1">
+                    {withinFreeRadius} of {requests.length} requests ({pct(withinFreeRadius, requests.length)}%) are within the current{' '}
+                    {distanceConfig.freeRadiusKm} km free pickup & delivery radius.
+                  </p>
                 )}
-              </div>
+              </section>
 
               {/* Shortcuts to configuration */}
-              <div className={`${cardCls} p-5 sm:p-6 space-y-3`}>
-                <h3 className="text-sm font-bold text-slate-900">Pricing & delivery settings</h3>
-                {[
-                  {
-                    view: 'getting_config',
-                    title: 'Stringing packages',
-                    detail: gettingServices.length
-                      ? `${gettingServices.length} packages · ${formatINR(Math.min(...gettingServices.map((g) => g.price)))} – ${formatINR(
-                          Math.max(...gettingServices.map((g) => g.price))
-                        )}`
-                      : 'No packages yet',
-                  },
-                  {
-                    view: 'repair_config',
-                    title: 'Repair categories',
-                    detail: `${repairCategories.length} categories with base prices and SLA days`,
-                  },
-                  {
-                    view: 'distance',
-                    title: 'Delivery & free radius',
-                    detail: `Free within ${distanceConfig.freeRadiusKm} KM · ${
-                      distanceConfig.pricingMethod === 'SLAB'
-                        ? 'distance slabs beyond'
-                        : `${formatINR(distanceConfig.perKmRateBeyondFree)}/KM beyond`
-                    }`,
-                  },
-                  { view: 'sla_monitor', title: 'Repair SLA monitor', detail: `${repairSlaItems.length} active repairs` },
-                ].map((s) => (
-                  <button
-                    key={s.view}
-                    type="button"
-                    onClick={() => goTo(s.view)}
-                    className="w-full min-h-[48px] flex items-center justify-between gap-3 p-3 rounded-xl border border-line hover:border-line hover:bg-paper text-left transition-colors"
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-sm font-bold text-slate-900">{s.title}</span>
-                      <span className="block text-[11px] text-slate-500 truncate">{s.detail}</span>
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
-                  </button>
-                ))}
-              </div>
+              <section className={`${cardCls} p-5 sm:p-6`} aria-labelledby="dash-setup-title">
+                <h3 id="dash-setup-title" className="text-base font-semibold text-ink">
+                  Prices & delivery
+                </h3>
+                <div className="mt-2 divide-y divide-line/70">
+                  {[
+                    {
+                      view: 'getting_config',
+                      title: 'Stringing packages',
+                      detail: gettingServices.length
+                        ? `${gettingServices.length} packages · ${formatINR(Math.min(...gettingServices.map((g) => g.price)))} – ${formatINR(
+                            Math.max(...gettingServices.map((g) => g.price))
+                          )}`
+                        : 'No packages yet',
+                    },
+                    {
+                      view: 'repair_config',
+                      title: 'Repair categories',
+                      detail: `${repairCategories.length} categories with base prices and SLA days`,
+                    },
+                    {
+                      view: 'distance',
+                      title: 'Delivery & free radius',
+                      detail: `Free within ${distanceConfig.freeRadiusKm} km · ${
+                        distanceConfig.pricingMethod === 'SLAB'
+                          ? 'distance slabs beyond'
+                          : `${formatINR(distanceConfig.perKmRateBeyondFree)}/km beyond`
+                      }`,
+                    },
+                  ].map((s) => (
+                    <button
+                      key={s.view}
+                      type="button"
+                      onClick={() => goTo(s.view)}
+                      className="w-full min-h-[48px] flex items-center justify-between gap-3 py-2.5 px-2 -mx-2 rounded-lg hover:bg-paper text-left transition-colors duration-150"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-ink">{s.title}</span>
+                        <span className="block text-[13px] text-slate-500 truncate">{s.detail}</span>
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </section>
             </div>
           </div>
         )}
@@ -1198,7 +1331,7 @@ export const AdminPortal: React.FC = () => {
         {adminSubView === 'requests' && (
           <div className="space-y-4 animate-in fade-in">
             {pageHeader(
-              'Service Requests',
+              'Service requests',
               'Search and filter requests, open a request to see everything about it, assign staff or change its status.',
               <>
                 <Button
@@ -1296,44 +1429,43 @@ export const AdminPortal: React.FC = () => {
             </div>
 
             {/* Requests table (scrolls inside its card on small screens) */}
-            <div className={`${cardCls} overflow-hidden`}>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[880px] text-left border-collapse text-xs [&_td]:px-3 [&_th]:px-3">
+            <div className={`${cardCls} overflow-hidden hidden md:block`}>
+              <div className="overflow-auto lg:max-h-[calc(100vh-9rem)]">
+                <table className="w-full min-w-[900px] text-left border-collapse text-[13px] [&_td]:px-3 [&_th]:px-3">
                   <thead>
-                    <tr className="bg-paper border-b border-line text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                    <tr className="text-slate-500 font-semibold uppercase tracking-[0.06em] text-xs [&>th]:sticky [&>th]:top-0 [&>th]:z-10 [&>th]:bg-paper [&>th]:shadow-[inset_0_-1px_0_#E3DFD6]">
                       <th className={thCls}>Request</th>
                       <th className={thCls}>Customer</th>
                       <th className={thCls}>Service & racket</th>
-                      <th className={thCls}>Assigned staff</th>
-                      <th className={thCls}>Distance</th>
-                      <th className={thCls}>Amount</th>
+                      <th className={thCls}>Staff</th>
+                      <th className={`${thCls} text-right`}>Amount</th>
                       <th className={thCls}>Status</th>
                       <th className={`${thCls} text-right sticky right-0 bg-paper shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.15)]`}>Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line/70">
                     {filteredRequests.length === 0 &&
-                      emptyRow(8, requests.length === 0 ? 'No service requests yet.' : 'No requests match these filters.')}
+                      emptyRow(7, requests.length === 0 ? 'No service requests yet.' : 'No requests match these filters.')}
                     {filteredRequests.map((req) => (
-                      <tr key={req.id} className="hover:bg-paper/70 transition-colors">
+                      <tr key={req.id} className="group hover:bg-[#F9F8F5] transition-colors duration-150">
                         <td className={tdCls}>
                           <button
                             type="button"
                             onClick={() => setDetailRequestId(req.id)}
-                            className="font-mono font-bold text-ink hover:underline whitespace-nowrap"
+                            className="font-mono font-semibold text-ink hover:underline whitespace-nowrap"
                           >
                             {req.id}
                           </button>
-                          <p className="text-[11px] text-slate-500 whitespace-nowrap">{formatDate(req.createdAt)}</p>
+                          <p className="text-xs text-slate-500 whitespace-nowrap">{formatDate(req.createdAt)}</p>
                         </td>
                         <td className={tdCls}>
-                          <p className="font-bold text-slate-900">{req.customerName}</p>
+                          <p className="font-semibold text-ink whitespace-nowrap">{req.customerName}</p>
                           {mobileTelHref(req.customerMobile) ? (
-                            <a href={mobileTelHref(req.customerMobile)} className="text-[11px] text-ink hover:underline whitespace-nowrap">
+                            <a href={mobileTelHref(req.customerMobile)} className="text-xs text-ink hover:underline whitespace-nowrap">
                               {formatMobile(req.customerMobile)}
                             </a>
                           ) : (
-                            <p className="text-[11px] text-slate-500">{formatMobile(req.customerMobile)}</p>
+                            <p className="text-xs text-slate-500">{formatMobile(req.customerMobile)}</p>
                           )}
                         </td>
                         <td className={tdCls}>
@@ -1351,38 +1483,36 @@ export const AdminPortal: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => openAssign(req)}
-                              className="min-h-[40px] px-2.5 rounded-lg bg-paper text-ink font-bold hover:bg-paper-deep whitespace-nowrap"
+                              className="inline-flex items-center gap-1 min-h-[32px] -my-1 px-2.5 rounded-lg border border-dashed border-slate-300 text-slate-600 font-semibold hover:border-ink hover:text-ink whitespace-nowrap transition-colors duration-150"
                             >
-                              + Assign staff
+                              <Plus className="w-3.5 h-3.5" /> Assign
                             </button>
                           ) : (
                             <span className="text-slate-400">—</span>
                           )}
                         </td>
-                        <td className={`${tdCls} whitespace-nowrap`}>
-                          <span className={req.isFreeDelivery ? 'text-emerald-700 font-semibold' : 'text-slate-700'}>
-                            {req.distanceKm} KM
-                          </span>
-                          <p className="text-[11px] text-slate-500">
-                            {req.isFreeDelivery ? 'Free delivery' : `+${formatINR(req.pickupDeliveryCharge)}`}
-                          </p>
-                        </td>
-                        <td className={`${tdCls} whitespace-nowrap`}>
-                          <p className="font-bold text-slate-900">{amountText(req)}</p>
-                          <p className={`text-[11px] ${req.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-slate-500'}`}>
+                        <td className={`${tdCls} whitespace-nowrap text-right tabular-nums`}>
+                          <p className="font-semibold text-ink">{amountText(req)}</p>
+                          <p className={`text-xs ${req.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-slate-500'}`}>
                             {paymentText(req)}
                           </p>
+                          <p
+                            className="text-xs text-slate-500"
+                            title={req.isFreeDelivery ? 'Within the free pickup & delivery radius' : 'Pickup & delivery charge'}
+                          >
+                            {req.distanceKm} km · {req.isFreeDelivery ? 'free' : `+${formatINR(req.pickupDeliveryCharge)}`}
+                          </p>
                         </td>
-                        <td className={tdCls}>
+                        <td className={`${tdCls} whitespace-nowrap`}>
                           <StatusBadge status={req.status} size="sm" />
                         </td>
-                        <td className={`${tdCls} text-right sticky right-0 bg-white shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.15)]`}>
+                        <td className={`${tdCls} text-right sticky right-0 bg-white group-hover:bg-[#F9F8F5] transition-colors duration-150 shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.15)]`}>
                           <div className="flex items-center justify-end gap-1.5">
                             {req.status === 'Submitted' && (
                               <button
                                 type="button"
                                 onClick={() => updateRequestStatus(req.id, 'Accepted', actor, 'Accepted by admin')}
-                                className="min-h-[40px] px-3 bg-emerald-50 text-emerald-700 rounded-lg font-bold hover:bg-emerald-100 transition-colors"
+                                className="min-h-[36px] px-3 bg-ink text-white rounded-lg font-semibold hover:bg-ink-hover transition-colors duration-150"
                               >
                                 Accept
                               </button>
@@ -1390,9 +1520,9 @@ export const AdminPortal: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setDetailRequestId(req.id)}
-                              className="min-h-[40px] px-3 inline-flex items-center gap-1 rounded-lg border border-line text-slate-700 font-bold hover:text-ink hover:border-line hover:bg-paper transition-colors"
+                              className="min-h-[36px] px-3 inline-flex items-center gap-1 rounded-lg border border-line bg-white text-slate-700 font-semibold hover:text-ink hover:border-slate-400 transition-colors duration-150"
                             >
-                              <Eye className="w-3.5 h-3.5" /> Open
+                              Open <ChevronRight className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </td>
@@ -1401,6 +1531,66 @@ export const AdminPortal: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+
+            {/* Phone: one card per request */}
+            <div className="md:hidden space-y-3">
+              {filteredRequests.length === 0 && (
+                <p className={`${cardCls} p-6 text-sm text-slate-500 text-center`}>
+                  {requests.length === 0 ? 'No service requests yet.' : 'No requests match these filters.'}
+                </p>
+              )}
+              {filteredRequests.map((req) => (
+                <article key={req.id} className={`${cardCls} p-4`}>
+                  <button type="button" onClick={() => setDetailRequestId(req.id)} className="w-full text-left">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-ink truncate">{req.customerName}</p>
+                        <p className="text-[13px] text-slate-500">
+                          <span className="font-mono text-xs">{req.id}</span> · {formatDate(req.createdAt)}
+                        </p>
+                      </div>
+                      <StatusBadge status={req.status} size="sm" />
+                    </div>
+                    <p className="mt-2 text-sm text-slate-700">
+                      <span className={`font-semibold ${req.serviceType === 'GETTING' ? 'text-ink' : 'text-amber-700'}`}>{serviceLabel(req)}</span> ·{' '}
+                      {req.batBrand} {req.batModel}
+                    </p>
+                    <div className="mt-2 flex items-center justify-between gap-3 text-[13px]">
+                      <span className="text-slate-500">
+                        {req.distanceKm} km · {req.isFreeDelivery ? 'free delivery' : `+${formatINR(req.pickupDeliveryCharge)}`}
+                        {req.assignedEmployeeName ? ` · ${req.assignedEmployeeName}` : ''}
+                      </span>
+                      <span className="text-right tabular-nums whitespace-nowrap">
+                        <span className="font-semibold text-ink">{amountText(req)}</span>{' '}
+                        <span className={req.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-slate-500'}>{paymentText(req)}</span>
+                      </span>
+                    </div>
+                  </button>
+                  {(req.status === 'Submitted' || (!req.assignedEmployeeName && isOpenRequest(req))) && (
+                    <div className="mt-3 pt-3 border-t border-line/70 flex gap-2">
+                      {req.status === 'Submitted' && (
+                        <button
+                          type="button"
+                          onClick={() => updateRequestStatus(req.id, 'Accepted', actor, 'Accepted by admin')}
+                          className="flex-1 min-h-[44px] px-3 bg-ink text-white rounded-xl text-sm font-semibold hover:bg-ink-hover transition-colors duration-150"
+                        >
+                          Accept
+                        </button>
+                      )}
+                      {!req.assignedEmployeeName && isOpenRequest(req) && (
+                        <button
+                          type="button"
+                          onClick={() => openAssign(req)}
+                          className="flex-1 min-h-[44px] px-3 rounded-xl border border-line bg-white text-sm font-semibold text-slate-700 hover:text-ink transition-colors duration-150"
+                        >
+                          Assign staff
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </article>
+              ))}
             </div>
           </div>
         )}
@@ -1418,32 +1608,32 @@ export const AdminPortal: React.FC = () => {
         {adminSubView === 'sla_monitor' && (
           <div className="space-y-6 animate-in fade-in">
             {pageHeader(
-              'Repair SLA Monitor',
+              'Repair deadlines',
               <>
                 Turnaround is counted in calendar days from the day the racket is picked up until it is delivered back. The SLA
-                days for each repair come from <b>Repair Categories</b> (default {DEFAULT_SLA_DAYS} days).
+                days for each repair come from <b>Repair categories</b> (default {DEFAULT_SLA_DAYS} days).
               </>
             )}
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               {[
-                { label: 'Active repairs', value: repairSlaItems.length, cls: 'text-slate-900' },
-                { label: 'Overdue', value: slaOverdue, cls: slaOverdue ? 'text-rose-600' : 'text-slate-900' },
-                { label: 'Due within 2 days', value: slaDueSoon, cls: slaDueSoon ? 'text-amber-600' : 'text-slate-900' },
-                { label: 'Not picked up yet', value: slaNotStarted, cls: 'text-slate-900' },
+                { label: 'Active repairs', value: repairSlaItems.length, cls: 'text-ink' },
+                { label: 'Overdue', value: slaOverdue, cls: slaOverdue ? 'text-rose-600' : 'text-ink' },
+                { label: 'Due within 2 days', value: slaDueSoon, cls: slaDueSoon ? 'text-amber-700' : 'text-ink' },
+                { label: 'Not picked up yet', value: slaNotStarted, cls: 'text-ink' },
               ].map((c) => (
-                <div key={c.label} className="bg-white p-4 rounded-2xl border border-line shadow-2xs">
-                  <p className="text-xs font-semibold text-slate-500">{c.label}</p>
-                  <p className={`text-2xl font-black mt-1 ${c.cls}`}>{c.value}</p>
+                <div key={c.label} className="bg-white p-4 sm:p-5 rounded-2xl border border-line">
+                  <p className="text-[13px] font-semibold text-slate-500">{c.label}</p>
+                  <p className={`font-display text-[32px] leading-tight font-bold tabular-nums mt-1 ${c.cls}`}>{c.value}</p>
                 </div>
               ))}
             </div>
 
-            <div className={`${cardCls} overflow-hidden`}>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[780px] text-left border-collapse text-xs [&_td]:px-3 [&_th]:px-3">
+            <div className={`${cardCls} overflow-hidden hidden md:block`}>
+              <div className="overflow-auto lg:max-h-[calc(100vh-9rem)]">
+                <table className="w-full min-w-[780px] text-left border-collapse text-[13px] [&_td]:px-3 [&_th]:px-3">
                   <thead>
-                    <tr className="bg-paper border-b border-line text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                    <tr className="text-slate-500 font-semibold uppercase tracking-[0.06em] text-xs [&>th]:sticky [&>th]:top-0 [&>th]:z-10 [&>th]:bg-paper [&>th]:shadow-[inset_0_-1px_0_#E3DFD6]">
                       <th className={thCls}>Request</th>
                       <th className={thCls}>Customer</th>
                       <th className={thCls}>Issue</th>
@@ -1456,32 +1646,32 @@ export const AdminPortal: React.FC = () => {
                   <tbody className="divide-y divide-line/70">
                     {repairSlaItems.length === 0 && emptyRow(7, 'No repairs in progress.')}
                     {repairSlaItems.map((item) => (
-                      <tr key={item.request.id} className="hover:bg-paper/70">
+                      <tr key={item.request.id} className="hover:bg-[#F9F8F5] transition-colors duration-150">
                         <td className={tdCls}>
                           <button
                             type="button"
                             onClick={() => setDetailRequestId(item.request.id)}
-                            className="block -my-2 py-2 font-mono font-bold text-ink hover:underline whitespace-nowrap text-left"
+                            className="block -my-2 py-2 font-mono font-semibold text-ink hover:underline whitespace-nowrap text-left"
                           >
                             {item.request.id}
                           </button>
                         </td>
-                        <td className={`${tdCls} font-bold text-slate-900`}>{item.request.customerName}</td>
+                        <td className={`${tdCls} font-semibold text-ink`}>{item.request.customerName}</td>
                         <td className={`${tdCls} text-slate-700`}>{item.request.repairIssue || '—'}</td>
                         <td className={`${tdCls} text-slate-600 whitespace-nowrap`}>
                           {item.start ? formatDate(item.start) : 'Not yet'}
-                          {item.dayNumber !== null && <p className="text-[11px] text-slate-500">Day {item.dayNumber} since pickup</p>}
+                          {item.dayNumber !== null && <p className="text-xs text-slate-500">Day {item.dayNumber} since pickup</p>}
                         </td>
                         <td className={`${tdCls} text-slate-600 whitespace-nowrap`}>
                           {item.due ? formatDate(item.due) : '—'}
-                          <p className="text-[11px] text-slate-500">SLA {pluralDays(item.slaDays)}</p>
+                          <p className="text-xs text-slate-500">SLA {pluralDays(item.slaDays)}</p>
                         </td>
                         <td className={`${tdCls} whitespace-nowrap`}>
-                          <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold ${SLA_STATE_CLASS[item.state]}`}>
+                          <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${SLA_STATE_CLASS[item.state]}`}>
                             {slaLabel(item)}
                           </span>
                         </td>
-                        <td className={tdCls}>
+                        <td className={`${tdCls} whitespace-nowrap`}>
                           <StatusBadge status={item.request.status} size="sm" />
                         </td>
                       </tr>
@@ -1490,34 +1680,67 @@ export const AdminPortal: React.FC = () => {
                 </table>
               </div>
             </div>
+
+            {/* Phone: one card per repair */}
+            <div className="md:hidden space-y-3">
+              {repairSlaItems.length === 0 && <p className={`${cardCls} p-6 text-sm text-slate-500 text-center`}>No repairs in progress.</p>}
+              {repairSlaItems.map((item) => (
+                <button
+                  key={item.request.id}
+                  type="button"
+                  onClick={() => setDetailRequestId(item.request.id)}
+                  className={`${cardCls} w-full p-4 text-left`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-ink truncate">{item.request.customerName}</p>
+                      <p className="text-[13px] text-slate-500">
+                        <span className="font-mono text-xs">{item.request.id}</span>
+                        {item.request.repairIssue ? ` · ${item.request.repairIssue}` : ''}
+                      </p>
+                    </div>
+                    <span className={`shrink-0 inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${SLA_STATE_CLASS[item.state]}`}>
+                      {slaLabel(item)}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-3 text-[13px] text-slate-500">
+                    <span>
+                      {item.due ? `Due ${formatDate(item.due)}` : 'Not picked up yet'} · SLA {pluralDays(item.slaDays)}
+                    </span>
+                    <StatusBadge status={item.request.status} size="sm" />
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
         {/* SHARED PRICING SUB-NAVIGATION (distance / stringing / repair) */}
         {(adminSubView === 'distance' || adminSubView === 'getting_config' || adminSubView === 'repair_config') && (
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 p-2 bg-white rounded-2xl border border-line shadow-2xs">
-            <div className="hidden md:flex overflow-x-auto no-scrollbar gap-1.5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-line print:hidden">
+            <nav aria-label="Prices & delivery" className="flex overflow-x-auto no-scrollbar gap-1 -mb-px">
               {[
-                { id: 'distance', label: `Delivery & free radius (${distanceConfig.freeRadiusKm} KM)`, icon: Compass },
-                { id: 'getting_config', label: `Stringing packages (${gettingServices.length})`, icon: Wrench },
-                { id: 'repair_config', label: `Repair categories (${repairCategories.length})`, icon: Wrench },
+                { id: 'getting_config', label: 'Stringing packages', count: `${gettingServices.length}` },
+                { id: 'repair_config', label: 'Repair categories', count: `${repairCategories.length}` },
+                { id: 'distance', label: 'Delivery & free radius', count: `${distanceConfig.freeRadiusKm} km free` },
               ].map((t) => {
-                const Icon = t.icon;
+                const on = adminSubView === t.id;
                 return (
                   <button
                     key={t.id}
                     type="button"
+                    aria-current={on ? 'page' : undefined}
                     onClick={() => goTo(t.id)}
-                    className={`min-h-[40px] px-3.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
-                      adminSubView === t.id ? 'bg-ink text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    className={`min-h-[44px] px-3 sm:px-4 border-b-2 text-sm font-semibold transition-colors duration-150 flex items-center gap-2 whitespace-nowrap shrink-0 ${
+                      on ? 'border-ink text-ink' : 'border-transparent text-slate-500 hover:text-ink hover:border-line'
                     }`}
                   >
-                    <Icon className="w-3.5 h-3.5" />
                     {t.label}
+                    <span className={`text-xs font-semibold tabular-nums ${on ? 'text-slate-600' : 'text-slate-400'}`}>{t.count}</span>
                   </button>
                 );
               })}
-            </div>
+            </nav>
 
             <Button
               onClick={() =>
@@ -1525,7 +1748,7 @@ export const AdminPortal: React.FC = () => {
                   title: 'Reset pricing to defaults?',
                   message: (
                     <>
-                      This restores the original delivery rules (free within 10 KM, {formatINR(15)}/KM beyond, workshop
+                      This restores the original delivery rules (free within 10 km, {formatINR(15)}/km beyond, workshop
                       location) and the original prices and details of the standard stringing packages and repair categories.
                       Packages or categories you added yourself are not changed. Customers see the new prices immediately.
                     </>
@@ -1537,7 +1760,7 @@ export const AdminPortal: React.FC = () => {
               }
               variant="outline"
               size="sm"
-              className="min-h-[40px] text-xs text-rose-700 hover:bg-rose-50 border-rose-200 shrink-0"
+              className="min-h-[36px] mb-2 md:mb-1.5 self-start md:self-auto text-xs text-rose-700 hover:bg-rose-50 border-rose-200 shrink-0"
               leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
             >
               Reset pricing to defaults
@@ -1551,14 +1774,14 @@ export const AdminPortal: React.FC = () => {
         {adminSubView === 'distance' && (
           <div className="space-y-6 animate-in fade-in">
             {pageHeader(
-              'Delivery & Free Radius',
+              'Delivery & free radius',
               <>
-                Live now: free pickup & delivery within <b>{distanceConfig.freeRadiusKm} KM</b>; beyond that{' '}
+                Live now: free pickup & delivery within <b>{distanceConfig.freeRadiusKm} km</b>; beyond that{' '}
                 {distanceConfig.pricingMethod === 'SLAB' ? (
                   'distance slabs apply'
                 ) : (
                   <>
-                    <b>{formatINR(distanceConfig.perKmRateBeyondFree)}/KM</b> for the extra distance
+                    <b>{formatINR(distanceConfig.perKmRateBeyondFree)}/km</b> for the extra distance
                   </>
                 )}
                 .
@@ -1622,14 +1845,14 @@ export const AdminPortal: React.FC = () => {
                     />
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-500 -mt-3">Customer distances are measured from this point.</p>
+                <p className="text-xs text-slate-500 -mt-3">Customer distances are measured from this point.</p>
 
-                <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-3">
+                <div className="p-4 bg-paper rounded-2xl border border-line space-y-3">
                   <div>
-                    <label htmlFor="dist-free" className="block text-xs font-black text-emerald-950">
-                      Free pickup & delivery radius (KM)
+                    <label htmlFor="dist-free" className="block text-[13px] font-semibold text-ink">
+                      Free pickup & delivery radius (km)
                     </label>
-                    <p className="text-[11px] text-emerald-800">Customers within this distance pay ₹0 for pickup & delivery.</p>
+                    <p className="text-xs text-slate-600">Customers within this distance pay ₹0 for pickup & delivery.</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <input
@@ -1642,7 +1865,7 @@ export const AdminPortal: React.FC = () => {
                       value={distForm.freeRadiusKm}
                       onFocus={(e) => e.target.select()}
                       onChange={(e) => setDist({ freeRadiusKm: e.target.value })}
-                      className="w-28 min-h-[40px] px-3 rounded-xl border border-emerald-300 bg-white text-base font-black text-emerald-700 outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-28 min-h-[40px] px-3 rounded-xl border border-slate-300 bg-white text-base font-bold text-ink tabular-nums outline-none focus:ring-2 focus:ring-ink/40"
                     />
                     {[5, 8, 10, 12, 15].map((km) => (
                       <button
@@ -1651,11 +1874,11 @@ export const AdminPortal: React.FC = () => {
                         onClick={() => setDist({ freeRadiusKm: String(km) })}
                         className={`min-h-[40px] text-xs font-bold px-3 rounded-xl border transition-all ${
                           num(distForm.freeRadiusKm) === km
-                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                            : 'bg-white text-slate-700 border-line hover:bg-emerald-100 hover:text-emerald-900'
+                            ? 'bg-ink text-white border-ink'
+                            : 'bg-white text-slate-700 border-line hover:border-slate-400 hover:text-ink'
                         }`}
                       >
-                        {km} KM
+                        {km} km
                       </button>
                     ))}
                   </div>
@@ -1665,7 +1888,7 @@ export const AdminPortal: React.FC = () => {
                   <span className={labelCls}>Charge beyond the free radius</span>
                   <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Charge method">
                     {[
-                      { id: 'PER_KM' as const, label: 'Per KM rate' },
+                      { id: 'PER_KM' as const, label: 'Per km rate' },
                       { id: 'SLAB' as const, label: 'Distance slabs' },
                     ].map((m) => (
                       <button
@@ -1689,7 +1912,7 @@ export const AdminPortal: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label htmlFor="dist-rate" className={labelCls}>
-                      Rate per extra KM (₹)
+                      Rate per extra km (₹)
                     </label>
                     <input
                       id="dist-rate"
@@ -1701,15 +1924,15 @@ export const AdminPortal: React.FC = () => {
                       onChange={(e) => setDist({ perKmRateBeyondFree: e.target.value })}
                       className={inputCls}
                     />
-                    <p className="text-[11px] text-slate-500 mt-1">
+                    <p className="text-xs text-slate-500 mt-1">
                       {distForm.pricingMethod === 'SLAB'
                         ? 'Used only for distances not covered by a slab.'
-                        : 'Charged for each KM beyond the free radius.'}
+                        : 'Charged for each km beyond the free radius.'}
                     </p>
                   </div>
                   <div>
                     <label htmlFor="dist-max" className={labelCls}>
-                      Max service radius (KM)
+                      Max service radius (km)
                     </label>
                     <input
                       id="dist-max"
@@ -1721,7 +1944,7 @@ export const AdminPortal: React.FC = () => {
                       onChange={(e) => setDist({ maxServiceDistanceKm: e.target.value })}
                       className={inputCls}
                     />
-                    <p className="text-[11px] text-slate-500 mt-1">For reference — bookings beyond it are not blocked.</p>
+                    <p className="text-xs text-slate-500 mt-1">For reference — bookings beyond it are not blocked.</p>
                   </div>
                 </div>
 
@@ -1729,7 +1952,7 @@ export const AdminPortal: React.FC = () => {
                   <div className="space-y-2 pt-3 border-t border-line">
                     <p className="text-xs font-bold text-slate-700">Distance slabs (flat charge per slab)</p>
                     <div className="flex items-center justify-between p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-xs">
-                      <span className="font-semibold text-emerald-900">0 – {distForm.freeRadiusKm || '?'} KM</span>
+                      <span className="font-semibold text-emerald-900">0 – {distForm.freeRadiusKm || '?'} km</span>
                       <span className="font-bold text-emerald-700">Free</span>
                     </div>
                     {distForm.slabs.map((slab, i) => {
@@ -1737,10 +1960,10 @@ export const AdminPortal: React.FC = () => {
                       return (
                         <div key={i} className="flex flex-wrap items-end gap-2 p-2.5 bg-paper rounded-xl border border-line text-xs">
                           <span className="font-semibold text-slate-600 min-w-[80px] pb-2.5">
-                            From {Number.isFinite(prev) ? +(prev + 0.1).toFixed(1) : '?'} KM
+                            From {Number.isFinite(prev) ? +(prev + 0.1).toFixed(1) : '?'} km
                           </span>
                           <label className="flex-1 min-w-[90px]">
-                            <span className="block text-[11px] text-slate-500 mb-0.5">Up to (KM)</span>
+                            <span className="block text-xs text-slate-500 mb-0.5">Up to (km)</span>
                             <input
                               type="number"
                               inputMode="decimal"
@@ -1752,7 +1975,7 @@ export const AdminPortal: React.FC = () => {
                             />
                           </label>
                           <label className="flex-1 min-w-[90px]">
-                            <span className="block text-[11px] text-slate-500 mb-0.5">Charge (₹)</span>
+                            <span className="block text-xs text-slate-500 mb-0.5">Charge (₹)</span>
                             <input
                               type="number"
                               inputMode="decimal"
@@ -1829,7 +2052,7 @@ export const AdminPortal: React.FC = () => {
               {/* Charge preview */}
               <div className="bg-ink text-white p-5 sm:p-6 rounded-2xl border border-white/10 shadow-lg space-y-4 self-start">
                 <div>
-                  <h3 className="text-sm font-bold text-emerald-400">Delivery charge preview</h3>
+                  <h3 className="text-base font-semibold text-white">Delivery charge preview</h3>
                   <p className="text-xs text-slate-400 mt-1">
                     What a customer at this distance would pay for pickup & delivery
                     {distDirty ? ' with the values in the form (not saved yet)' : ' with the saved settings'}.
@@ -1839,7 +2062,7 @@ export const AdminPortal: React.FC = () => {
                 <div>
                   <div className="flex justify-between text-xs mb-1">
                     <label htmlFor="dist-sim">Customer distance</label>
-                    <span className="font-bold text-white text-sm">{calcDistInput} KM</span>
+                    <span className="font-bold text-white text-sm">{calcDistInput} km</span>
                   </div>
                   <input
                     id="dist-sim"
@@ -1851,21 +2074,21 @@ export const AdminPortal: React.FC = () => {
                     onChange={(e) => setCalcDistInput(parseFloat(e.target.value))}
                     className="w-full h-10 accent-emerald-500 cursor-pointer"
                   />
-                  <div className="flex justify-between text-[10px] text-slate-400">
-                    <span>0 KM</span>
-                    <span className="text-emerald-400 font-bold">{previewConfig.freeRadiusKm} KM free</span>
-                    <span>{sliderMax} KM</span>
+                  <div className="flex justify-between text-xs text-slate-400">
+                    <span>0 km</span>
+                    <span className="text-emerald-400 font-bold">{previewConfig.freeRadiusKm} km free</span>
+                    <span>{sliderMax} km</span>
                   </div>
                 </div>
 
                 <div className="p-4 bg-ink/80 rounded-2xl border border-white/10 text-xs space-y-2.5">
                   <div className="flex justify-between gap-3">
                     <span className="text-slate-400">Free radius</span>
-                    <span className="font-bold text-emerald-400">{previewConfig.freeRadiusKm} KM</span>
+                    <span className="font-bold text-emerald-400">{previewConfig.freeRadiusKm} km</span>
                   </div>
                   <div className="flex justify-between gap-3">
                     <span className="text-slate-400">Beyond the free radius</span>
-                    <span className="font-bold text-amber-400">{preview.chargeableKm} KM</span>
+                    <span className="font-bold text-amber-400">{preview.chargeableKm} km</span>
                   </div>
                   <div className="flex justify-between gap-3">
                     <span className="text-slate-400">Worked out with</span>
@@ -1874,7 +2097,7 @@ export const AdminPortal: React.FC = () => {
                         ? 'Within free radius'
                         : preview.viaSlab
                         ? 'Distance slab'
-                        : `${formatINR(previewConfig.perKmRateBeyondFree)} × ${preview.chargeableKm} KM`}
+                        : `${formatINR(previewConfig.perKmRateBeyondFree)} × ${preview.chargeableKm} km`}
                     </span>
                   </div>
                   <div className="pt-2 border-t border-white/10 flex justify-between items-baseline gap-3">
@@ -1885,7 +2108,7 @@ export const AdminPortal: React.FC = () => {
                   </div>
                 </div>
                 {calcDistInput > (previewConfig.maxServiceDistanceKm || Infinity) && (
-                  <p className="text-[11px] text-amber-300">This is beyond your max service radius.</p>
+                  <p className="text-xs text-amber-300">This is beyond your max service radius.</p>
                 )}
               </div>
             </div>
@@ -1898,7 +2121,7 @@ export const AdminPortal: React.FC = () => {
         {adminSubView === 'getting_config' && (
           <div className="space-y-6 animate-in fade-in">
             {pageHeader(
-              'Stringing Packages',
+              'Stringing packages',
               'Prices, turnaround and inclusions shown to customers when they book stringing. Changes apply to new bookings immediately.',
               <Button
                 onClick={() => {
@@ -1928,14 +2151,14 @@ export const AdminPortal: React.FC = () => {
                     <div className="flex justify-between items-start gap-3">
                       <div className="min-w-0">
                         <h3 className="font-bold text-base text-slate-900">{item.name}</h3>
-                        <span className="text-[11px] text-slate-500 font-medium">
+                        <span className="text-xs text-slate-500 font-medium">
                           Turnaround: <b>{item.turnaround || '—'}</b>
                         </span>
                       </div>
                       <div className="text-right shrink-0">
-                        <span className="text-xl font-black text-ink">{formatINR(item.price)}</span>
+                        <span className="text-xl font-bold text-ink">{formatINR(item.price)}</span>
                         {item.isActive === false && (
-                          <span className="block text-[10px] text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded mt-0.5">
+                          <span className="block text-xs text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded mt-0.5">
                             Hidden from customers
                           </span>
                         )}
@@ -1983,7 +2206,7 @@ export const AdminPortal: React.FC = () => {
         {adminSubView === 'repair_config' && (
           <div className="space-y-6 animate-in fade-in">
             {pageHeader(
-              'Repair Categories',
+              'Repair categories',
               'Starting prices and SLA days per repair type. The final repair price is set by the estimate after inspection.',
               <Button
                 onClick={() => {
@@ -2013,21 +2236,21 @@ export const AdminPortal: React.FC = () => {
                     <div className="flex justify-between items-start gap-3">
                       <div className="min-w-0">
                         <h3 className="font-bold text-base text-slate-900">{cat.name}</h3>
-                        <span className="text-[11px] text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block mt-0.5">
+                        <span className="text-xs text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block mt-0.5">
                           SLA: {pluralDays(cat.slaDays)}
                         </span>
                       </div>
                       <div className="text-right shrink-0">
-                        <span className="text-xl font-black text-slate-900">{formatINR(cat.basePrice)}</span>
-                        <span className="block text-[10px] text-slate-500 font-semibold">Starting price</span>
+                        <span className="text-xl font-bold text-slate-900">{formatINR(cat.basePrice)}</span>
+                        <span className="block text-xs text-slate-500 font-semibold">Starting price</span>
                       </div>
                     </div>
                     {cat.description && <p className="text-xs text-slate-600 leading-relaxed">{cat.description}</p>}
-                    <div className="text-[11px] text-slate-500">
+                    <div className="text-xs text-slate-500">
                       Typical turnaround shown to customers: <b>{cat.turnaround || '—'}</b>
                     </div>
                     {cat.isActive === false && (
-                      <span className="inline-block text-[10px] text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded">
+                      <span className="inline-block text-xs text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded">
                         Hidden from customers
                       </span>
                     )}
@@ -2080,18 +2303,18 @@ export const AdminPortal: React.FC = () => {
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-              <div className="bg-white p-4 rounded-2xl border border-line shadow-2xs">
-                <p className="text-xs font-semibold text-slate-500">Collected</p>
-                <p className="text-2xl font-black text-emerald-600 mt-1">{formatINR(totalCollected)}</p>
-                <p className="text-[11px] text-slate-500 mt-1">{paidRequests.length} paid</p>
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-line">
+                <p className="text-[13px] font-semibold text-slate-500">Collected</p>
+                <p className="font-display text-[32px] leading-tight font-bold tabular-nums text-emerald-700 mt-1">{formatINR(totalCollected)}</p>
+                <p className="text-xs text-slate-500 mt-1">{paidRequests.length} paid</p>
               </div>
-              <div className="bg-white p-4 rounded-2xl border border-line shadow-2xs">
-                <p className="text-xs font-semibold text-slate-500">To be collected</p>
-                <p className="text-2xl font-black text-amber-600 mt-1">{formatINR(pendingCollection)}</p>
-                <p className="text-[11px] text-slate-500 mt-1">{unpaidRequests.length} unpaid (excludes cancelled)</p>
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-line">
+                <p className="text-[13px] font-semibold text-slate-500">To be collected</p>
+                <p className="font-display text-[32px] leading-tight font-bold tabular-nums text-amber-700 mt-1">{formatINR(pendingCollection)}</p>
+                <p className="text-xs text-slate-500 mt-1">{unpaidRequests.length} unpaid (excludes cancelled)</p>
               </div>
-              <div className="bg-white p-4 rounded-2xl border border-line shadow-2xs">
-                <p className="text-xs font-semibold text-slate-500">Collected by method</p>
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-line">
+                <p className="text-[13px] font-semibold text-slate-500">Collected by method</p>
                 <p className="text-sm font-bold text-slate-900 mt-2">
                   {(['Cash', 'UPI', 'Other'] as const)
                     .map((m) => {
@@ -2118,8 +2341,8 @@ export const AdminPortal: React.FC = () => {
                   role="tab"
                   aria-selected={payFilter === t.id}
                   onClick={() => setPayFilter(t.id)}
-                  className={`min-h-[40px] px-3.5 rounded-xl text-xs font-bold border ${
-                    payFilter === t.id ? 'bg-ink text-white border-ink' : 'bg-white text-slate-700 border-line hover:bg-paper'
+                  className={`min-h-[40px] px-3.5 rounded-full text-[13px] font-semibold border transition-colors duration-150 ${
+                    payFilter === t.id ? 'bg-ink text-white border-ink' : 'bg-white text-slate-700 border-line hover:border-slate-400'
                   }`}
                 >
                   {t.label}
@@ -2128,13 +2351,13 @@ export const AdminPortal: React.FC = () => {
             </div>
 
             <div className={`${cardCls} overflow-hidden`}>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[880px] text-left border-collapse text-xs">
+              <div className="overflow-auto lg:max-h-[calc(100vh-9rem)]">
+                <table className="w-full min-w-[880px] text-left border-collapse text-[13px]">
                   <thead>
-                    <tr className="bg-paper border-b border-line text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                    <tr className="text-slate-500 font-semibold uppercase tracking-[0.06em] text-xs [&>th]:sticky [&>th]:top-0 [&>th]:z-10 [&>th]:bg-paper [&>th]:shadow-[inset_0_-1px_0_#E3DFD6]">
                       <th className={thCls}>Request</th>
                       <th className={thCls}>Customer</th>
-                      <th className={thCls}>Amount</th>
+                      <th className={`${thCls} text-right`}>Amount</th>
                       <th className={thCls}>Payment</th>
                       <th className={thCls}>Method</th>
                       <th className={thCls}>Collected by</th>
@@ -2157,15 +2380,15 @@ export const AdminPortal: React.FC = () => {
                             >
                               {r.id}
                             </button>
-                            <p className="mt-0.5 text-[11px] text-slate-500 whitespace-nowrap">{r.status}</p>
+                            <p className="mt-0.5 text-xs text-slate-500 whitespace-nowrap">{r.status}</p>
                           </td>
-                          <td className={`${tdCls} font-bold text-slate-900`}>{r.customerName}</td>
-                          <td className={`${tdCls} font-black text-slate-900 whitespace-nowrap`}>
+                          <td className={`${tdCls} font-semibold text-ink`}>{r.customerName}</td>
+                          <td className={`${tdCls} font-semibold text-ink whitespace-nowrap text-right tabular-nums`}>
                             {r.paymentRecord ? formatINR(r.paymentRecord.amount) : amountText(r)}
                           </td>
                           <td className={tdCls}>
                             <span
-                              className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold whitespace-nowrap ${
+                              className={`px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${
                                 r.paymentStatus === 'Paid'
                                   ? 'bg-emerald-100 text-emerald-800'
                                   : r.status === 'Cancelled'
@@ -2200,7 +2423,7 @@ export const AdminPortal: React.FC = () => {
         {adminSubView === 'reports' && (
           <div className="space-y-6 animate-in fade-in">
             {pageHeader(
-              'Reports & Activity',
+              'Reports & activity',
               'Website visitors, customer activity, service request exports and the admin activity log.',
               <>
                 <Button
@@ -2245,10 +2468,10 @@ export const AdminPortal: React.FC = () => {
                   Show sign-ins
                 </label>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-left border-collapse text-xs">
+              <div className="overflow-auto lg:max-h-[calc(100vh-9rem)]">
+                <table className="w-full min-w-[760px] text-left border-collapse text-[13px]">
                   <thead>
-                    <tr className="bg-paper border-y border-line text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                    <tr className="text-slate-500 font-semibold uppercase tracking-[0.06em] text-xs [&>th]:sticky [&>th]:top-0 [&>th]:z-10 [&>th]:bg-paper [&>th]:shadow-[inset_0_-1px_0_#E3DFD6]">
                       <th className={thCls}>When</th>
                       <th className={thCls}>Who</th>
                       <th className={thCls}>What</th>
@@ -2263,7 +2486,7 @@ export const AdminPortal: React.FC = () => {
                         <td className={`${tdCls} whitespace-nowrap text-slate-600`}>{formatDateTime(log.timestamp)}</td>
                         <td className={tdCls}>
                           <p className="font-semibold text-slate-900">{log.user}</p>
-                          <p className="text-[10px] text-slate-500">{log.role === 'ADMIN' ? 'Admin' : log.role === 'EMPLOYEE' ? 'Staff' : 'Customer'}</p>
+                          <p className="text-xs text-slate-500">{log.role === 'ADMIN' ? 'Admin' : log.role === 'EMPLOYEE' ? 'Staff' : 'Customer'}</p>
                         </td>
                         <td className={`${tdCls} text-slate-800`}>{prettyLogText(log.action)}</td>
                         <td className={`${tdCls} font-mono text-slate-600 whitespace-nowrap`}>
@@ -2313,7 +2536,7 @@ export const AdminPortal: React.FC = () => {
 
         {adminSubView === 'settings' && (
           <div className="space-y-6 animate-in fade-in max-w-3xl">
-            {pageHeader('Shop Settings', 'Edit the shop details, and find where every other setting is managed.')}
+            {pageHeader('Shop settings', 'Edit the shop details, and find where every other setting is managed.')}
 
             <ShopSettingsForm />
 
@@ -2325,10 +2548,10 @@ export const AdminPortal: React.FC = () => {
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Workshop location & delivery</p>
                   <p className="text-sm font-semibold text-slate-900 mt-1">{distanceConfig.shopLocationName}</p>
                   <p className="text-xs text-slate-600 mt-0.5">
-                    Free pickup & delivery within {distanceConfig.freeRadiusKm} KM ·{' '}
+                    Free pickup & delivery within {distanceConfig.freeRadiusKm} km ·{' '}
                     {distanceConfig.pricingMethod === 'SLAB'
                       ? 'distance slabs beyond'
-                      : `${formatINR(distanceConfig.perKmRateBeyondFree)}/KM beyond`}
+                      : `${formatINR(distanceConfig.perKmRateBeyondFree)}/km beyond`}
                   </p>
                 </div>
                 <Button onClick={() => goTo('distance')} variant="outline" size="sm" className="min-h-[40px] shrink-0">
@@ -2398,7 +2621,7 @@ export const AdminPortal: React.FC = () => {
         {adminSubView === 'team' && (
           <div className="space-y-6 animate-in fade-in">
             {pageHeader(
-              'Staff & Admins',
+              'Staff & admins',
               'Create sign-in accounts for stringers, technicians, pickup & delivery staff and admins.'
             )}
 
@@ -2409,7 +2632,7 @@ export const AdminPortal: React.FC = () => {
                 <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold" role="radiogroup" aria-label="Account type">
                   {[
                     { id: 'EMPLOYEE' as const, label: 'Staff', on: 'bg-ink' },
-                    { id: 'ADMIN' as const, label: 'Admin', on: 'bg-purple-600' },
+                    { id: 'ADMIN' as const, label: 'Admin', on: 'bg-ink' },
                   ].map((t) => (
                     <button
                       key={t.id}
@@ -2496,7 +2719,7 @@ export const AdminPortal: React.FC = () => {
                       aria-describedby={teamPhoneError ? 'team-mobile-error' : undefined}
                     />
                     {teamPhoneError && (
-                      <p id="team-mobile-error" className="text-[11px] text-rose-600 mt-1">
+                      <p id="team-mobile-error" className="text-xs text-rose-600 mt-1">
                         {teamPhoneError}
                       </p>
                     )}
@@ -2523,7 +2746,7 @@ export const AdminPortal: React.FC = () => {
                   ) : (
                     <div>
                       <span className={labelCls}>Access</span>
-                      <p className="min-h-[40px] flex items-center px-3 rounded-xl border border-purple-200 bg-purple-50 text-xs text-purple-800 font-semibold">
+                      <p className="min-h-[40px] flex items-center px-3 rounded-xl border border-line bg-paper text-xs text-ink font-semibold">
                         Full admin access (prices, staff, reports)
                       </p>
                     </div>
@@ -2543,14 +2766,14 @@ export const AdminPortal: React.FC = () => {
                       aria-describedby="team-password-help"
                       className={inputCls}
                     />
-                    <p id="team-password-help" className="text-[11px] text-slate-500 mt-1">
+                    <p id="team-password-help" className="text-xs text-slate-500 mt-1">
                       At least 8 characters if you set one.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-line/70">
-                  <span className="text-[11px] text-slate-500 flex items-start gap-1.5">
+                  <span className="text-xs text-slate-500 flex items-start gap-1.5">
                     <KeyRound className="w-3.5 h-3.5 text-ink shrink-0 mt-0.5" />
                     <span>
                       They sign in with this mobile number and password. Nothing is sent automatically — a generated password is
@@ -2562,7 +2785,7 @@ export const AdminPortal: React.FC = () => {
                     variant="primary"
                     size="md"
                     isLoading={isCreatingMember}
-                    className={`shrink-0 min-h-[40px] ${teamUserRole === 'ADMIN' ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
+                    className="shrink-0 min-h-[40px]"
                     leftIcon={<Plus className="w-4 h-4" />}
                   >
                     {teamUserRole === 'ADMIN' ? 'Create admin' : 'Create staff account'}
@@ -2578,10 +2801,10 @@ export const AdminPortal: React.FC = () => {
                 <p className="text-xs text-slate-500">Open jobs = assigned requests that are not completed or cancelled.</p>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-left text-xs">
-                  <thead className="bg-paper text-slate-600 uppercase tracking-wider border-y border-line text-[10px] font-bold">
-                    <tr>
+              <div className="overflow-auto lg:max-h-[calc(100vh-9rem)]">
+                <table className="w-full min-w-[760px] text-left border-collapse text-[13px]">
+                  <thead>
+                    <tr className="text-slate-500 font-semibold uppercase tracking-[0.06em] text-xs [&>th]:sticky [&>th]:top-0 [&>th]:z-10 [&>th]:bg-paper [&>th]:shadow-[inset_0_-1px_0_#E3DFD6]">
                       <th className={thCls}>Name</th>
                       <th className={thCls}>Job</th>
                       <th className={thCls}>Access</th>
@@ -2601,8 +2824,8 @@ export const AdminPortal: React.FC = () => {
                             <div className="flex items-center gap-2.5">
                               <span
                                 aria-hidden="true"
-                                className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 ${
-                                  emp.userRole === 'ADMIN' ? 'bg-purple-600' : 'bg-ink'
+                                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                                  emp.userRole === 'ADMIN' ? 'bg-accent text-ink' : 'bg-ink text-white'
                                 }`}
                               >
                                 {initials(emp.name)}
@@ -2610,18 +2833,18 @@ export const AdminPortal: React.FC = () => {
                               <div>
                                 <p className="font-bold text-slate-900">
                                   {emp.name}
-                                  {isSelf && <span className="ml-1.5 text-[10px] font-bold text-slate-500">(you)</span>}
+                                  {isSelf && <span className="ml-1.5 text-xs font-bold text-slate-500">(you)</span>}
                                 </p>
-                                <p className="text-[10px] text-slate-500 font-mono">{emp.id}</p>
+                                <p className="text-xs text-slate-500 font-mono">{emp.id}</p>
                               </div>
                             </div>
                           </td>
                           <td className={`${tdCls} font-medium text-slate-700`}>{emp.role}</td>
                           <td className={tdCls}>
                             <span
-                              className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                              className={`px-2 py-0.5 rounded-full font-bold text-xs ${
                                 emp.userRole === 'ADMIN'
-                                  ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                  ? 'bg-ink text-white border border-ink'
                                   : 'bg-paper-deep text-ink border border-line'
                               }`}
                             >
@@ -2658,13 +2881,13 @@ export const AdminPortal: React.FC = () => {
                                     onConfirm: () => resetStaffPassword(emp.id, emp.name),
                                   })
                                 }
-                                className="min-h-[40px] px-3 rounded-lg text-ink hover:bg-paper font-bold text-[11px]"
+                                className="min-h-[40px] px-3 rounded-lg text-ink hover:bg-paper font-bold text-xs"
                               >
                                 Reset password
                               </button>
                             )}
                             {isSelf ? (
-                              <span className="text-[11px] text-slate-400">—</span>
+                              <span className="text-xs text-slate-400">—</span>
                             ) : (
                               <button
                                 type="button"
@@ -2678,7 +2901,7 @@ export const AdminPortal: React.FC = () => {
                                           <>
                                             {' '}
                                             They still have <b>{openJobs} open {openJobs === 1 ? 'job' : 'jobs'}</b> — reassign
-                                            them from Service Requests.
+                                            them from Service requests.
                                           </>
                                         )}
                                       </>
@@ -2688,7 +2911,7 @@ export const AdminPortal: React.FC = () => {
                                     onConfirm: () => removeEmployee(emp.id),
                                   })
                                 }
-                                className="min-h-[40px] px-3 rounded-lg text-red-700 hover:bg-red-50 font-bold text-[11px]"
+                                className="min-h-[40px] px-3 rounded-lg text-red-700 hover:bg-red-50 font-bold text-xs"
                               >
                                 Deactivate
                               </button>
@@ -2742,7 +2965,7 @@ export const AdminPortal: React.FC = () => {
 
             <div className="space-y-2 overflow-y-auto" role="radiogroup" aria-label="Staff member">
               {activeEmployees.length === 0 && (
-                <p className="text-sm text-slate-500 py-4 text-center">No active staff. Create accounts under Staff & Admins.</p>
+                <p className="text-sm text-slate-500 py-4 text-center">No active staff. Create accounts under Staff & admins.</p>
               )}
               {activeEmployees.map((emp) => {
                 const openJobs = openJobsFor(emp.id);
@@ -2761,15 +2984,15 @@ export const AdminPortal: React.FC = () => {
                       <span className="block font-bold text-slate-900">
                         {emp.name}
                         {assignRequest.assignedEmployeeId === emp.id && (
-                          <span className="ml-1.5 text-[10px] text-ink">(currently assigned)</span>
+                          <span className="ml-1.5 text-xs text-ink">(currently assigned)</span>
                         )}
                       </span>
-                      <span className="block text-slate-500 text-[11px]">
+                      <span className="block text-slate-500 text-xs">
                         {emp.role}
                         {emp.userRole === 'ADMIN' ? ' · Admin' : ''}
                       </span>
                     </span>
-                    <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded font-semibold text-slate-700 whitespace-nowrap">
+                    <span className="text-xs bg-slate-100 px-2 py-0.5 rounded font-semibold text-slate-700 whitespace-nowrap">
                       {openJobs} open {openJobs === 1 ? 'job' : 'jobs'}
                     </span>
                   </button>
@@ -2827,15 +3050,15 @@ export const AdminPortal: React.FC = () => {
             aria-modal="true"
             aria-labelledby="detail-title"
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl my-auto flex flex-col max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)] animate-in zoom-in-95"
+            className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl my-auto flex flex-col max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] animate-in zoom-in-95"
           >
             <div className="flex justify-between items-start gap-3 p-4 sm:p-6 pb-3 border-b border-line/70 shrink-0">
               <div className="min-w-0">
-                <h3 id="detail-title" className="text-lg font-bold text-slate-900 flex flex-wrap items-center gap-2">
+                <h3 id="detail-title" className="text-lg font-semibold text-ink flex flex-wrap items-center gap-2">
                   <span className="font-mono">{detailRequest.id}</span>
                   <StatusBadge status={detailRequest.status} size="sm" />
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-[13px] text-slate-500 mt-0.5">
                   {serviceLabel(detailRequest)} · {detailRequest.batBrand} {detailRequest.batModel} · Booked{' '}
                   {formatDateTime(detailRequest.createdAt)}
                 </p>
@@ -2850,10 +3073,10 @@ export const AdminPortal: React.FC = () => {
               </button>
             </div>
 
-            <div className="overflow-y-auto p-4 sm:p-6 space-y-4 text-xs">
+            <div className="overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4 text-[13px]">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3 bg-paper rounded-xl space-y-1">
-                  <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Customer</p>
+                  <p className="font-bold text-slate-500 uppercase tracking-wider text-xs">Customer</p>
                   <p className="font-bold text-slate-900 text-sm">{detailRequest.customerName}</p>
                   {mobileTelHref(detailRequest.customerMobile) ? (
                     <a
@@ -2868,7 +3091,7 @@ export const AdminPortal: React.FC = () => {
                 </div>
 
                 <div className="p-3 bg-paper rounded-xl space-y-1">
-                  <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Pickup address</p>
+                  <p className="font-bold text-slate-500 uppercase tracking-wider text-xs">Pickup address</p>
                   <p className="text-slate-800">
                     {[
                       detailRequest.pickupAddress?.houseFlat,
@@ -2884,7 +3107,7 @@ export const AdminPortal: React.FC = () => {
                     <p className="text-slate-500">Landmark: {detailRequest.pickupAddress.landmark}</p>
                   )}
                   <p className="font-semibold text-slate-700">
-                    {detailRequest.distanceKm} KM from the workshop ·{' '}
+                    {detailRequest.distanceKm} km from the workshop ·{' '}
                     {detailRequest.isFreeDelivery ? (
                       <span className="text-emerald-700">free delivery</span>
                     ) : (
@@ -2916,7 +3139,7 @@ export const AdminPortal: React.FC = () => {
                         e.preventDefault();
                         const km = Number(distanceFix.km);
                         if (distanceFix.km.trim() === '' || !Number.isFinite(km) || km < 0 || km > 200) {
-                          setDistanceFixError('Enter the distance in KM (0–200).');
+                          setDistanceFixError('Enter the distance in km (0–200).');
                           return;
                         }
                         if (distanceFix.reason.trim().length < 3) {
@@ -2935,7 +3158,7 @@ export const AdminPortal: React.FC = () => {
                           addToast(
                             'success',
                             'Distance corrected',
-                            `${updated?.id || detailRequest.id}: ${updated?.distanceKm ?? km} KM · total ${formatINR(
+                            `${updated?.id || detailRequest.id}: ${updated?.distanceKm ?? km} km · total ${formatINR(
                               updated?.totalAmount ?? detailRequest.totalAmount
                             )}`
                           );
@@ -2947,11 +3170,11 @@ export const AdminPortal: React.FC = () => {
                         }
                       }}
                     >
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-xs text-slate-500">
                         Recalculates the pickup & delivery charge and the total. The customer sees the new amount.
                       </p>
-                      <label className="block text-[11px] font-bold text-slate-600">
-                        Distance (KM)
+                      <label className="block text-xs font-bold text-slate-600">
+                        Distance (km)
                         <input
                           type="number"
                           inputMode="decimal"
@@ -2964,7 +3187,7 @@ export const AdminPortal: React.FC = () => {
                           className="mt-1 w-full min-h-[40px] px-2 rounded-lg border border-slate-300 text-sm font-semibold bg-white"
                         />
                       </label>
-                      <label className="block text-[11px] font-bold text-slate-600">
+                      <label className="block text-xs font-bold text-slate-600">
                         Reason
                         <input
                           type="text"
@@ -2977,7 +3200,7 @@ export const AdminPortal: React.FC = () => {
                         />
                       </label>
                       {distanceFixError && (
-                        <p role="alert" className="text-[11px] text-rose-700 flex items-start gap-1">
+                        <p role="alert" className="text-xs text-rose-700 flex items-start gap-1">
                           <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {distanceFixError}
                         </p>
                       )}
@@ -3007,7 +3230,7 @@ export const AdminPortal: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3 border border-line rounded-xl space-y-1">
-                  <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Racket & service</p>
+                  <p className="font-bold text-slate-500 uppercase tracking-wider text-xs">Racket & service</p>
                   <dl className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1">
                     <dt className="text-slate-500">Racket</dt>
                     <dd className="font-semibold text-slate-900">
@@ -3078,7 +3301,7 @@ export const AdminPortal: React.FC = () => {
                 </div>
 
                 <div className="p-3 border border-line rounded-xl space-y-1">
-                  <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Charges & payment</p>
+                  <p className="font-bold text-slate-500 uppercase tracking-wider text-xs">Charges & payment</p>
                   <dl className="grid grid-cols-[1fr,auto] gap-x-3 gap-y-1">
                     <dt className="text-slate-500">Service</dt>
                     <dd className="text-right text-slate-800">{formatINR(detailRequest.serviceCharge)}</dd>
@@ -3095,7 +3318,15 @@ export const AdminPortal: React.FC = () => {
                     <dt className="font-bold text-slate-900 border-t border-line/70 pt-1">Total</dt>
                     <dd className="text-right font-bold text-slate-900 border-t border-line/70 pt-1">{amountText(detailRequest)}</dd>
                     <dt className="text-slate-500">Payment</dt>
-                    <dd className={`text-right font-semibold ${detailRequest.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                    <dd
+                      className={`text-right font-semibold ${
+                        detailRequest.paymentStatus === 'Paid'
+                          ? 'text-emerald-700'
+                          : paymentText(detailRequest) === 'Unpaid'
+                          ? 'text-amber-700'
+                          : 'text-slate-500'
+                      }`}
+                    >
                       {paymentText(detailRequest)}
                     </dd>
                   </dl>
@@ -3132,11 +3363,11 @@ export const AdminPortal: React.FC = () => {
                         if (ok) setPaymentForm(null);
                       }}
                     >
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-xs text-slate-500">
                         Marks the request as paid and completed. Recorded as collected by {userName || 'Admin'}.
                       </p>
                       <div className="grid grid-cols-2 gap-2">
-                        <label className="text-[11px] font-bold text-slate-600">
+                        <label className="text-xs font-bold text-slate-600">
                           Amount (₹)
                           <input
                             type="number"
@@ -3149,7 +3380,7 @@ export const AdminPortal: React.FC = () => {
                             className="mt-1 w-full min-h-[40px] px-2 rounded-lg border border-slate-300 text-sm font-semibold"
                           />
                         </label>
-                        <label className="text-[11px] font-bold text-slate-600">
+                        <label className="text-xs font-bold text-slate-600">
                           Method
                           <select
                             value={paymentForm.method}
@@ -3162,7 +3393,7 @@ export const AdminPortal: React.FC = () => {
                           </select>
                         </label>
                       </div>
-                      <label className="block text-[11px] font-bold text-slate-600">
+                      <label className="block text-xs font-bold text-slate-600">
                         Note (optional, e.g. UPI reference)
                         <input
                           type="text"
@@ -3202,7 +3433,7 @@ export const AdminPortal: React.FC = () => {
 
               {detailRequest.repairEstimate && (
                 <div className="p-3 border border-amber-200 bg-amber-50/50 rounded-xl space-y-1">
-                  <p className="font-bold text-amber-800 uppercase tracking-wider text-[10px]">
+                  <p className="font-bold text-amber-800 uppercase tracking-wider text-xs">
                     Repair estimate{detailRequest.repairEstimate.isRevised ? ' (revised)' : ''}
                   </p>
                   <dl className="grid grid-cols-[1fr,auto] gap-x-3 gap-y-1 max-w-sm">
@@ -3256,7 +3487,7 @@ export const AdminPortal: React.FC = () => {
 
               {detailRequest.pickupCondition && (
                 <div className="p-3 border border-line rounded-xl space-y-1">
-                  <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Condition at pickup</p>
+                  <p className="font-bold text-slate-500 uppercase tracking-wider text-xs">Condition at pickup</p>
                   <p className="text-slate-800">
                     <b>{detailRequest.pickupCondition.condition}</b>
                     {detailRequest.pickupCondition.notes ? ` — ${detailRequest.pickupCondition.notes}` : ''}
@@ -3279,7 +3510,7 @@ export const AdminPortal: React.FC = () => {
 
               {detailRequest.review && (
                 <div className="p-3 border border-line rounded-xl space-y-1">
-                  <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Customer review</p>
+                  <p className="font-bold text-slate-500 uppercase tracking-wider text-xs">Customer review</p>
                   <p className="text-slate-800">
                     <b>{detailRequest.review.rating} / 5</b>
                     {detailRequest.review.comment ? ` — ${detailRequest.review.comment}` : ''}
@@ -3291,7 +3522,7 @@ export const AdminPortal: React.FC = () => {
               <div className="p-3 border border-line bg-paper rounded-xl space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-slate-800">
-                    <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px] block">Assigned staff</span>
+                    <span className="font-bold text-slate-500 uppercase tracking-wider text-xs block">Assigned staff</span>
                     <span className="font-semibold">{detailRequest.assignedEmployeeName || 'Not assigned'}</span>
                   </p>
                   {isOpenRequest(detailRequest) && (
@@ -3308,10 +3539,10 @@ export const AdminPortal: React.FC = () => {
                 </div>
 
                 <div className="border-t border-line pt-3 space-y-2">
-                  <label htmlFor="status-override" className="font-bold text-slate-500 uppercase tracking-wider text-[10px] block">
+                  <label htmlFor="status-override" className="font-bold text-slate-500 uppercase tracking-wider text-xs block">
                     Change status
                   </label>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-xs text-slate-500">
                     Staff normally move requests forward in the staff app. Use this to correct a status or cancel a request.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-2">
@@ -3385,7 +3616,7 @@ export const AdminPortal: React.FC = () => {
 
               {/* Timeline */}
               <div className="space-y-2">
-                <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Timeline</p>
+                <p className="font-bold text-slate-500 uppercase tracking-wider text-xs">Timeline</p>
                 {(detailRequest.timeline || []).length === 0 ? (
                   <p className="text-slate-500">No events yet.</p>
                 ) : (
@@ -3394,11 +3625,11 @@ export const AdminPortal: React.FC = () => {
                       <li key={i} className="relative">
                         <span className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-ink border-2 border-white" />
                         <p className="font-semibold text-slate-900">{ev.label || ev.status}</p>
-                        <p className="text-[11px] text-slate-500">
+                        <p className="text-xs text-slate-500">
                           {ev.timestamp}
                           {ev.actor ? ` · ${ev.actor}` : ''}
                         </p>
-                        {ev.notes && <p className="text-[11px] text-slate-600">{ev.notes}</p>}
+                        {ev.notes && <p className="text-xs text-slate-600">{ev.notes}</p>}
                       </li>
                     ))}
                   </ol>
@@ -3509,7 +3740,7 @@ export const AdminPortal: React.FC = () => {
                       setGetFormPrice(val === '' ? '' : parseInt(val, 10) || 0);
                     }}
                     placeholder="e.g. 450"
-                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-black text-ink outline-none"
+                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-bold text-ink outline-none"
                   />
                 </div>
                 <div>
@@ -3638,7 +3869,7 @@ export const AdminPortal: React.FC = () => {
                       const val = e.target.value;
                       setGetFormPrice(val === '' ? '' : parseInt(val, 10) || 0);
                     }}
-                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-black text-ink outline-none"
+                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-bold text-ink outline-none"
                   />
                 </div>
                 <div>
@@ -3775,7 +4006,7 @@ export const AdminPortal: React.FC = () => {
                       setRepFormBasePrice(val === '' ? '' : parseInt(val, 10) || 0);
                     }}
                     placeholder="e.g. 300"
-                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-black text-slate-900 outline-none"
+                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-bold text-slate-900 outline-none"
                   />
                 </div>
                 <div>
@@ -3908,7 +4139,7 @@ export const AdminPortal: React.FC = () => {
                       const val = e.target.value;
                       setRepFormBasePrice(val === '' ? '' : parseInt(val, 10) || 0);
                     }}
-                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-black text-slate-900 outline-none"
+                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-bold text-slate-900 outline-none"
                   />
                 </div>
                 <div>

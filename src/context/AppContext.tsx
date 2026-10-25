@@ -831,7 +831,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const charge = matchedSlab ? matchedSlab.price : Math.round(chargeableKm * distanceConfig.perKmRateBeyondFree);
       return { charge, isFree: false, chargeableKm };
     } else {
-      // Per KM calculation
+      // Per km calculation
       const charge = Math.round(chargeableKm * distanceConfig.perKmRateBeyondFree);
       return { charge, isFree: false, chargeableKm };
     }
@@ -1028,7 +1028,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addToast(
         'success',
         'Logistics Pricing Updated',
-        `Free delivery radius set to ${next.freeRadiusKm} KM. Pickups beyond ${next.freeRadiusKm} KM will be charged ₹${next.perKmRateBeyondFree}/KM.`
+        `Free delivery radius set to ${next.freeRadiusKm} km. Pickups beyond ${next.freeRadiusKm} km will be charged ₹${next.perKmRateBeyondFree}/km.`
       );
       return true;
     } catch (err) {

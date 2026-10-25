@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AlertCircle, CalendarPlus, CheckCircle2, Wallet } from 'lucide-react';
+import { AlertCircle, CalendarPlus, CalendarX2, CheckCircle2, Wallet } from 'lucide-react';
 import { ApiError } from '../../services/apiClient';
 import { courtService } from '../../services/courtService';
 import type { CourtBooking, CourtVenue } from '../../types/courts';
@@ -123,7 +123,7 @@ export const BookingDialog: React.FC<Props> = ({ draft, onClose, onBooked, onCon
               Pay at the venue — cash or UPI.
             </li>
             <li className="flex items-start gap-2">
-              <span aria-hidden="true" className="ml-1.5 mr-0.5 mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+              <CalendarX2 className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" aria-hidden="true" />
               {cancelRule}, from My bookings.
             </li>
           </ul>
@@ -162,14 +162,13 @@ export const BookingDialog: React.FC<Props> = ({ draft, onClose, onBooked, onCon
           e.preventDefault();
           void submit();
         }}
-        className="space-y-5"
+        className="space-y-4"
       >
         <dl className="divide-y divide-line rounded-xl border border-line text-[15px]">
+          {/* Kept to three rows so "Confirm booking" stays in view on a laptop screen. */}
           {[
-            ['Venue', venue.name],
-            ['Court', draft.courtName],
-            ['Date', formatDateLong(draft.date)],
-            ['Time', formatTimeRange(draft.startTime, draft.endTime)],
+            ['Court', `${draft.courtName}, ${venue.name}`],
+            ['When', `${formatDateLong(draft.date)}, ${formatTimeRange(draft.startTime, draft.endTime)}`],
           ].map(([k, v]) => (
             <div key={k} className="flex justify-between gap-4 px-4 py-2.5">
               <dt className="text-ink-muted">{k}</dt>

@@ -48,11 +48,11 @@ const rupees = (v: string): number => {
 };
 
 const JobSummary: React.FC<{ request: ServiceRequest }> = ({ request }) => (
-  <div className="rounded-2xl bg-paper border border-line px-3 py-2.5">
-    <p className="font-semibold text-slate-900">
+  <div className="rounded-xl bg-paper border border-line px-3 py-2.5">
+    <p className="font-semibold text-ink">
       {request.batBrand} {request.batModel}
     </p>
-    <p className="text-xs text-slate-600">
+    <p className="text-[13px] text-slate-600">
       {request.customerName} · {request.pickupAddress?.area || addressLine(request.pickupAddress)}
     </p>
   </div>
@@ -86,7 +86,7 @@ const RupeeInput: React.FC<{
         className={`${inputCls} pl-7 tabular-nums`}
       />
     </div>
-    {hint && <p className="text-[11px] text-slate-500 mt-1">{hint}</p>}
+    {hint && <p className="text-xs text-slate-500 mt-1">{hint}</p>}
   </div>
 );
 
@@ -167,11 +167,11 @@ export const PickupDialog: React.FC<{
                     setError(null);
                   }}
                   className={`min-h-[52px] px-3 py-2 rounded-xl border text-left transition-colors ${
-                    active ? 'border-ink bg-paper ring-1 ring-ink/40' : 'border-line bg-white hover:bg-paper'
+                    active ? 'border-ink bg-paper ring-2 ring-ink' : 'border-line bg-white hover:bg-paper'
                   }`}
                 >
                   <span className={`block text-sm font-bold ${active ? 'text-ink' : 'text-slate-800'}`}>{c.value}</span>
-                  <span className="block text-[11px] text-slate-500 leading-tight">{c.hint}</span>
+                  <span className="block text-xs text-slate-500 leading-tight mt-0.5">{c.hint}</span>
                 </button>
               );
             })}
@@ -191,7 +191,7 @@ export const PickupDialog: React.FC<{
             placeholder="e.g. crack near the T-joint, two strings broken, grip worn"
             className={textareaCls}
           />
-          <p className="text-[11px] text-slate-500 mt-1">The customer sees the condition and notes on their request.</p>
+          <p className="text-xs text-slate-500 mt-1">The customer sees the condition and notes on their request.</p>
         </div>
 
         <div>
@@ -222,7 +222,7 @@ export const PickupDialog: React.FC<{
                 className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-300 text-slate-600 hover:border-ink/30 hover:text-ink flex flex-col items-center justify-center gap-1 text-xs font-semibold disabled:opacity-60"
               >
                 <Camera className="w-5 h-5" />
-                {reading ? 'Adding…' : 'Add photo'}
+                {reading ? 'Adding…' : 'Take photo'}
               </button>
             )}
           </div>
@@ -334,7 +334,7 @@ export const EstimateDialog: React.FC<{
             placeholder="What you found and what the repair involves"
             className={textareaCls}
           />
-          <p className="text-[11px] text-slate-500 mt-1">Shown to the customer with the estimate.</p>
+          <p className="text-xs text-slate-500 mt-1">Shown to the customer with the estimate.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -355,7 +355,7 @@ export const EstimateDialog: React.FC<{
             />
           </div>
         </div>
-        <p className="text-[11px] text-slate-500 -mt-2">
+        <p className="text-xs text-slate-500 -mt-2">
           {category
             ? `Suggested from the ${category.name} turnaround (${slaDays} days).`
             : `Suggested from the usual ${DEFAULT_REPAIR_DAYS}-day repair turnaround.`}
@@ -370,9 +370,9 @@ export const EstimateDialog: React.FC<{
             <dt className="text-slate-600">Pickup & delivery</dt>
             <dd className="font-semibold text-slate-900 tabular-nums">{delivery > 0 ? formatINR(delivery) : 'Free'}</dd>
           </div>
-          <div className="flex justify-between gap-3 px-3 py-2 bg-paper rounded-b-2xl">
-            <dt className="font-bold text-slate-900">Customer pays on delivery</dt>
-            <dd className="font-bold text-slate-900 tabular-nums">{formatINR(total + delivery)}</dd>
+          <div className="flex justify-between items-baseline gap-3 px-3 py-3 bg-paper rounded-b-2xl" aria-live="polite">
+            <dt className="font-bold text-ink">Customer pays on delivery</dt>
+            <dd className="font-display text-[26px] leading-none font-bold text-ink tabular-nums">{formatINR(total + delivery)}</dd>
           </div>
         </dl>
         <p className="text-xs text-slate-600">The repair can start only after the customer approves this estimate.</p>
@@ -436,7 +436,7 @@ export const ReviseDialog: React.FC<{
             placeholder="e.g. a second crack under the grommet strip"
             className={textareaCls}
           />
-          <p className="text-[11px] text-slate-500 mt-1">Shown to the customer.</p>
+          <p className="text-xs text-slate-500 mt-1">Shown to the customer.</p>
         </div>
         <dl className="rounded-2xl border border-line divide-y divide-line/70 text-sm">
           <div className="flex justify-between gap-3 px-3 py-2">
@@ -447,9 +447,9 @@ export const ReviseDialog: React.FC<{
             <dt className="text-slate-600">Extra</dt>
             <dd className="font-semibold tabular-nums">+{formatINR(Number.isNaN(add) ? 0 : add)}</dd>
           </div>
-          <div className="flex justify-between gap-3 px-3 py-2 bg-paper">
-            <dt className="font-bold text-slate-900">New repair estimate</dt>
-            <dd className="font-bold tabular-nums">{formatINR(newTotal)}</dd>
+          <div className="flex justify-between items-baseline gap-3 px-3 py-3 bg-paper" aria-live="polite">
+            <dt className="font-bold text-ink">New repair estimate</dt>
+            <dd className="font-display text-[26px] leading-none font-bold text-ink tabular-nums">{formatINR(newTotal)}</dd>
           </div>
           {delivery > 0 && (
             <div className="flex justify-between gap-3 px-3 py-2">
@@ -543,18 +543,11 @@ export const PaymentDialog: React.FC<{
               <dd className="font-semibold tabular-nums">−{formatINR(request.discount)}</dd>
             </div>
           )}
-          <div className="flex justify-between gap-3 px-3 py-2 bg-paper rounded-b-2xl">
-            <dt className="font-bold text-slate-900">Amount due</dt>
-            <dd className="font-bold text-slate-900 tabular-nums">{formatINR(due)}</dd>
+          <div className="flex justify-between items-baseline gap-3 px-3 py-3 bg-paper rounded-b-2xl">
+            <dt className="font-bold text-ink">Amount due</dt>
+            <dd className="font-display text-[28px] leading-none font-bold text-ink tabular-nums">{formatINR(due)}</dd>
           </div>
         </dl>
-
-        <RupeeInput id="pay-amount" label="Amount received" value={amount} onChange={setAmount} />
-        {differs && (
-          <p className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 -mt-2">
-            This is different from the amount due ({formatINR(due)}). Record the amount due — if the customer paid a different amount, ask the admin to record it.
-          </p>
-        )}
 
         <fieldset>
           <legend className={fieldLabel}>Paid by</legend>
@@ -566,7 +559,7 @@ export const PaymentDialog: React.FC<{
                 role="radio"
                 aria-checked={method === m}
                 onClick={() => setMethod(m)}
-                className={`min-h-[44px] rounded-xl border text-sm font-bold transition-colors ${
+                className={`min-h-[52px] rounded-xl border text-base font-bold transition-colors ${
                   method === m ? 'border-emerald-600 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-600' : 'border-line bg-white text-slate-700 hover:bg-paper'
                 }`}
               >
@@ -575,6 +568,13 @@ export const PaymentDialog: React.FC<{
             ))}
           </div>
         </fieldset>
+
+        <RupeeInput id="pay-amount" label="Amount received" value={amount} onChange={setAmount} />
+        {differs && (
+          <p className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 -mt-2">
+            This is different from the amount due ({formatINR(due)}). Record the amount due — if the customer paid a different amount, ask the admin to record it.
+          </p>
+        )}
 
         {method === 'UPI' && (
           <div>
@@ -672,7 +672,7 @@ export const DistanceDialog: React.FC<{
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 min-h-[44px] rounded-xl bg-ink hover:bg-ink-hover text-white text-sm font-bold"
+            className="flex-1 min-h-[48px] rounded-xl bg-ink hover:bg-ink-hover text-white text-[15px] font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           >
             Done
           </button>
@@ -735,7 +735,7 @@ export const DistanceDialog: React.FC<{
             onFocus={(e) => e.target.select()}
             className={`${inputCls} tabular-nums`}
           />
-          <p className="text-[11px] text-slate-500 mt-1">Free within {distanceConfig.freeRadiusKm} km.</p>
+          <p className="text-xs text-slate-500 mt-1">Free within {distanceConfig.freeRadiusKm} km.</p>
         </div>
         <div>
           <label htmlFor="dist-reason" className={fieldLabel}>
@@ -750,7 +750,7 @@ export const DistanceDialog: React.FC<{
             placeholder="e.g. checked on Google Maps at pickup"
             className={inputCls}
           />
-          <p className="text-[11px] text-slate-500 mt-1">Shown to the customer in their request timeline.</p>
+          <p className="text-xs text-slate-500 mt-1">Shown to the customer in their request timeline.</p>
         </div>
         {preview && (
           <dl className="rounded-2xl border border-line divide-y divide-line/70 text-sm">
@@ -795,7 +795,7 @@ export const ConfirmDialog: React.FC<{
       width="sm"
       footer={<DialogButtons onCancel={onClose} busy={busy} onSubmit={confirm} submitLabel={confirmLabel} tone={tone} />}
     >
-      <div className="text-sm text-slate-700 space-y-2">{message}</div>
+      <div className="text-[15px] text-slate-700 space-y-2">{message}</div>
       <FieldError>{error}</FieldError>
     </StaffDialog>
   );

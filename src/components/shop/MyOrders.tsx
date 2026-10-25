@@ -209,7 +209,7 @@ const OrderDetail: React.FC<{ id: string; known: ShopOrder | null; onBack: () =>
 
   if (!order) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-4">
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-4">
         {back}
         {loadError ? (
           <p className={cx(card, 'p-5 text-[15px] text-ink-soft')}>{loadError}</p>
@@ -224,7 +224,7 @@ const OrderDetail: React.FC<{ id: string; known: ShopOrder | null; onBack: () =>
   const a = order.address;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-4">
+    <div className="max-w-4xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-4">
       {back}
       <section className={cx(card, 'p-4 sm:p-6')}>
         <div className="flex flex-wrap items-start justify-between gap-3">
