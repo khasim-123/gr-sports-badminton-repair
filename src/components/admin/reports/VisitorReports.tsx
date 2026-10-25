@@ -282,7 +282,7 @@ export const VisitorReports: React.FC = () => {
             {summary.recentCustomers.length === 0 ? (
               <p className="text-xs text-slate-400 px-4 pb-4">No logged-in customer visits in this period.</p>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead className="bg-paper text-slate-500 text-left">
                     <tr>
@@ -310,6 +310,27 @@ export const VisitorReports: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+            )}
+            {summary.recentCustomers.length > 0 && (
+              <ul className="md:hidden divide-y divide-line/70 border-t border-line/70">
+                {summary.recentCustomers.map((c) => (
+                  <li key={c.phone} className="flex items-start justify-between gap-3 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-900">{c.name || 'Not registered yet'}</p>
+                      <a href={`tel:${c.phone.replace(/\s/g, '')}`} className="text-[13px] text-ink underline underline-offset-2">
+                        {c.phone}
+                      </a>
+                      <p className="text-[13px] text-slate-500">
+                        {c.lastVisit} · <span className="capitalize">{pageLabel(c.lastPage)}</span>
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-right text-[13px] text-slate-500">
+                      <span className="block text-sm font-bold tabular-nums text-slate-900">{fmt(c.pageViews)}</span>
+                      views
+                    </p>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
 

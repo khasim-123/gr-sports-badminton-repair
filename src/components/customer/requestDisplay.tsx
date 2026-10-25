@@ -20,7 +20,7 @@ export const canReview = (r: ServiceRequest) => r.status === 'Completed' && !r.r
 export const realPhotos = (photos?: string[] | null): string[] =>
   (photos || []).filter((p) => !!p && !/images\.unsplash\.com/i.test(p));
 
-/** Stored getting type may be a tier id ("tournament") or a tier name ("Tournament Getting"). */
+/** Stored getting type may be a tier id ("tournament") or a tier name ("Tournament Stringing"). */
 export const gettingTierName = (r: ServiceRequest, tiers: GettingServiceTier[]): string => {
   const raw = (r.gettingType || '').trim();
   if (!raw) return 'Stringing';

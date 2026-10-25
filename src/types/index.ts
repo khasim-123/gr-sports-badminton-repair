@@ -52,12 +52,12 @@ export type BatType =
   | 'Junior Racket';
 
 export type GettingType =
-  | 'Basic Getting'
-  | 'Tournament Getting'
-  | 'Durability Getting'
-  | 'Custom Getting'
-  | 'Standard Getting'
-  | 'Premium Getting';
+  | 'Basic Stringing'
+  | 'Tournament Stringing'
+  | 'Durability Stringing'
+  | 'Custom Stringing'
+  | 'Standard Stringing'
+  | 'Premium Stringing';
 
 export type RepairIssue =
   | 'Broken Bat'

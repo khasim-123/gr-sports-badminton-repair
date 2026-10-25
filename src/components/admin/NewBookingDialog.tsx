@@ -142,7 +142,6 @@ export const NewBookingDialog: React.FC<Props> = ({ open, prefill, onClose, onCr
     if (repairDesc.trim().length < 3) errors.repairDesc = 'Describe the damage.';
   }
   if (!batBrand.trim()) errors.batBrand = 'Enter the racket brand.';
-  if (!batModel.trim()) errors.batModel = 'Enter the racket model.';
   if (!dropAtShop) {
     if (!addr.houseFlat.trim()) errors.houseFlat = 'Required.';
     if (!addr.street.trim()) errors.street = 'Required.';
@@ -430,7 +429,7 @@ export const NewBookingDialog: React.FC<Props> = ({ open, prefill, onClose, onCr
               </div>
               <div>
                 <label htmlFor="nb-model" className={labelCls}>
-                  Model
+                  Model <span className="font-normal text-slate-500">(optional)</span>
                 </label>
                 <input id="nb-model" type="text" maxLength={80} value={batModel} onChange={(e) => setBatModel(e.target.value)} className={`${inputCls} ${bad('batModel')}`} placeholder="Astrox 88D" />
                 {err('batModel')}

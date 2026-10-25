@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { StatusBadge } from '../common/Badge';
+import { StatusBadge, statusLabel } from '../common/Badge';
 import { Button } from '../common/Button';
 import {
   ServiceRequest,
@@ -267,6 +267,10 @@ const paymentText = (r: ServiceRequest) => {
   return 'Unpaid';
 };
 
+/** Colours for the payment pill (matches paymentText). */
+const paymentPill = (r: ServiceRequest) =>
+  r.paymentStatus === 'Paid' ? 'bg-emerald-100 text-emerald-800' : r.status === 'Cancelled' ? 'bg-slate-100 text-slate-600' : 'bg-amber-100 text-amber-800';
+
 const DISTANCE_SOURCE_TEXT: Record<string, string> = {
   location: "from the customer's phone location",
   customer: 'entered by the customer',
@@ -428,6 +432,7 @@ export const AdminPortal: React.FC = () => {
   );
   const totalCollected = paidRequests.reduce((acc, r) => acc + (r.paymentRecord?.amount ?? r.totalAmount ?? 0), 0);
   const pendingCollection = unpaidRequests.reduce((acc, r) => acc + (r.totalAmount || 0), 0);
+  const paymentRows = payFilter === 'PAID' ? paidRequests : payFilter === 'UNPAID' ? unpaidRequests : requests;
   const gettingCount = requests.filter((r) => r.serviceType === 'GETTING').length;
   const repairCount = requests.filter((r) => r.serviceType === 'REPAIR').length;
   const pct = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
@@ -437,6 +442,40 @@ export const AdminPortal: React.FC = () => {
 
   const openJobsFor = (empId: string) =>
     requests.filter((r) => r.assignedEmployeeId === empId && isOpenRequest(r)).length;
+
+  const confirmResetPassword = (emp: Employee) =>
+    setConfirmState({
+      title: `Reset ${emp.name}'s password?`,
+      message: (
+        <>
+          A new temporary password will be shown once. Their current password stops working immediately — hand the new one
+          over in person.
+        </>
+      ),
+      confirmLabel: 'Reset password',
+      onConfirm: () => resetStaffPassword(emp.id, emp.name),
+    });
+
+  const confirmDeactivate = (emp: Employee) => {
+    const openJobs = openJobsFor(emp.id);
+    setConfirmState({
+      title: `Deactivate ${emp.name}?`,
+      message: (
+        <>
+          {emp.name} will no longer be able to sign in with <span className="whitespace-nowrap">{formatMobile(emp.phone)}</span>.
+          {openJobs > 0 && (
+            <>
+              {' '}
+              They still have <b>{openJobs} open {openJobs === 1 ? 'job' : 'jobs'}</b> — reassign them from Service requests.
+            </>
+          )}
+        </>
+      ),
+      confirmLabel: 'Deactivate',
+      danger: true,
+      onConfirm: () => removeEmployee(emp.id),
+    });
+  };
 
   const stageCounts = STAGES.map((s) => ({
     ...s,
@@ -1387,7 +1426,7 @@ export const AdminPortal: React.FC = () => {
                   <optgroup label="Exact status">
                     {ALL_STATUSES.map((s) => (
                       <option key={s} value={s}>
-                        {s}
+                        {statusLabel(s)}
                       </option>
                     ))}
                   </optgroup>
@@ -2350,27 +2389,23 @@ export const AdminPortal: React.FC = () => {
               ))}
             </div>
 
-            <div className={`${cardCls} overflow-hidden`}>
+            <div className={`${cardCls} overflow-hidden hidden md:block`}>
               <div className="overflow-auto lg:max-h-[calc(100vh-9rem)]">
-                <table className="w-full min-w-[880px] text-left border-collapse text-[13px]">
+                <table className="w-full min-w-[720px] text-left border-collapse text-[13px]">
                   <thead>
                     <tr className="text-slate-500 font-semibold uppercase tracking-[0.06em] text-xs [&>th]:sticky [&>th]:top-0 [&>th]:z-10 [&>th]:bg-paper [&>th]:shadow-[inset_0_-1px_0_#E3DFD6]">
                       <th className={thCls}>Request</th>
                       <th className={thCls}>Customer</th>
                       <th className={`${thCls} text-right`}>Amount</th>
                       <th className={thCls}>Payment</th>
-                      <th className={thCls}>Method</th>
-                      <th className={thCls}>Collected by</th>
-                      <th className={thCls}>Collected on</th>
+                      <th className={thCls}>Collected</th>
                       <th className={thCls}>Notes</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line/70">
                     {(() => {
-                      const rows =
-                        payFilter === 'PAID' ? paidRequests : payFilter === 'UNPAID' ? unpaidRequests : requests;
-                      if (rows.length === 0) return emptyRow(8, 'No payments to show.');
-                      return rows.map((r) => (
+                      if (paymentRows.length === 0) return emptyRow(6, 'No payments to show.');
+                      return paymentRows.map((r) => (
                         <tr key={r.id} className="hover:bg-paper/70">
                           <td className={tdCls}>
                             <button
@@ -2380,7 +2415,7 @@ export const AdminPortal: React.FC = () => {
                             >
                               {r.id}
                             </button>
-                            <p className="mt-0.5 text-xs text-slate-500 whitespace-nowrap">{r.status}</p>
+                            <p className="mt-0.5 text-xs text-slate-500 whitespace-nowrap">{statusLabel(r.status)}</p>
                           </td>
                           <td className={`${tdCls} font-semibold text-ink`}>{r.customerName}</td>
                           <td className={`${tdCls} font-semibold text-ink whitespace-nowrap text-right tabular-nums`}>
@@ -2388,23 +2423,25 @@ export const AdminPortal: React.FC = () => {
                           </td>
                           <td className={tdCls}>
                             <span
-                              className={`px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${
-                                r.paymentStatus === 'Paid'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : r.status === 'Cancelled'
-                                  ? 'bg-slate-100 text-slate-600'
-                                  : 'bg-amber-100 text-amber-800'
-                              }`}
+                              className={`px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${paymentPill(r)}`}
                             >
                               {paymentText(r)}
                             </span>
                           </td>
-                          <td className={`${tdCls} font-semibold text-slate-700 whitespace-nowrap`}>
-                            {r.paymentRecord?.method || (r.paymentStatus === 'Paid' ? '—' : 'On delivery')}
-                          </td>
-                          <td className={`${tdCls} text-slate-600`}>{r.paymentRecord?.collectedBy || '—'}</td>
-                          <td className={`${tdCls} text-slate-600 whitespace-nowrap`}>
-                            {r.paymentRecord ? formatDateTime(r.paymentRecord.collectedAt) : '—'}
+                          <td className={`${tdCls} text-slate-600`}>
+                            {r.paymentRecord ? (
+                              <>
+                                <p className="font-semibold text-slate-800">
+                                  {r.paymentRecord.method}
+                                  {r.paymentRecord.collectedBy ? ` · ${r.paymentRecord.collectedBy}` : ''}
+                                </p>
+                                <p className="text-xs text-slate-500 whitespace-nowrap">{formatDateTime(r.paymentRecord.collectedAt)}</p>
+                              </>
+                            ) : r.paymentStatus === 'Paid' || r.status === 'Cancelled' ? (
+                              '—'
+                            ) : (
+                              'On delivery'
+                            )}
                           </td>
                           <td className={`${tdCls} text-slate-500`}>{r.paymentRecord?.transactionNotes || '—'}</td>
                         </tr>
@@ -2413,6 +2450,46 @@ export const AdminPortal: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+
+            {/* Phones: one card per payment instead of a wide table. */}
+            <div className="md:hidden space-y-3">
+              {paymentRows.length === 0 && <p className={`${cardCls} p-6 text-sm text-slate-500 text-center`}>No payments to show.</p>}
+              {paymentRows.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setDetailRequestId(r.id)}
+                  className={`${cardCls} block w-full p-4 text-left hover:border-slate-300 transition-colors duration-150`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-ink truncate">{r.customerName}</p>
+                      <p className="text-[13px] text-slate-500">
+                        <span className="font-mono text-xs">{r.id}</span> · {statusLabel(r.status)}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="font-semibold text-ink tabular-nums">{r.paymentRecord ? formatINR(r.paymentRecord.amount) : amountText(r)}</p>
+                      <span className={`mt-1 inline-block px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${paymentPill(r)}`}>
+                        {paymentText(r)}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-[13px] text-slate-600">
+                    {r.paymentRecord
+                      ? [r.paymentRecord.method, r.paymentRecord.collectedBy && `by ${r.paymentRecord.collectedBy}`, formatDateTime(r.paymentRecord.collectedAt)]
+                          .filter(Boolean)
+                          .join(' · ')
+                      : r.paymentStatus === 'Paid'
+                      ? 'Paid'
+                      : r.status === 'Cancelled'
+                      ? 'Cancelled, nothing to collect'
+                      : 'Collect on delivery, cash or UPI'}
+                  </p>
+                  {r.paymentRecord?.transactionNotes && <p className="mt-1 text-[13px] text-slate-500">{r.paymentRecord.transactionNotes}</p>}
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -2468,7 +2545,7 @@ export const AdminPortal: React.FC = () => {
                   Show sign-ins
                 </label>
               </div>
-              <div className="overflow-auto lg:max-h-[calc(100vh-9rem)]">
+              <div className="hidden md:block overflow-auto lg:max-h-[calc(100vh-9rem)]">
                 <table className="w-full min-w-[760px] text-left border-collapse text-[13px]">
                   <thead>
                     <tr className="text-slate-500 font-semibold uppercase tracking-[0.06em] text-xs [&>th]:sticky [&>th]:top-0 [&>th]:z-10 [&>th]:bg-paper [&>th]:shadow-[inset_0_-1px_0_#E3DFD6]">
@@ -2508,6 +2585,32 @@ export const AdminPortal: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* Phones: a simple list instead of a wide table. */}
+              <ul className="md:hidden divide-y divide-line/70 border-t border-line/70">
+                {visibleActivity.length === 0 && <li className="p-6 text-sm text-slate-500 text-center">No activity recorded yet.</li>}
+                {visibleActivity.slice(0, activityLimit).map((log) => (
+                  <li key={log.id} className="px-4 py-3">
+                    <p className="text-sm font-medium text-slate-900">{prettyLogText(log.action)}</p>
+                    <p className="mt-0.5 text-[13px] text-slate-500">
+                      {log.user} ({log.role === 'ADMIN' ? 'admin' : log.role === 'EMPLOYEE' ? 'staff' : 'customer'}) · {formatDateTime(log.timestamp)}
+                    </p>
+                    {log.details && <p className="mt-1 text-[13px] text-slate-600 break-words">{prettyLogText(log.details)}</p>}
+                    {log.requestId &&
+                      (requests.some((r) => r.id === log.requestId) ? (
+                        <button
+                          type="button"
+                          onClick={() => setDetailRequestId(log.requestId)}
+                          className="mt-1 inline-flex min-h-[36px] items-center font-mono text-[13px] font-bold text-ink underline underline-offset-2"
+                        >
+                          {log.requestId}
+                        </button>
+                      ) : (
+                        <p className="mt-1 font-mono text-[13px] text-slate-500">{log.requestId}</p>
+                      ))}
+                  </li>
+                ))}
+              </ul>
               {visibleActivity.length > activityLimit && (
                 <div className="p-3 border-t border-line/70 text-center print:hidden">
                   <button
@@ -2801,7 +2904,7 @@ export const AdminPortal: React.FC = () => {
                 <p className="text-xs text-slate-500">Open jobs = assigned requests that are not completed or cancelled.</p>
               </div>
 
-              <div className="overflow-auto lg:max-h-[calc(100vh-9rem)]">
+              <div className="hidden md:block overflow-auto lg:max-h-[calc(100vh-9rem)]">
                 <table className="w-full min-w-[760px] text-left border-collapse text-[13px]">
                   <thead>
                     <tr className="text-slate-500 font-semibold uppercase tracking-[0.06em] text-xs [&>th]:sticky [&>th]:top-0 [&>th]:z-10 [&>th]:bg-paper [&>th]:shadow-[inset_0_-1px_0_#E3DFD6]">
@@ -2868,19 +2971,7 @@ export const AdminPortal: React.FC = () => {
                             {!isSelf && (
                               <button
                                 type="button"
-                                onClick={() =>
-                                  setConfirmState({
-                                    title: `Reset ${emp.name}'s password?`,
-                                    message: (
-                                      <>
-                                        A new temporary password will be shown once. Their current password stops working
-                                        immediately — hand the new one over in person.
-                                      </>
-                                    ),
-                                    confirmLabel: 'Reset password',
-                                    onConfirm: () => resetStaffPassword(emp.id, emp.name),
-                                  })
-                                }
+                                onClick={() => confirmResetPassword(emp)}
                                 className="min-h-[40px] px-3 rounded-lg text-ink hover:bg-paper font-bold text-xs"
                               >
                                 Reset password
@@ -2891,26 +2982,7 @@ export const AdminPortal: React.FC = () => {
                             ) : (
                               <button
                                 type="button"
-                                onClick={() =>
-                                  setConfirmState({
-                                    title: `Deactivate ${emp.name}?`,
-                                    message: (
-                                      <>
-                                        {emp.name} will no longer be able to sign in with <span className="whitespace-nowrap">{formatMobile(emp.phone)}</span>.
-                                        {openJobs > 0 && (
-                                          <>
-                                            {' '}
-                                            They still have <b>{openJobs} open {openJobs === 1 ? 'job' : 'jobs'}</b> — reassign
-                                            them from Service requests.
-                                          </>
-                                        )}
-                                      </>
-                                    ),
-                                    confirmLabel: 'Deactivate',
-                                    danger: true,
-                                    onConfirm: () => removeEmployee(emp.id),
-                                  })
-                                }
+                                onClick={() => confirmDeactivate(emp)}
                                 className="min-h-[40px] px-3 rounded-lg text-red-700 hover:bg-red-50 font-bold text-xs"
                               >
                                 Deactivate
@@ -2924,6 +2996,67 @@ export const AdminPortal: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* Phones: one row per person instead of a wide table. */}
+              <ul className="md:hidden divide-y divide-line/70 border-t border-line/70">
+                {activeEmployees.length === 0 && <li className="p-6 text-sm text-slate-500 text-center">No staff accounts yet.</li>}
+                {activeEmployees.map((emp) => {
+                  const isSelf = !!userMobile && normalizeMobile(emp.phone) === normalizeMobile(userMobile);
+                  const openJobs = openJobsFor(emp.id);
+                  return (
+                    <li key={emp.id} className="p-4">
+                      <div className="flex items-start gap-3">
+                        <span
+                          aria-hidden="true"
+                          className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+                            emp.userRole === 'ADMIN' ? 'bg-accent text-ink' : 'bg-ink text-white'
+                          }`}
+                        >
+                          {initials(emp.name)}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-slate-900">
+                            {emp.name}
+                            {isSelf && <span className="ml-1.5 text-xs font-bold text-slate-500">(you)</span>}
+                          </p>
+                          <p className="text-[13px] text-slate-600">
+                            {emp.userRole === 'ADMIN' ? 'Admin' : emp.role}
+                            {' · '}
+                            <span className={openJobs > 0 ? 'font-semibold text-slate-900' : undefined}>
+                              {openJobs} open {openJobs === 1 ? 'job' : 'jobs'}
+                            </span>
+                          </p>
+                          {mobileTelHref(emp.phone) ? (
+                            <a href={mobileTelHref(emp.phone)} className="inline-flex min-h-[32px] items-center text-[13px] text-slate-600 underline underline-offset-2">
+                              {formatMobile(emp.phone)}
+                            </a>
+                          ) : (
+                            <p className="text-[13px] text-slate-600">{formatMobile(emp.phone) || '—'}</p>
+                          )}
+                        </div>
+                      </div>
+                      {!isSelf && (
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => confirmResetPassword(emp)}
+                            className="flex-1 min-h-[44px] px-3 rounded-xl border border-line bg-white text-sm font-semibold text-ink hover:bg-paper transition-colors duration-150"
+                          >
+                            Reset password
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => confirmDeactivate(emp)}
+                            className="flex-1 min-h-[44px] px-3 rounded-xl border border-red-200 bg-white text-sm font-semibold text-red-700 hover:bg-red-50 transition-colors duration-150"
+                          >
+                            Deactivate
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           </div>
         )}
@@ -3555,7 +3688,7 @@ export const AdminPortal: React.FC = () => {
                       <option value="">Choose new status…</option>
                       {ALL_STATUSES.filter((s) => s !== detailRequest.status).map((s) => (
                         <option key={s} value={s}>
-                          {s}
+                          {statusLabel(s)}
                         </option>
                       ))}
                     </select>
@@ -3850,7 +3983,7 @@ export const AdminPortal: React.FC = () => {
                 <label className="block font-bold text-slate-700 mb-1">Package name *</label>
                 <input
                   type="text"
-                  placeholder="e.g. Express Tournament Getting"
+                  placeholder="e.g. Express Tournament Stringing"
                   value={getFormName}
                   onChange={(e) => setGetFormName(e.target.value)}
                   className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none"

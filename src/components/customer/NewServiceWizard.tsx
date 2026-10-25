@@ -132,7 +132,7 @@ export const NewServiceWizard: React.FC = () => {
   const [batBrand, setBatBrand] = useState<string>(wizardPrefill?.batBrand || '');
   const [batModel, setBatModel] = useState<string>(wizardPrefill?.batModel || '');
   const [batType, setBatType] = useState<BatType>('Head Heavy (Power / Smash)');
-  const [gettingType, setGettingType] = useState<GettingType>('Basic Getting');
+  const [gettingType, setGettingType] = useState<GettingType>('Basic Stringing');
   const [stringTension, setStringTension] = useState<number>(wizardPrefill?.stringTension || 26);
   const [repairIssue, setRepairIssue] = useState<RepairIssue>((wizardPrefill?.repairIssue as RepairIssue) || 'Frame Damage');
   const [repairDescription, setRepairDescription] = useState<string>(wizardPrefill?.repairDescription || '');
@@ -468,7 +468,7 @@ export const NewServiceWizard: React.FC = () => {
 
   const validateStep = (step: number): string | null => {
     if (step === 2) {
-      if (!batBrand.trim() || !batModel.trim()) return 'Please enter your racket brand and model.';
+      if (!batBrand.trim()) return 'Please enter your racket brand.';
       if (serviceType === 'GETTING') {
         if (activeTiers.length === 0) return 'No stringing packages are available right now. Please try again later.';
         if (stringTension < 15 || stringTension > 35) return 'Please choose a string tension between 15 and 35 lbs.';
@@ -769,16 +769,16 @@ export const NewServiceWizard: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-semibold text-slate-800 mb-1.5">
-                  Racket model *
+                  Racket model <span className="font-normal text-slate-500">(optional)</span>
                 </label>
                 <input
                   type="text"
                   value={batModel}
                   onChange={(e) => setBatModel(e.target.value)}
                   placeholder="e.g. Astrox 99 Pro / Nanoflare 800"
-                  required
                   className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
                 />
+                <p className="mt-1.5 text-[13px] text-slate-500">Not sure? Leave it blank. We'll note it at pickup.</p>
               </div>
             </div>
 

@@ -103,7 +103,7 @@ ADDRESS = {"houseFlat": "12", "street": "Beach Rd", "area": "MVP Colony", "pinco
 
 def booking(mobile="9000000001", **extra):
     return {
-        "serviceType": "GETTING", "gettingType": "Basic Getting", "customerName": "Someone", "customerMobile": mobile,
+        "serviceType": "GETTING", "gettingType": "Basic Stringing", "customerName": "Someone", "customerMobile": mobile,
         "batBrand": "Yonex", "batModel": "Astrox 88D", "pickupAddress": ADDRESS, "distanceKm": 3, **extra,
     }
 
@@ -620,15 +620,56 @@ def test_seeded_wording_is_plain_and_edits_are_kept(client, admin_token):
         db.close()
 
 
+def test_racket_model_is_optional(client):
+    # Customers often don't know the exact model; the brand is enough to book.
+    token = customer_token(client, "9000000032")
+    r = client.post("/api/requests", headers=auth(token), json=booking(batBrand="Yonex", batModel=""))
+    assert r.status_code == 201, r.text
+    assert r.json()["batBrand"] == "Yonex" and r.json()["batModel"] == ""
+
+
+def test_template_package_names_become_stringing(client, admin_token):
+    from app.database import SessionLocal
+    from app.models import GettingServiceTierModel, ServiceRequestModel
+    from app.seed_data import refresh_seeded_wording
+
+    names = {t["id"]: t["name"] for t in client.get("/api/config/getting-services").json()}
+    assert names["basic"] == "Basic Stringing" and not any("Getting" in n for n in names.values())
+
+    token = customer_token(client, "9000000031")
+    r = client.post("/api/requests", headers=auth(token), json=booking(gettingType="Durability Stringing"))
+    assert r.status_code == 201, r.text
+    request_id = r.json()["id"]
+
+    db = SessionLocal()
+    try:
+        # A database still holding the template names (and bookings that stored them) is upgraded...
+        tiers = {t.id: t for t in db.query(GettingServiceTierModel).all()}
+        tiers["durability"].name = "Durability Getting"
+        db.query(ServiceRequestModel).filter(ServiceRequestModel.id == request_id).update({ServiceRequestModel.gettingType: "Durability Getting"})
+        # ...but a name the admin chose is kept.
+        tiers["custom"].name = "Hybrid special"
+        db.commit()
+        refresh_seeded_wording(db)
+        db.expire_all()
+        assert db.get(GettingServiceTierModel, "durability").name == "Durability Stringing"
+        assert db.get(ServiceRequestModel, request_id).gettingType == "Durability Stringing"
+        assert db.get(GettingServiceTierModel, "custom").name == "Hybrid special"
+        db.get(GettingServiceTierModel, "custom").name = "Custom Stringing"
+        db.commit()
+    finally:
+        db.close()
+
+
 # ---------------- Pricing integrity, photos, revised estimates, profile ----------------
 
 def test_stringing_price_comes_from_server_package(client):
     token = customer_token(client, "9000000013")
     packages = {t["name"]: t for t in client.get("/api/config/getting-services").json()}
     r = client.post("/api/requests", headers=auth(token),
-                    json=booking(gettingType="Tournament Getting", gettingPrice=1, serviceCharge=1))
+                    json=booking(gettingType="Tournament Stringing", gettingPrice=1, serviceCharge=1))
     assert r.status_code == 201, r.text
-    assert r.json()["serviceCharge"] == packages["Tournament Getting"]["price"]  # browser price ignored
+    assert r.json()["serviceCharge"] == packages["Tournament Stringing"]["price"]  # browser price ignored
     assert r.json()["batPhotos"] == []  # no stock photo stored as the customer's racket
     r = client.post("/api/requests", headers=auth(token), json=booking(gettingType="Free Stringing"))
     assert r.status_code == 422

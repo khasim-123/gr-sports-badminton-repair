@@ -108,7 +108,7 @@ def seed_database(db: Session):
         getting_tiers = [
             GettingServiceTierModel(
                 id="basic",
-                name="Basic Getting",
+                name="Basic Stringing",
                 price=400.0,
                 turnaround="24 Hours",
                 description="Restringing with a standard, durable string at the tension you choose. Good for casual and club play.",
@@ -117,7 +117,7 @@ def seed_database(db: Session):
             ),
             GettingServiceTierModel(
                 id="tournament",
-                name="Tournament Getting",
+                name="Tournament Stringing",
                 price=600.0,
                 turnaround="24–36 Hours",
                 description="Restringing with a thinner, higher-performance string for more power and feel. Choose the exact string and colour when you book.",
@@ -126,7 +126,7 @@ def seed_database(db: Session):
             ),
             GettingServiceTierModel(
                 id="durability",
-                name="Durability Getting",
+                name="Durability Stringing",
                 price=500.0,
                 turnaround="24 Hours",
                 description="Restringing with a thicker, longer-lasting string (around 0.70 mm). A good choice if you break strings often.",
@@ -135,7 +135,7 @@ def seed_database(db: Session):
             ),
             GettingServiceTierModel(
                 id="custom",
-                name="Custom Getting",
+                name="Custom Stringing",
                 price=750.0,
                 turnaround="48 Hours",
                 description="Special setups such as hybrid strings or different tensions for mains and crosses. Describe what you want in the booking notes.",
@@ -395,7 +395,7 @@ def seed_database(db: Session):
                 batModel="Astrox 88D Pro",
                 batType="Head Heavy (Power / Smash)",
                 batPhotos=["https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&w=600&q=80"],
-                gettingType="Tournament Getting",
+                gettingType="Tournament Stringing",
                 stringPreference="Yonex BG80 Power",
                 stringType="Yonex BG80 Power (Neon Orange)",
                 stringTensionLbs=27,
@@ -430,7 +430,7 @@ def seed_database(db: Session):
                 batModel="Windstorm 72",
                 batType="Head Light (Speed / Defense)",
                 batPhotos=["https://images.unsplash.com/photo-1521537634581-0dced2fee2ef?auto=format&fit=crop&w=600&q=80"],
-                gettingType="Basic Getting",
+                gettingType="Basic Stringing",
                 stringPreference="Yonex BG65",
                 stringType="Yonex BG65 (White)",
                 stringTensionLbs=25,
@@ -668,6 +668,14 @@ PACKAGE_WORDING = {
     'durability': ('Thick gauge high-abrasion strings (Yonex BG65 / Li-Ning No.7). Engineered for maximum string lifespan and endurance.', ['0.70mm High-Durability String', '22-26 lbs Tension Range', 'Pre-Stretch Treatment', 'Reinforced Knot Ties'], 'Restringing with a thicker, longer-lasting string (around 0.70 mm). A good choice if you break strings often.', ['Thicker, longer-lasting string', 'Tension of your choice', 'Grommets checked before stringing']),
     'custom': ('Bespoke hybrid tensioning (differential mains & crosses), premium grip overwrap, and dynamic balance calibration.', ['Hybrid String Setup', 'Independent Cross/Main Tension', 'AC102EX Premium Grip Included', 'Frame Stress Load Analysis'], 'Special setups such as hybrid strings or different tensions for mains and crosses. Describe what you want in the booking notes.', ['Hybrid string setups', 'Separate main and cross tension', 'Setup discussed with our stringer']),
 }
+# Package names from the original template ("Getting") -> plain names. A package keeps any
+# name the admin gave it; bookings that stored the old name follow the rename.
+PACKAGE_NAMES = {
+    'basic': ('Basic Getting', 'Basic Stringing'),
+    'tournament': ('Tournament Getting', 'Tournament Stringing'),
+    'durability': ('Durability Getting', 'Durability Stringing'),
+    'custom': ('Custom Getting', 'Custom Stringing'),
+}
 CATEGORY_WORDING = {
     'broken': ('Full structural carbon fiber splice & high-grade epoxy curing. Restores structural integrity up to 28 lbs tension.', 'Repair of a broken or snapped frame. We inspect the racket first and confirm whether it can be repaired safely, and the final price, before starting work.'),
     'frame': ('Hairline crack reinforcement and internal graphite sleeve insertion at 10, 12, or 2 o’clock frame positions.', 'Repair of cracks or damage on the racket head. Final price is confirmed after inspection.'),
@@ -692,6 +700,16 @@ def refresh_seeded_wording(db: Session):
         if list(tier.features or []) == old_feats:
             tier.features = new_feats
             changed = True
+    for tier in db.query(GettingServiceTierModel).all():
+        names = PACKAGE_NAMES.get(tier.id)
+        if not names or tier.name != names[0]:
+            continue
+        old_name, new_name = names
+        tier.name = new_name
+        db.query(ServiceRequestModel).filter(ServiceRequestModel.gettingType == old_name).update(
+            {ServiceRequestModel.gettingType: new_name}, synchronize_session=False
+        )
+        changed = True
     for cat in db.query(RepairCategoryTierModel).all():
         wording = CATEGORY_WORDING.get(cat.id)
         if wording and cat.description == wording[0]:

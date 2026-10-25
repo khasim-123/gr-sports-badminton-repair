@@ -327,7 +327,7 @@ export const initialRequests: ServiceRequest[] = [
     batModel: 'Astrox 88D Pro',
     batType: 'Head Heavy (Power / Smash)',
     batPhotos: ['https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&w=600&q=80'],
-    gettingType: 'Premium Getting',
+    gettingType: 'Premium Stringing',
     stringType: 'Yonex BG80 Power (Neon Orange)',
     stringTensionLbs: 27,
     gettingPrice: 750,
@@ -362,7 +362,7 @@ export const initialRequests: ServiceRequest[] = [
     batModel: 'Windstorm 72',
     batType: 'Head Light (Speed / Defense)',
     batPhotos: ['https://images.unsplash.com/photo-1521537634581-0dced2fee2ef?auto=format&fit=crop&w=600&q=80'],
-    gettingType: 'Standard Getting',
+    gettingType: 'Standard Stringing',
     stringType: 'Yonex BG65 (White)',
     stringTensionLbs: 25,
     gettingPrice: 450,
@@ -408,7 +408,7 @@ export const initialAuditLogs: AuditLogItem[] = [
 export const gettingTypesData: GettingServiceTier[] = [
   {
     id: 'basic',
-    name: 'Basic Getting',
+    name: 'Basic Stringing',
     price: 400,
     turnaround: '24 Hours',
     description: 'Restringing with a standard, durable string at the tension you choose. Good for casual and club play.',
@@ -417,7 +417,7 @@ export const gettingTypesData: GettingServiceTier[] = [
   },
   {
     id: 'tournament',
-    name: 'Tournament Getting',
+    name: 'Tournament Stringing',
     price: 600,
     turnaround: '24–36 Hours',
     description: 'Restringing with a thinner, higher-performance string for more power and feel. Choose the exact string and colour when you book.',
@@ -426,7 +426,7 @@ export const gettingTypesData: GettingServiceTier[] = [
   },
   {
     id: 'durability',
-    name: 'Durability Getting',
+    name: 'Durability Stringing',
     price: 500,
     turnaround: '24 Hours',
     description: 'Restringing with a thicker, longer-lasting string (around 0.70 mm). A good choice if you break strings often.',
@@ -435,7 +435,7 @@ export const gettingTypesData: GettingServiceTier[] = [
   },
   {
     id: 'custom',
-    name: 'Custom Getting',
+    name: 'Custom Stringing',
     price: 750,
     turnaround: '48 Hours',
     description: 'Special setups such as hybrid strings or different tensions for mains and crosses. Describe what you want in the booking notes.',
