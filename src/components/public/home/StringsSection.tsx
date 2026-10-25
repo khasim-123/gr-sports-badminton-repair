@@ -14,7 +14,7 @@ interface StringsSectionProps {
   status: 'loading' | 'ready' | 'error';
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
-  onUseString: (label: string, colour?: string) => void;
+  onUseString: (product: StringProduct, colour?: string) => void;
 }
 
 /** Featured strings, and on request the full catalogue with brand filter + search. */
@@ -193,7 +193,7 @@ function listText(items: string[]): string {
 // Card
 // ---------------------------------------------------------------------------
 
-const StringCard: React.FC<{ product: StringProduct; onUse: (label: string, colour?: string) => void }> = ({ product: p, onUse }) => {
+const StringCard: React.FC<{ product: StringProduct; onUse: (product: StringProduct, colour?: string) => void }> = ({ product: p, onUse }) => {
   const cart = useCart();
   const label = productLabel(p);
   const variants = sortedVariants(p);
@@ -289,7 +289,7 @@ const StringCard: React.FC<{ product: StringProduct; onUse: (label: string, colo
         <button
           type="button"
           disabled={!stock}
-          onClick={() => onUse(label, selected?.inStock ? selected.colour : undefined)}
+          onClick={() => onUse(p, selected?.inStock ? selected.colour : undefined)}
           className={cx(btn.base, stock ? btn.secondary : 'border border-line bg-paper text-ink-muted', 'w-full px-4 text-[14px]')}
           aria-label={stock ? `Book stringing with ${label}${selected ? `, ${selected.colour}` : ''}` : `${label} is out of stock`}
         >
@@ -300,7 +300,7 @@ const StringCard: React.FC<{ product: StringProduct; onUse: (label: string, colo
   );
 };
 
-const Swatch: React.FC<{ variant: StringVariant; selected: boolean; onSelect: () => void }> = ({ variant: v, selected, onSelect }) => {
+export const Swatch: React.FC<{ variant: StringVariant; selected: boolean; onSelect: () => void }> = ({ variant: v, selected, onSelect }) => {
   const hex = safeHex(v.colourHex);
   const img = safeImageUrl(v.imageUrl);
   const status = v.inStock ? 'in stock' : 'out of stock';

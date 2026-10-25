@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import type { WizardPrefill } from '../../types';
-import type { Banner, BannerCtaTarget, SiteEvent } from '../../types/content';
+import type { Banner, BannerCtaTarget, SiteEvent, StringProduct } from '../../types/content';
 import { analyticsService } from '../../services/analyticsService';
 import { peekPendingStoreSection, subscribeStoreSection, takePendingStoreSection } from '../../utils/storeNavigation';
 import { BookingSection, type BookingPreset, type BookingService, type RepairRequest, type StringingRequest } from './home/BookingSection';
@@ -19,6 +19,7 @@ import { ReviewsSection } from './home/ReviewsSection';
 import { RepairsSection, StringingSection } from './home/ServicesSection';
 import { SiteFooter } from './home/SiteFooter';
 import { SiteHeader, type NavItem } from './home/SiteHeader';
+import { StringBookingDialog, type StringBookingRequest } from './home/StringBookingDialog';
 import { StringsSection } from './home/StringsSection';
 import { SECTION_IDS, scrollToSection, useShop } from './home/shop';
 import { useHomeContent } from './home/useHomeContent';
@@ -178,15 +179,14 @@ export const LandingPage: React.FC = () => {
   const [preset, setPreset] = useState<BookingPreset | null>(null);
   const nonce = useRef(0);
 
-  const startBooking = useCallback((service: BookingService, extra: Partial<BookingPreset> = {}) => {
-    setPreset({ service, ...extra, nonce: ++nonce.current });
+  const startBooking = useCallback((service: BookingService) => {
+    setPreset({ service, nonce: ++nonce.current });
     requestAnimationFrame(() => scrollToSection(SECTION_IDS.book, { focus: true }));
   }, []);
 
-  const bookWithString = useCallback(
-    (label: string, colour?: string) => startBooking('stringing', { stringName: label, colour }),
-    [startBooking],
-  );
+  // "Book with this string" opens a short form over the catalogue instead of scrolling back up.
+  const [stringBooking, setStringBooking] = useState<StringBookingRequest | null>(null);
+  const bookWithString = useCallback((product: StringProduct, colour?: string) => setStringBooking({ product, colour }), []);
 
   const bookStringing = (req: StringingRequest) => appRef.current.openWizardWithService('GETTING', stringingPrefill(req));
   const bookRepair = (req: RepairRequest) => appRef.current.openWizardWithService('REPAIR', repairPrefill(req));
@@ -411,6 +411,17 @@ export const LandingPage: React.FC = () => {
         intent={openEvent?.intent || 'details'}
         onClose={() => setOpenEvent(null)}
         onRegistered={onRegistered}
+      />
+
+      <StringBookingDialog
+        request={stringBooking}
+        availability={availability}
+        isCustomer={isCustomer}
+        onClose={() => setStringBooking(null)}
+        onContinue={(req) => {
+          setStringBooking(null);
+          bookStringing(req);
+        }}
       />
     </div>
   );

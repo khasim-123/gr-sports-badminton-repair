@@ -117,7 +117,10 @@ export const NewServiceWizard: React.FC = () => {
     setWizardPrefill,
   } = useApp();
 
-  const [currentStep, setCurrentStep] = useState<number>(1);
+  // Arriving from the homepage form (service already chosen, details filled in): start at "Your racket".
+  const [currentStep, setCurrentStep] = useState<number>(() =>
+    wizardPrefill && Object.keys(wizardPrefill).some((k) => k !== 'serviceType') ? 2 : 1,
+  );
   const [submittedRequestId, setSubmittedRequestId] = useState<string | null>(null);
   const [stepError, setStepError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);

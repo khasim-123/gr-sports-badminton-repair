@@ -1,7 +1,8 @@
-import React, { useEffect, useId, useMemo, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import { ArrowRight, ClipboardCheck, Clock, Info, Truck, Wallet } from 'lucide-react';
 import type { DistancePricingConfig, RepairCategoryTier } from '../../../types';
 import type { PublicAvailability, StringProduct } from '../../../types/content';
+import { PickupDayField, RacketFields, TensionField, brandValue, usePickupDay } from './bookingFields';
 import {
   beyondFreeText,
   describePickupHours,
@@ -10,7 +11,6 @@ import {
   formatKm,
   hasPrice,
   inStockCount,
-  localIsoDate,
   productLabel,
   sortedVariants,
 } from './format';
@@ -38,24 +38,10 @@ export interface RepairRequest {
 
 export interface BookingPreset {
   service: BookingService;
-  stringName?: string;
-  colour?: string;
   nonce: number;
 }
 
-const BRANDS = ['Yonex', 'Li-Ning', 'Victor', 'Apacs', 'Hundred'];
-const OTHER_BRAND = 'Other';
 const OWN_STRING = '__own__';
-const TENSIONS = Array.from({ length: 15 }, (_, i) => 18 + i); // 18–32 lbs
-
-/** A few common models per brand, offered as suggestions only (any text is accepted). */
-const MODEL_SUGGESTIONS: Record<string, string[]> = {
-  Yonex: ['Astrox 88D Pro', 'Astrox 99 Pro', 'Astrox 77 Pro', 'Nanoflare 1000Z', 'Nanoflare 800 Pro', 'Arcsaber 11 Pro', 'Voltric Z-Force II'],
-  'Li-Ning': ['Axforce 90 Max', 'Axforce 80', 'Tectonic 9', 'Halbertec 8000', 'Windstorm 72'],
-  Victor: ['Thruster Ryuga II Pro', 'Auraspeed 100X', 'DriveX 9X', 'Brave Sword 12'],
-  Apacs: ['Z-Ziggler', 'Dual 100', 'Commander 80'],
-  Hundred: ['Atomic X Vigor', 'Battle 600', 'N-Power 700'],
-};
 
 interface BookingSectionProps {
   strings: StringProduct[];
@@ -88,24 +74,10 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
   const [stringName, setStringName] = useState('');
   const [colour, setColour] = useState('');
   const [tension, setTension] = useState('');
-  const [pickupDate, setPickupDate] = useState('');
   const [category, setCategory] = useState('');
   const [notes, setNotes] = useState('');
-
-  // ---- availability → pickup days
-  const days = useMemo(
-    () => [...(availability?.days || [])].sort((a, b) => a.date.localeCompare(b.date)),
-    [availability],
-  );
-  const openDays = days.filter((d) => d.available);
-  const hasAvailability = days.length > 0;
-  const today = localIsoDate(new Date());
-
-  useEffect(() => {
-    if (!hasAvailability) return;
-    if (!openDays.some((d) => d.date === pickupDate)) setPickupDate(openDays[0]?.date || '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [availability]);
+  const pickup = usePickupDay(availability);
+  const { pickupDate } = pickup;
 
   // ---- strings
   const product = strings.find((p) => productLabel(p) === stringName);
@@ -114,10 +86,6 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
   useEffect(() => {
     if (!preset) return;
     setService(preset.service);
-    if (preset.stringName !== undefined) {
-      setStringName(preset.stringName);
-      setColour(preset.colour || '');
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset?.nonce]);
 
@@ -126,14 +94,13 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
   const notice = (availability?.settings?.notice || '').trim();
   const [noticeDismissed, setNoticeDismissed] = useState(false);
 
-  const brandValue = brand === OTHER_BRAND ? '' : brand;
-  const racketText = [brandValue, model.trim()].filter(Boolean).join(' ');
+  const racketText = [brandValue(brand), model.trim()].filter(Boolean).join(' ');
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (service === 'stringing') {
       onBookStringing({
-        brand: brandValue,
+        brand: brandValue(brand),
         model: model.trim(),
         stringName: stringName === OWN_STRING ? '' : stringName,
         colour: stringName && stringName !== OWN_STRING ? colour : '',
@@ -141,7 +108,7 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
         pickupDate,
       });
     } else {
-      onBookRepair({ brand: brandValue, model: model.trim(), category, notes: notes.trim(), pickupDate });
+      onBookRepair({ brand: brandValue(brand), model: model.trim(), category, notes: notes.trim(), pickupDate });
     }
   };
 
@@ -167,46 +134,7 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
 
   const id = (name: string) => `${uid}-${name}`;
 
-  const pickupField = (
-    <div>
-      <label htmlFor={id('date')} className={fieldLabel}>
-        Pickup day
-      </label>
-      {hasAvailability ? (
-        openDays.length ? (
-          <Select id={id('date')} value={pickupDate} onChange={(e) => setPickupDate(e.target.value)}>
-            {openDays.map((d) => (
-              <option key={d.date} value={d.date}>
-                {formatDay(d.date)}
-                {d.date === today ? ' (today)' : ''}
-                {typeof d.remaining === 'number' && d.remaining > 0 && d.remaining <= 3
-                  ? ` · ${d.remaining} ${d.remaining === 1 ? 'pickup' : 'pickups'} left`
-                  : ''}
-              </option>
-            ))}
-          </Select>
-        ) : (
-          <p className="rounded-xl border border-line bg-paper px-3.5 py-3 text-[14px] text-ink-soft">
-            No pickup days are open right now. Please call{' '}
-            <a href={SHOP.phoneTel} className="font-semibold text-sportsBlue underline underline-offset-2">
-              {SHOP.phoneDisplay}
-            </a>
-            .
-          </p>
-        )
-      ) : (
-        <input
-          id={id('date')}
-          type="date"
-          min={today}
-          value={pickupDate}
-          onChange={(e) => setPickupDate(e.target.value)}
-          className={fieldControl}
-        />
-      )}
-      {pickupSlots && hasAvailability && openDays.length > 0 && <p className={fieldHint}>Pickup slots: {pickupSlots}. You pick one next.</p>}
-    </div>
-  );
+  const pickupField = <PickupDayField id={id('date')} availability={availability} pickup={pickup} />;
 
   return (
     <section id={SECTION_IDS.book} aria-labelledby={`${uid}-title`} className="scroll-mt-20 bg-paper py-16 sm:py-20">
@@ -292,43 +220,7 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
             </fieldset>
 
             <div className="mt-6 grid gap-5 sm:grid-cols-2">
-              <div>
-                <label htmlFor={id('brand')} className={fieldLabel}>
-                  Racket brand
-                </label>
-                <Select id={id('brand')} value={brand} onChange={(e) => setBrand(e.target.value)}>
-                  <option value="">Choose brand</option>
-                  {BRANDS.map((b) => (
-                    <option key={b} value={b}>
-                      {b}
-                    </option>
-                  ))}
-                  <option value={OTHER_BRAND}>Other brand</option>
-                </Select>
-              </div>
-              <div>
-                <label htmlFor={id('model')} className={fieldLabel}>
-                  Model <span className="font-normal text-ink-muted">(optional)</span>
-                </label>
-                <input
-                  id={id('model')}
-                  type="text"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  maxLength={80}
-                  list={MODEL_SUGGESTIONS[brand] ? id('models') : undefined}
-                  placeholder="e.g. Astrox 88D Pro"
-                  autoComplete="off"
-                  className={fieldControl}
-                />
-                {MODEL_SUGGESTIONS[brand] && (
-                  <datalist id={id('models')}>
-                    {MODEL_SUGGESTIONS[brand].map((m) => (
-                      <option key={m} value={m} />
-                    ))}
-                  </datalist>
-                )}
-              </div>
+              <RacketFields idPrefix={uid} brand={brand} model={model} onBrand={setBrand} onModel={setModel} />
 
               {service === 'stringing' ? (
                 <>
@@ -375,19 +267,7 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
                       ))}
                     </Select>
                   </div>
-                  <div>
-                    <label htmlFor={id('tension')} className={fieldLabel}>
-                      Tension
-                    </label>
-                    <Select id={id('tension')} value={tension} onChange={(e) => setTension(e.target.value)}>
-                      <option value="">Not sure, advise me</option>
-                      {TENSIONS.map((t) => (
-                        <option key={t} value={t}>
-                          {t} lbs
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
+                  <TensionField id={id('tension')} value={tension} onChange={setTension} />
                   {pickupField}
                 </>
               ) : (
