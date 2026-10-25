@@ -38,6 +38,9 @@ const AUTOPLAY_MS = 7000;
 
 const META_ICON = { date: CalendarDays, venue: MapPin, fee: IndianRupee, spots: Users } as const;
 
+const controlButton =
+  'inline-flex h-10 w-10 items-center justify-center rounded-full text-white transition-colors hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white';
+
 function ActionButton({ action, variant }: { action: HeroAction; variant: 'accent' | 'onDark' }) {
   const className = cx(btn.base, variant === 'accent' ? btn.accent : btn.onDark, 'px-6');
   const content = (
@@ -282,54 +285,56 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ slides, placeholder 
 
         {count > 1 && !placeholder && (
           <div className="absolute inset-x-0 bottom-0 z-20">
-            <div className={cx(container, 'flex h-[72px] items-center justify-between gap-4')}>
-              <div className="flex items-center" role="group" aria-label="Choose a slide">
-                {slides.map((s, i) => (
-                  <button
-                    key={s.key}
-                    type="button"
-                    onClick={() => goTo(i)}
-                    aria-label={`Show slide ${i + 1}${s.title ? `: ${s.title}` : ''}`}
-                    aria-current={i === index ? 'true' : undefined}
-                    className="group inline-flex h-11 w-11 items-center justify-center rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={cx(
-                        'block h-[3px] rounded-full transition-all',
-                        i === index ? 'w-7 bg-accent' : 'w-4 bg-white/45 group-hover:bg-white/80',
-                      )}
-                    />
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                {autoplayAllowed && (
-                  <button
-                    type="button"
-                    onClick={() => setUserPaused((p) => !p)}
-                    aria-label={userPaused ? 'Play slideshow' : 'Pause slideshow'}
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-full text-white/85 hover:text-white hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-                  >
-                    {userPaused ? <Play className="h-4 w-4" aria-hidden="true" /> : <Pause className="h-4 w-4" aria-hidden="true" />}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => goTo(index - 1)}
-                  aria-label="Previous slide"
-                  className="hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/35 text-white hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-                >
+            {/* One dark bar under the headline: readable on any photo, and clearly a slideshow control. */}
+            <div className={cx(container, 'flex h-[72px] items-center')}>
+              <div
+                role="group"
+                aria-label="Slideshow controls"
+                className="inline-flex items-center rounded-full bg-ink/75 p-0.5 text-white ring-1 ring-white/15 backdrop-blur-sm"
+              >
+                <button type="button" onClick={() => goTo(index - 1)} aria-label="Previous slide" className={controlButton}>
                   <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => goTo(index + 1)}
-                  aria-label="Next slide"
-                  className="hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/35 text-white hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-                >
+                <div className="flex items-center" role="group" aria-label="Choose a slide">
+                  {slides.map((s, i) => (
+                    <button
+                      key={s.key}
+                      type="button"
+                      onClick={() => goTo(i)}
+                      aria-label={`Show slide ${i + 1}${s.title ? `: ${s.title}` : ''}`}
+                      aria-current={i === index ? 'true' : undefined}
+                      className="group inline-flex h-10 w-7 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={cx(
+                          'block h-1.5 rounded-full transition-all duration-200',
+                          i === index ? 'w-5 bg-accent' : 'w-1.5 bg-white/50 group-hover:bg-white/90',
+                        )}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <button type="button" onClick={() => goTo(index + 1)} aria-label="Next slide" className={controlButton}>
                   <ChevronRight className="h-5 w-5" aria-hidden="true" />
                 </button>
+                {autoplayAllowed && (
+                  <>
+                    <span aria-hidden="true" className="mx-1 h-5 w-px bg-white/20" />
+                    <button
+                      type="button"
+                      onClick={() => setUserPaused((p) => !p)}
+                      aria-label={userPaused ? 'Play slideshow' : 'Pause slideshow'}
+                      className={controlButton}
+                    >
+                      {userPaused ? (
+                        <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                      ) : (
+                        <Pause className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                      )}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
