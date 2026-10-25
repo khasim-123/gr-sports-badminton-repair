@@ -118,7 +118,7 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <header className="bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs w-full overflow-x-clip print:hidden">
+    <header className="bg-white/95 backdrop-blur-md border-b border-line shadow-2xs w-full overflow-x-clip print:hidden">
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Left: Brand / Logo */}
         <div className="flex items-center gap-3 shrink-0">
@@ -156,9 +156,9 @@ export const Navbar: React.FC = () => {
                       aria-current={active ? 'page' : undefined}
                       className={`px-3 min-h-[40px] rounded-xl transition-colors flex items-center gap-1 whitespace-nowrap shrink-0 ${
                         active
-                          ? 'bg-blue-600 text-white font-bold'
+                          ? 'bg-ink text-white font-bold'
                           : tab.id === 'wizard'
-                          ? 'text-blue-700 hover:bg-blue-50 font-bold'
+                          ? 'text-ink hover:bg-paper font-bold'
                           : 'text-slate-600 hover:bg-slate-100'
                       }`}
                     >
@@ -297,7 +297,7 @@ export const Navbar: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => openAuthModal('CUSTOMER')}
-                  className="flex items-center gap-1.5 px-2.5 sm:px-3 min-h-[40px] rounded-lg border border-slate-200 hover:border-slate-300 text-slate-800 hover:bg-slate-100 transition-colors font-semibold text-xs sm:text-sm"
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 min-h-[40px] rounded-lg border border-line hover:border-slate-300 text-slate-800 hover:bg-slate-100 transition-colors font-semibold text-xs sm:text-sm"
                   title="Login / Register"
                 >
                   <User className="w-4 h-4 text-slate-700" />
@@ -313,7 +313,7 @@ export const Navbar: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setNotificationsOpen(!notificationsOpen)}
-                  className="w-11 h-11 flex items-center justify-center rounded-xl text-slate-600 hover:text-blue-600 hover:bg-slate-100 transition-colors border border-slate-200 relative"
+                  className="w-11 h-11 flex items-center justify-center rounded-xl text-slate-600 hover:text-ink hover:bg-slate-100 transition-colors border border-line relative"
                   title="Notifications"
                   aria-label={roleUnreadCount > 0 ? `Notifications (${roleUnreadCount} unread)` : 'Notifications'}
                   aria-expanded={notificationsOpen}
@@ -329,14 +329,14 @@ export const Navbar: React.FC = () => {
                 {/* Notification Dropdown Popover (click outside / Esc closes it — see bellRef effect) */}
                 {notificationsOpen && (
                   <div
-                    className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:top-auto sm:right-0 sm:mt-2 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 z-50 space-y-3 animate-in fade-in zoom-in-95"
+                    className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:top-auto sm:right-0 sm:mt-2 sm:w-96 bg-white rounded-2xl shadow-xl border border-line p-4 z-50 space-y-3 animate-in fade-in zoom-in-95"
                   >
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div className="flex items-center justify-between pb-2 border-b border-line/70">
                       <div className="flex items-center gap-2">
-                        <Bell className="w-4 h-4 text-blue-600" />
+                        <Bell className="w-4 h-4 text-ink" />
                         <h4 className="text-xs font-bold text-slate-900">Notifications</h4>
                         {roleUnreadCount > 0 && (
-                          <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.2 rounded-full">
+                          <span className="text-[10px] font-bold bg-paper-deep text-ink px-2 py-0.2 rounded-full">
                             {roleUnreadCount} new
                           </span>
                         )}
@@ -345,7 +345,7 @@ export const Navbar: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => markAllNotificationsRead()}
-                          className="text-[11px] text-blue-600 hover:underline font-semibold min-h-[32px] px-1"
+                          className="text-[11px] text-ink hover:underline font-semibold min-h-[32px] px-1"
                         >
                           Mark all as read
                         </button>
@@ -370,12 +370,12 @@ export const Navbar: React.FC = () => {
                             }}
                             className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${
                               !notif.isRead
-                                ? 'bg-blue-50/70 border-blue-200'
-                                : 'bg-slate-50/50 border-slate-100 hover:bg-slate-100'
+                                ? 'bg-paper border-line'
+                                : 'bg-paper/50 border-line/70 hover:bg-slate-100'
                             }`}
                           >
                             <div className="flex justify-between items-start gap-2">
-                              <p className={`font-bold ${!notif.isRead ? 'text-blue-900' : 'text-slate-800'}`}>
+                              <p className={`font-bold ${!notif.isRead ? 'text-ink' : 'text-slate-800'}`}>
                                 {tidyRupees(notif.title)}
                               </p>
                               <span className="text-[10px] text-slate-400 shrink-0 font-mono">
@@ -386,7 +386,7 @@ export const Navbar: React.FC = () => {
                               {tidyRupees(notif.message.replace(/\+91\d{10}\b/g, (m) => formatMobile(m)))}
                             </p>
                             {notif.requestId && requests.some((r) => r.id === notif.requestId) && (
-                              <span className="inline-block mt-1 text-[10px] font-mono font-bold text-blue-700 bg-white px-1.5 py-0.2 rounded border border-blue-200">
+                              <span className="inline-block mt-1 text-[10px] font-mono font-bold text-ink bg-white px-1.5 py-0.2 rounded border border-line">
                                 View {notif.requestId} →
                               </span>
                             )}
@@ -402,10 +402,10 @@ export const Navbar: React.FC = () => {
               <div
                 className={`hidden ${
                   currentRole === 'CUSTOMER' ? 'xl:flex' : 'sm:flex'
-                } items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-xs`}
+                } items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-line text-xs`}
               >
                 <div className={`w-2 h-2 rounded-full ${
-                  currentRole === 'CUSTOMER' ? 'bg-blue-600' : currentRole === 'EMPLOYEE' ? 'bg-emerald-600' : 'bg-purple-600'
+                  currentRole === 'CUSTOMER' ? 'bg-ink' : currentRole === 'EMPLOYEE' ? 'bg-emerald-600' : 'bg-purple-600'
                 }`} />
                 <div className="text-left">
                   <p className="font-bold text-slate-900 leading-tight">{userName || formatMobile(userMobile) || 'Signed in'}</p>
@@ -422,7 +422,7 @@ export const Navbar: React.FC = () => {
                   onClick={() => setPasswordOpen(true)}
                   title="Change your password"
                   aria-label="Change password"
-                  className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] px-2.5 sm:px-3 rounded-xl text-slate-700 bg-white hover:bg-slate-100 transition-colors border border-slate-200 text-xs font-bold"
+                  className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] px-2.5 sm:px-3 rounded-xl text-slate-700 bg-white hover:bg-slate-100 transition-colors border border-line text-xs font-bold"
                 >
                   <KeyRound className="w-4 h-4" />
                   <span className="hidden lg:inline">Password</span>

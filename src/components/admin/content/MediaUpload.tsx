@@ -198,7 +198,7 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
               setUrlMode((m) => !m);
               setLocalError(null);
             }}
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 hover:text-blue-900 min-h-[32px] px-1"
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-ink hover:text-ink min-h-[32px] px-1"
           >
             {urlMode ? (
               <>
@@ -254,7 +254,7 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
           </button>
         </div>
       ) : shownUrl ? (
-        <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white">
+        <div className="rounded-2xl border border-line overflow-hidden bg-white">
           {showsImage ? (
             <div className={`relative ${aspectClass} ${compact ? 'max-h-40' : ''} w-full ${contain ? 'bg-white' : 'bg-slate-100'}`}>
               <img
@@ -265,18 +265,18 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
               />
               {uploading && (
                 <div className="absolute inset-0 bg-white/70 flex flex-col items-center justify-center gap-2" aria-live="polite">
-                  <Loader2 className="w-7 h-7 animate-spin text-blue-600" />
+                  <Loader2 className="w-7 h-7 animate-spin text-ink" />
                   <span className="text-xs font-semibold text-slate-700">Uploading…</span>
                 </div>
               )}
             </div>
           ) : (
             <div className="flex items-center gap-3 p-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-paper border border-line flex items-center justify-center shrink-0">
                 {uploading ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                  <Loader2 className="w-5 h-5 animate-spin text-ink" />
                 ) : (
-                  <FileText className="w-5 h-5 text-blue-600" />
+                  <FileText className="w-5 h-5 text-ink" />
                 )}
               </div>
               <div className="min-w-0 flex-1">
@@ -286,7 +286,7 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
                     href={value}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-[11px] text-blue-700 hover:underline"
+                    className="inline-flex items-center gap-1 text-[11px] text-ink hover:underline"
                   >
                     Open <ExternalLink className="w-3 h-3" />
                   </a>
@@ -295,11 +295,11 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
             </div>
           )}
           {!uploading && !disabled && (
-            <div className="flex border-t border-slate-100 divide-x divide-slate-100">
+            <div className="flex border-t border-line/70 divide-x divide-line/70">
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-[40px] text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-[40px] text-xs font-semibold text-slate-700 hover:bg-paper"
               >
                 <RefreshCw className="w-3.5 h-3.5" /> Replace
               </button>
@@ -338,14 +338,14 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
           aria-describedby={describedBy}
           className={`w-full ${compact ? 'py-5' : 'py-8'} px-4 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-1.5 text-center transition-colors disabled:opacity-60 ${
             dragOver
-              ? 'border-blue-500 bg-blue-50'
+              ? 'border-ink bg-paper'
               : shownError
                 ? 'border-rose-300 bg-rose-50/40 hover:bg-rose-50'
-                : 'border-slate-300 bg-slate-50/60 hover:bg-slate-50 hover:border-slate-400'
+                : 'border-slate-300 bg-paper/60 hover:bg-paper hover:border-slate-400'
           }`}
         >
           {uploading ? (
-            <Loader2 className="w-7 h-7 animate-spin text-blue-600" />
+            <Loader2 className="w-7 h-7 animate-spin text-ink" />
           ) : kind === 'image' ? (
             <ImagePlus className="w-7 h-7 text-slate-400" />
           ) : (
@@ -354,7 +354,7 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
           <span className="text-sm font-semibold text-slate-700">
             {uploading ? 'Uploading…' : (
               <>
-                <span className="text-blue-700">Tap to choose</span>
+                <span className="text-ink">Tap to choose</span>
                 <span className="hidden sm:inline"> or drag a file here</span>
               </>
             )}

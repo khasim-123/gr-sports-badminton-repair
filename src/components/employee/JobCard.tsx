@@ -20,9 +20,9 @@ import {
 
 export const actionBtnCls =
   'inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 rounded-xl text-sm font-bold transition-colors';
-export const primaryBtnCls = `${actionBtnCls} bg-blue-600 hover:bg-blue-700 text-white`;
+export const primaryBtnCls = `${actionBtnCls} bg-ink hover:bg-ink-hover text-white`;
 export const successBtnCls = `${actionBtnCls} bg-emerald-600 hover:bg-emerald-700 text-white`;
-export const secondaryBtnCls = `${actionBtnCls} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50`;
+export const secondaryBtnCls = `${actionBtnCls} border border-slate-300 bg-white text-slate-700 hover:bg-paper`;
 
 /** Payment and "returned" steps are green; everything else blue. */
 export const actionClass = (kind: ActionKind) =>
@@ -56,7 +56,7 @@ export const TimingNote: React.FC<{ request: ServiceRequest; repairCategories: R
     const { slot } = splitNotes(request.additionalNotes);
     const overdue = off !== null && off < 0;
     return (
-      <p className={`text-xs font-semibold ${overdue ? 'text-rose-700' : off === 0 ? 'text-blue-800' : 'text-slate-600'}`}>
+      <p className={`text-xs font-semibold ${overdue ? 'text-rose-700' : off === 0 ? 'text-ink' : 'text-slate-600'}`}>
         {overdue ? `Pickup overdue — was due ${formatDate(request.pickupDate)}${slot ? `, ${slot}` : ''}` : `Pickup: ${pickupWhen(request, slot)}`}
       </p>
     );
@@ -92,11 +92,11 @@ export const JobCard: React.FC<JobCardProps> = ({ request: r, mine, gettingServi
   const done = stage === 'done';
 
   return (
-    <article className="bg-white rounded-2xl border border-slate-200 shadow-2xs flex flex-col">
+    <article className="bg-white rounded-2xl border border-line shadow-2xs flex flex-col">
       <button
         type="button"
         onClick={() => onOpen(r.id)}
-        className="w-full text-left p-4 pb-3 flex gap-3 rounded-t-2xl hover:bg-slate-50/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
+        className="w-full text-left p-4 pb-3 flex gap-3 rounded-t-2xl hover:bg-paper/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink/40"
         aria-label={`Open ${r.id}: ${r.batBrand} ${r.batModel}, ${r.customerName}`}
       >
         <ServiceTypeTile type={r.serviceType} size="sm" />

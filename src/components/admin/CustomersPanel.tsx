@@ -8,8 +8,8 @@ import { formatMobile, mobileTelHref } from '../../utils/phone';
 import type { RequestStatus } from '../../types';
 
 const inputCls =
-  'w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 bg-white';
-const cardCls = 'bg-white rounded-3xl border border-slate-200 shadow-xs';
+  'w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-ink/40 bg-white';
+const cardCls = 'bg-white rounded-2xl border border-line shadow-xs';
 const thCls = 'py-3 px-4 whitespace-nowrap';
 const tdCls = 'py-3 px-4 align-top';
 
@@ -27,7 +27,7 @@ const TelLink: React.FC<{ phone: string }> = ({ phone }) => {
     <a
       href={href}
       onClick={(e) => e.stopPropagation()}
-      className="inline-flex items-center gap-1 text-blue-700 font-semibold hover:underline whitespace-nowrap"
+      className="inline-flex items-center gap-1 text-ink font-semibold hover:underline whitespace-nowrap"
     >
       <Phone className="w-3.5 h-3.5" /> {formatMobile(phone)}
     </a>
@@ -83,7 +83,7 @@ export const CustomersPanel: React.FC<Props> = ({ onOpenRequest, onNewBooking, r
         <button
           type="button"
           onClick={() => setSelectedId(null)}
-          className="inline-flex items-center gap-1 min-h-[40px] text-sm font-bold text-blue-700 hover:underline"
+          className="inline-flex items-center gap-1 min-h-[40px] text-sm font-bold text-ink hover:underline"
         >
           <ChevronLeft className="w-4 h-4" /> All customers
         </button>
@@ -91,7 +91,7 @@ export const CustomersPanel: React.FC<Props> = ({ onOpenRequest, onNewBooking, r
         {c && (
           <div className={`${cardCls} p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4`}>
             <div className="min-w-0 space-y-1">
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 break-words">{c.name}</h2>
+              <h2 className="font-display tracking-[0.01em] text-3xl sm:text-4xl font-bold text-slate-900 break-words">{c.name}</h2>
               <p className="text-sm">
                 <TelLink phone={c.phone} />
               </p>
@@ -117,7 +117,7 @@ export const CustomersPanel: React.FC<Props> = ({ onOpenRequest, onNewBooking, r
               ['Last booking', c.lastBookingAt ? formatDate(c.lastBookingAt) : '—'],
               ['Total paid', formatINR(c.totalPaid)],
             ].map(([label, value]) => (
-              <div key={label} className="bg-white rounded-2xl border border-slate-200 p-3">
+              <div key={label} className="bg-white rounded-2xl border border-line p-3">
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</p>
                 <p className="text-lg font-black text-slate-900 mt-0.5">{value}</p>
               </div>
@@ -126,7 +126,7 @@ export const CustomersPanel: React.FC<Props> = ({ onOpenRequest, onNewBooking, r
         )}
 
         <div className={`${cardCls} overflow-hidden`}>
-          <div className="px-4 py-3 border-b border-slate-100">
+          <div className="px-4 py-3 border-b border-line/70">
             <p className="text-sm font-bold text-slate-900">Booking history</p>
           </div>
           {detailError ? (
@@ -138,13 +138,13 @@ export const CustomersPanel: React.FC<Props> = ({ onOpenRequest, onNewBooking, r
           ) : detail.requests.length === 0 ? (
             <p className="p-8 text-center text-sm text-slate-500">No bookings yet.</p>
           ) : (
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-line/70">
               {detail.requests.map((r) => (
                 <li key={r.id}>
                   <button
                     type="button"
                     onClick={() => onOpenRequest(r.id)}
-                    className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 min-h-[56px]"
+                    className="w-full text-left px-4 py-3 hover:bg-paper flex items-center gap-3 min-h-[56px]"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-bold text-slate-900 flex flex-wrap items-center gap-2">
@@ -178,7 +178,7 @@ export const CustomersPanel: React.FC<Props> = ({ onOpenRequest, onNewBooking, r
     <div className="space-y-4 animate-in fade-in">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900">Customers</h2>
+          <h2 className="font-display tracking-[0.01em] text-3xl sm:text-4xl font-bold text-slate-900">Customers</h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Everyone who has an account, with their bookings and payments.</p>
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
@@ -188,7 +188,7 @@ export const CustomersPanel: React.FC<Props> = ({ onOpenRequest, onNewBooking, r
         </div>
       </div>
 
-      <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs">
+      <div className="bg-white p-3 sm:p-4 rounded-2xl border border-line shadow-2xs">
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -235,7 +235,7 @@ export const CustomersPanel: React.FC<Props> = ({ onOpenRequest, onNewBooking, r
                   tabIndex={0}
                   onClick={() => setSelectedId(c.id)}
                   onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), setSelectedId(c.id))}
-                  className="bg-white rounded-2xl border border-slate-200 p-3 flex items-start gap-3 cursor-pointer hover:bg-slate-50"
+                  className="bg-white rounded-2xl border border-line p-3 flex items-start gap-3 cursor-pointer hover:bg-paper"
                 >
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <p className="text-sm font-bold text-slate-900 truncate">{c.name}</p>
@@ -259,7 +259,7 @@ export const CustomersPanel: React.FC<Props> = ({ onOpenRequest, onNewBooking, r
           {/* Desktop: table */}
           <div className={`${cardCls} overflow-x-auto hidden md:block`}>
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <thead className="bg-paper text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <tr>
                   <th className={thCls}>Name</th>
                   <th className={thCls}>Mobile</th>
@@ -269,12 +269,12 @@ export const CustomersPanel: React.FC<Props> = ({ onOpenRequest, onNewBooking, r
                   <th className={`${thCls} text-right`}>Total paid</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line/70">
                 {rows.map((c) => (
                   <tr
                     key={c.id}
                     onClick={() => setSelectedId(c.id)}
-                    className="hover:bg-slate-50 cursor-pointer"
+                    className="hover:bg-paper cursor-pointer"
                   >
                     <td className={`${tdCls} font-bold text-slate-900`}>
                       <button type="button" onClick={() => setSelectedId(c.id)} className="text-left hover:underline">
@@ -286,7 +286,7 @@ export const CustomersPanel: React.FC<Props> = ({ onOpenRequest, onNewBooking, r
                     </td>
                     <td className={`${tdCls} text-right`}>{c.bookings}</td>
                     <td className={`${tdCls} text-right`}>
-                      {c.openBookings ? <span className="font-bold text-blue-700">{c.openBookings}</span> : <span className="text-slate-400">0</span>}
+                      {c.openBookings ? <span className="font-bold text-ink">{c.openBookings}</span> : <span className="text-slate-400">0</span>}
                     </td>
                     <td className={`${tdCls} whitespace-nowrap text-slate-700`}>
                       {c.lastBookingAt ? formatDate(c.lastBookingAt) : <span className="text-slate-400">No bookings</span>}

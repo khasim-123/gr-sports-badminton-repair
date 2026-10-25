@@ -265,7 +265,7 @@ export const AvailabilityManager: React.FC = () => {
         </div>
       )}
       {summary && (
-        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100 text-xs text-blue-900">{summary}</div>
+        <div className="p-3 rounded-xl bg-paper border border-line text-xs text-ink">{summary}</div>
       )}
 
       {/* Open days */}
@@ -296,7 +296,7 @@ export const AvailabilityManager: React.FC = () => {
                 className={`min-h-[44px] rounded-xl text-xs font-bold border transition-colors ${
                   on
                     ? 'bg-sportsBlue text-white border-sportsBlue'
-                    : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 line-through decoration-slate-300'
+                    : 'bg-white text-slate-500 border-line hover:bg-paper line-through decoration-slate-300'
                 }`}
               >
                 {d.short}
@@ -381,7 +381,7 @@ export const AvailabilityManager: React.FC = () => {
       <section className={`${cardClass} p-4 space-y-3`} aria-labelledby="avail-slots">
         <div>
           <h4 id="avail-slots" className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-            <Clock3 className="w-4 h-4 text-blue-600" /> Pickup time slots
+            <Clock3 className="w-4 h-4 text-ink" /> Pickup time slots
           </h4>
           <p className="text-[11px] text-slate-500">Customers pick one of these when booking.</p>
         </div>
@@ -392,7 +392,7 @@ export const AvailabilityManager: React.FC = () => {
             {form.pickupSlots.map((s) => (
               <li
                 key={s}
-                className="inline-flex items-center gap-1 pl-3 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-800"
+                className="inline-flex items-center gap-1 pl-3 rounded-xl bg-slate-100 border border-line text-xs font-semibold text-slate-800"
               >
                 {s}
                 <button
@@ -474,11 +474,11 @@ export const AvailabilityManager: React.FC = () => {
         {form.closedDates.length === 0 ? (
           <p className="text-xs text-slate-500 italic">No closed dates.</p>
         ) : (
-          <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+          <ul className="divide-y divide-line/70 rounded-xl border border-line">
             {form.closedDates.map((c, idx) => {
               const past = c.date < today;
               return (
-                <li key={c.date} className={`flex items-center gap-2 pl-3 pr-1 py-1 ${past ? 'bg-slate-50 text-slate-400' : ''}`}>
+                <li key={c.date} className={`flex items-center gap-2 pl-3 pr-1 py-1 ${past ? 'bg-paper text-slate-400' : ''}`}>
                   <span className={`text-xs font-bold w-32 shrink-0 ${past ? 'line-through' : 'text-slate-800'}`}>
                     {formatDate(c.date, true)}
                   </span>
@@ -494,7 +494,7 @@ export const AvailabilityManager: React.FC = () => {
                       update({ closedDates: next });
                     }}
                     placeholder="Reason (optional)"
-                    className={`flex-1 min-w-0 min-h-[40px] px-2 text-xs rounded-lg border border-transparent hover:border-slate-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-transparent ${
+                    className={`flex-1 min-w-0 min-h-[40px] px-2 text-xs rounded-lg border border-transparent hover:border-line focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink/40 bg-transparent ${
                       past ? 'text-slate-400' : 'text-slate-700'
                     }`}
                   />
@@ -581,7 +581,7 @@ export const AvailabilityManager: React.FC = () => {
       </section>
 
       {/* Mobile sticky save bar */}
-      <div className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex items-center gap-2">
+      <div className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-line px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex items-center gap-2">
         <p className={`text-[11px] font-semibold flex-1 min-w-0 ${dirty ? 'text-amber-700' : 'text-slate-500'}`} role="status">
           {dirty ? 'Unsaved changes' : 'All changes saved'}
         </p>

@@ -9,10 +9,10 @@ import { Button } from '../common/Button';
 import { localMobileDigits, normalizeMobile, INVALID_MOBILE_MESSAGE } from '../../utils/phone';
 
 const inputCls =
-  'w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 bg-white';
+  'w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-ink/40 bg-white';
 const errInputCls = 'border-rose-400 focus:ring-rose-400';
 const labelCls = 'block text-xs font-bold text-slate-700 mb-1';
-const cardCls = 'bg-white rounded-3xl border border-slate-200 shadow-xs';
+const cardCls = 'bg-white rounded-2xl border border-line shadow-xs';
 
 /** Form values: phone numbers as 10 local digits (MobileInput shows +91), money as text. */
 interface ShopForm {

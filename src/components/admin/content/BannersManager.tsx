@@ -65,9 +65,9 @@ const scheduleState = (b: Banner): ScheduleState => {
 
 const toneClass: Record<ScheduleState['tone'], string> = {
   live: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  scheduled: 'bg-blue-50 text-blue-700 border-blue-200',
+  scheduled: 'bg-paper text-ink border-line',
   expired: 'bg-amber-50 text-amber-800 border-amber-200',
-  off: 'bg-slate-100 text-slate-600 border-slate-200',
+  off: 'bg-slate-100 text-slate-600 border-line',
 };
 
 // ---------- Form ----------
@@ -277,9 +277,9 @@ const BannerFormModal: React.FC<BannerFormModalProps> = ({ banner, open, onClose
           </Field>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+        <div className="p-3.5 rounded-2xl bg-paper border border-line space-y-3">
           <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-            <MousePointerClick className="w-4 h-4 text-blue-600" /> Button
+            <MousePointerClick className="w-4 h-4 text-ink" /> Button
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Button goes to" htmlFor="banner-target">
@@ -493,7 +493,7 @@ export const BannersManager: React.FC = () => {
                   <div className="flex flex-col md:flex-row gap-3 md:gap-4">
                     {/* Previews */}
                     <div className="flex gap-2 md:w-[340px] shrink-0">
-                      <div className="relative flex-1 min-w-0 aspect-[16/5] rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
+                      <div className="relative flex-1 min-w-0 aspect-[16/5] rounded-xl overflow-hidden bg-slate-100 border border-line">
                         <img
                           src={b.desktopImageUrl}
                           alt={`${b.title} — desktop`}
@@ -504,7 +504,7 @@ export const BannersManager: React.FC = () => {
                           Desktop
                         </span>
                       </div>
-                      <div className="relative w-[4.5rem] sm:w-20 shrink-0 aspect-square rounded-xl overflow-hidden bg-slate-100 border border-slate-200 self-start">
+                      <div className="relative w-[4.5rem] sm:w-20 shrink-0 aspect-square rounded-xl overflow-hidden bg-slate-100 border border-line self-start">
                         <img
                           src={b.mobileImageUrl || b.desktopImageUrl}
                           alt={`${b.title} — mobile`}
@@ -545,7 +545,7 @@ export const BannersManager: React.FC = () => {
                                   href={b.ctaUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="ml-1 text-blue-700 hover:underline inline-flex items-center gap-0.5"
+                                  className="ml-1 text-ink hover:underline inline-flex items-center gap-0.5"
                                 >
                                   open <ExternalLink className="w-3 h-3" />
                                 </a>
@@ -563,7 +563,7 @@ export const BannersManager: React.FC = () => {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex md:flex-col items-center md:items-end justify-between gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 shrink-0">
+                    <div className="flex md:flex-col items-center md:items-end justify-between gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-line/70 shrink-0">
                       <Switch
                         checked={b.isActive}
                         onChange={() => toggleActive(b)}
@@ -579,7 +579,7 @@ export const BannersManager: React.FC = () => {
                           onClick={() => move(i, -1)}
                           disabled={i === 0 || reordering}
                           aria-label={`Move "${b.title}" up`}
-                          className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30"
+                          className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-line text-slate-600 hover:bg-paper disabled:opacity-30"
                         >
                           <ArrowUp className="w-4 h-4" />
                         </button>
@@ -588,7 +588,7 @@ export const BannersManager: React.FC = () => {
                           onClick={() => move(i, 1)}
                           disabled={i === banners.length - 1 || reordering}
                           aria-label={`Move "${b.title}" down`}
-                          className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30"
+                          className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-line text-slate-600 hover:bg-paper disabled:opacity-30"
                         >
                           <ArrowDown className="w-4 h-4" />
                         </button>
@@ -596,7 +596,7 @@ export const BannersManager: React.FC = () => {
                           type="button"
                           onClick={() => setEditing(b)}
                           aria-label={`Edit "${b.title}"`}
-                          className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-slate-200 text-blue-700 hover:bg-blue-50"
+                          className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-line text-ink hover:bg-paper"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -604,7 +604,7 @@ export const BannersManager: React.FC = () => {
                           type="button"
                           onClick={() => setToDelete(b)}
                           aria-label={`Delete "${b.title}"`}
-                          className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-slate-200 text-rose-600 hover:bg-rose-50"
+                          className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-line text-rose-600 hover:bg-rose-50"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

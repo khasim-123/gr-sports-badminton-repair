@@ -39,7 +39,7 @@ export const signInHeading = (role: UserRole, stage: CustomerStage, mobile: stri
 };
 
 const inputCls =
-  'w-full min-h-[44px] px-3 rounded-xl border border-slate-300 text-base sm:text-sm text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none';
+  'w-full min-h-[44px] px-3 rounded-xl border border-slate-300 text-base sm:text-sm text-slate-900 bg-white focus:ring-2 focus:ring-ink/40 focus:border-ink outline-none';
 const labelCls = 'block text-xs font-bold text-slate-700 mb-1';
 
 interface SignInPanelProps {
@@ -218,7 +218,7 @@ export const SignInPanel: React.FC<SignInPanelProps> = ({ role, tabs, onRoleChan
           {stage === 'MOBILE' && (
             <>
               {pendingWizardLaunch && (
-                <p className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-sm text-blue-900">
+                <p className="p-3 rounded-xl bg-paper border border-line text-sm text-ink">
                   Sign in to finish your {wizardPrefill?.serviceType === 'REPAIR' ? 'repair' : 'stringing'} booking
                   {wizardPrefill?.batBrand ? ` for ${wizardPrefill.batBrand} ${wizardPrefill.batModel || ''}`.trimEnd() : ''}.
                 </p>
@@ -257,7 +257,7 @@ export const SignInPanel: React.FC<SignInPanelProps> = ({ role, tabs, onRoleChan
                       setError(null);
                       resetResendCountdown();
                     }}
-                    className="min-h-[44px] px-1 text-sm font-semibold text-blue-700 hover:underline"
+                    className="min-h-[44px] px-1 text-sm font-semibold text-ink hover:underline"
                   >
                     Change number
                   </button>
@@ -289,7 +289,7 @@ export const SignInPanel: React.FC<SignInPanelProps> = ({ role, tabs, onRoleChan
                     type="button"
                     onClick={resend}
                     disabled={resending}
-                    className="min-h-[44px] px-1 font-semibold text-blue-700 hover:underline inline-flex items-center gap-1.5 disabled:opacity-50"
+                    className="min-h-[44px] px-1 font-semibold text-ink hover:underline inline-flex items-center gap-1.5 disabled:opacity-50"
                   >
                     <RefreshCw className={`w-4 h-4 ${resending ? 'animate-spin' : ''}`} /> Send a new code
                   </button>
@@ -338,7 +338,7 @@ export const SignInPanel: React.FC<SignInPanelProps> = ({ role, tabs, onRoleChan
           </Button>
           <p className="text-xs text-slate-500 text-center">
             Trouble signing in? Call the shop on{' '}
-            <a href={telHref(shop.phone)} className="inline-flex items-center min-h-[44px] font-semibold text-blue-700 whitespace-nowrap">
+            <a href={telHref(shop.phone)} className="inline-flex items-center min-h-[44px] font-semibold text-ink whitespace-nowrap">
               {phoneDisplay(shop.phone)}
             </a>
             .

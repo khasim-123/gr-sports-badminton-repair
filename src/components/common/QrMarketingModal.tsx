@@ -69,9 +69,9 @@ export const QrMarketingModal: React.FC = () => {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-3xl max-w-sm w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-auto max-h-[calc(100dvh-1.5rem)] animate-in zoom-in-95"
+        className="bg-white rounded-2xl max-w-sm w-full shadow-2xl border border-line overflow-hidden flex flex-col my-auto max-h-[calc(100dvh-1.5rem)] animate-in zoom-in-95"
       >
-        <div className="bg-slate-900 text-white px-5 py-4 flex items-start justify-between gap-3 shrink-0">
+        <div className="bg-ink text-white px-5 py-4 flex items-start justify-between gap-3 shrink-0">
           <div>
             <h3 id="share-qr-title" className="text-base font-bold flex items-center gap-2">
               <QrCode className="w-4 h-4 text-emerald-400" /> Share {shop.name}
@@ -89,11 +89,11 @@ export const QrMarketingModal: React.FC = () => {
         </div>
 
         <div className="p-5 space-y-4 overflow-y-auto">
-          <div className="mx-auto w-48 h-48 bg-white p-2 rounded-2xl border-2 border-slate-200 flex items-center justify-center">
+          <div className="mx-auto w-48 h-48 bg-white p-2 rounded-2xl border-2 border-line flex items-center justify-center">
             {qrDataUrl ? (
               <img src={qrDataUrl} alt={`QR code linking to the ${shop.name} website`} className="w-full h-full object-contain" />
             ) : (
-              <RefreshCw className="w-5 h-5 animate-spin text-blue-600" />
+              <RefreshCw className="w-5 h-5 animate-spin text-ink" />
             )}
           </div>
           <p className="text-center text-[11px] font-mono text-slate-500 break-all">{shareUrl}</p>

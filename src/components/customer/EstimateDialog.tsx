@@ -55,13 +55,13 @@ export const EstimateDialog: React.FC<Props> = ({ request, freeRadiusKm, onClose
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border my-auto flex flex-col max-h-[calc(100dvh-1.5rem)] animate-in zoom-in-95 ${
-          isRevised ? 'border-amber-300' : 'border-slate-200'
+        className={`bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border my-auto flex flex-col max-h-[calc(100dvh-1.5rem)] animate-in zoom-in-95 ${
+          isRevised ? 'border-amber-300' : 'border-line'
         }`}
       >
         <div
           className={`text-white px-5 py-4 flex items-start justify-between gap-3 shrink-0 ${
-            isRevised ? 'bg-gradient-to-r from-amber-600 to-orange-700' : 'bg-gradient-to-r from-blue-900 to-indigo-900'
+            isRevised ? 'bg-amber-700' : 'bg-ink'
           }`}
         >
           <div className="min-w-0">
@@ -91,7 +91,7 @@ export const EstimateDialog: React.FC<Props> = ({ request, freeRadiusKm, onClose
           )}
 
           {(est.inspectionNotes || request.repairIssue) && (
-            <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200">
+            <div className="p-3.5 bg-paper rounded-2xl border border-line">
               <p className="text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1 flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5" /> Technician&apos;s findings
               </p>
@@ -104,7 +104,7 @@ export const EstimateDialog: React.FC<Props> = ({ request, freeRadiusKm, onClose
             </div>
           )}
 
-          <div className="rounded-2xl border border-slate-200 px-4 py-2 divide-y divide-slate-100">
+          <div className="rounded-2xl border border-line px-4 py-2 divide-y divide-line/70">
             {/* A revision only records the new total (the server derives the labour/materials split), so
                 itemised lines are shown for first estimates only. */}
             {!isRevised && est.labourCharge > 0 && <Line label="Labour" value={formatINR(est.labourCharge)} />}
@@ -130,7 +130,7 @@ export const EstimateDialog: React.FC<Props> = ({ request, freeRadiusKm, onClose
             />
             <div className="flex justify-between items-baseline gap-4 py-2.5">
               <span className="font-bold text-slate-900">Total to pay after delivery</span>
-              <span className="text-xl font-black text-blue-800">{formatINR(request.totalAmount || est.totalEstimate + delivery)}</span>
+              <span className="text-xl font-black text-ink">{formatINR(request.totalAmount || est.totalEstimate + delivery)}</span>
             </div>
           </div>
 
@@ -141,7 +141,7 @@ export const EstimateDialog: React.FC<Props> = ({ request, freeRadiusKm, onClose
 
         </div>
 
-        <div className="shrink-0 border-t border-slate-200 bg-white p-4 sm:px-5">
+        <div className="shrink-0 border-t border-line bg-white p-4 sm:px-5">
             {confirmDecline ? (
               <div className="p-3.5 rounded-2xl border border-rose-200 bg-rose-50 space-y-3">
                 <p className="text-sm text-rose-900">

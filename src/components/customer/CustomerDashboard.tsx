@@ -53,7 +53,7 @@ export const CustomerDashboard: React.FC = () => {
   const loadFailed = !showLoading && requests.length === 0 && requestsLoadFailed;
 
   const stats = [
-    { label: 'In progress', value: openRequests.length, icon: <Clock className="w-4 h-4 text-blue-600" />, hint: 'Booked, with us or on the way back' },
+    { label: 'In progress', value: openRequests.length, icon: <Clock className="w-4 h-4 text-ink" />, hint: 'Booked, with us or on the way back' },
     {
       label: 'Waiting for you',
       value: approvals.length,
@@ -126,7 +126,7 @@ export const CustomerDashboard: React.FC = () => {
           {reviewable.slice(0, 2).map((r) => (
             <div
               key={`review-${r.id}`}
-              className="p-4 rounded-2xl border border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              className="p-4 rounded-2xl border border-line bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3"
             >
               <div className="flex items-start gap-3 min-w-0">
                 <Star className="w-5 h-5 text-amber-500 fill-amber-400 shrink-0 mt-0.5" />
@@ -154,7 +154,7 @@ export const CustomerDashboard: React.FC = () => {
               type="button"
               onClick={() => setCustomerSubView('requests')}
               className={`text-left bg-white p-4 sm:p-5 rounded-2xl border shadow-2xs hover:shadow-md transition-all ${
-                s.highlight ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200/80 hover:border-blue-300'
+                s.highlight ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200/80 hover:border-line'
               }`}
             >
               <span className="flex items-center justify-between text-slate-500 mb-2">
@@ -173,21 +173,21 @@ export const CustomerDashboard: React.FC = () => {
         <button
           type="button"
           onClick={() => openWizardWithService('GETTING')}
-          className="text-left bg-white rounded-3xl border border-slate-200 p-5 shadow-2xs hover:border-blue-400 hover:shadow-lg transition-all group flex flex-col"
+          className="text-left bg-white rounded-2xl border border-line p-5 shadow-2xs hover:border-ink/30 hover:shadow-lg transition-all group flex flex-col"
         >
           <span className="flex items-center gap-3">
             <ServiceTypeTile type="GETTING" />
             <span>
-              <span className="block text-lg font-black text-slate-900 group-hover:text-blue-700">Racket stringing</span>
+              <span className="block text-lg font-black text-slate-900 group-hover:text-ink">Racket stringing</span>
               <span className="block text-xs text-slate-500">Bat getting</span>
             </span>
           </span>
           <span className="block text-xs text-slate-600 leading-relaxed mt-3 flex-1">
             Choose a package, your string and colour from our current catalogue, and the tension you want.
           </span>
-          <span className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+          <span className="mt-4 pt-3 border-t border-line/70 flex items-center justify-between text-xs">
             <span className="font-bold text-slate-800">{stringingPrice}</span>
-            <span className="font-bold text-blue-700 flex items-center gap-1">
+            <span className="font-bold text-ink flex items-center gap-1">
               Book stringing <ChevronRight className="w-4 h-4" />
             </span>
           </span>
@@ -196,7 +196,7 @@ export const CustomerDashboard: React.FC = () => {
         <button
           type="button"
           onClick={() => openWizardWithService('REPAIR')}
-          className="text-left bg-white rounded-3xl border border-slate-200 p-5 shadow-2xs hover:border-amber-400 hover:shadow-lg transition-all group flex flex-col"
+          className="text-left bg-white rounded-2xl border border-line p-5 shadow-2xs hover:border-amber-400 hover:shadow-lg transition-all group flex flex-col"
         >
           <span className="flex items-center gap-3">
             <ServiceTypeTile type="REPAIR" />
@@ -208,7 +208,7 @@ export const CustomerDashboard: React.FC = () => {
           <span className="block text-xs text-slate-600 leading-relaxed mt-3 flex-1">
             We inspect your racket first and send you an itemised estimate. Work starts only after you approve it.
           </span>
-          <span className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+          <span className="mt-4 pt-3 border-t border-line/70 flex items-center justify-between text-xs">
             <span className="font-bold text-slate-800">{repairPrice}</span>
             <span className="font-bold text-amber-700 flex items-center gap-1">
               Book a repair <ChevronRight className="w-4 h-4" />
@@ -221,7 +221,7 @@ export const CustomerDashboard: React.FC = () => {
       {isNewCustomer && (
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-3" aria-label="How it works">
           {[
-            { icon: <ClipboardList className="w-5 h-5 text-blue-600" />, title: '1. Book online', text: 'Tell us about your racket and pick a pickup day and time.' },
+            { icon: <ClipboardList className="w-5 h-5 text-ink" />, title: '1. Book online', text: 'Tell us about your racket and pick a pickup day and time.' },
             {
               icon: <Truck className="w-5 h-5 text-emerald-600" />,
               title: '2. We collect it',
@@ -229,8 +229,8 @@ export const CustomerDashboard: React.FC = () => {
             },
             { icon: <Wallet className="w-5 h-5 text-amber-600" />, title: '3. Pay after delivery', text: 'We bring it back; pay by cash or UPI.' },
           ].map((step) => (
-            <div key={step.title} className="bg-white rounded-2xl border border-slate-200 p-4 flex items-start gap-3">
-              <span className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">{step.icon}</span>
+            <div key={step.title} className="bg-white rounded-2xl border border-line p-4 flex items-start gap-3">
+              <span className="w-10 h-10 rounded-xl bg-paper border border-line/70 flex items-center justify-center shrink-0">{step.icon}</span>
               <span>
                 <span className="block text-sm font-bold text-slate-900">{step.title}</span>
                 <span className="block text-xs text-slate-600 mt-0.5">{step.text}</span>
@@ -241,7 +241,7 @@ export const CustomerDashboard: React.FC = () => {
       )}
 
       {/* Recent requests */}
-      <section className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-2xs space-y-3">
+      <section className="bg-white rounded-2xl border border-line p-4 sm:p-6 shadow-2xs space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-slate-900">Recent requests</h2>
@@ -288,18 +288,18 @@ export const CustomerDashboard: React.FC = () => {
         )}
 
         {!showLoading && requests.length > 0 && (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-line/70">
             {requests.slice(0, 4).map((req) => (
               <li key={req.id}>
                 <button
                   type="button"
                   onClick={() => openRequestDetail(req.id)}
-                  className="w-full text-left py-3 px-2 -mx-2 sm:mx-0 rounded-2xl hover:bg-slate-50 transition-colors grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_11rem_auto] items-center gap-x-3 gap-y-2"
+                  className="w-full text-left py-3 px-2 -mx-2 sm:mx-0 rounded-2xl hover:bg-paper transition-colors grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_11rem_auto] items-center gap-x-3 gap-y-2"
                 >
                   <ServiceTypeTile type={req.serviceType} size="sm" />
                   <span className="min-w-0">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                      <span className="font-mono text-[11px] font-bold text-blue-900 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                      <span className="font-mono text-[11px] font-bold text-ink bg-paper px-1.5 py-0.5 rounded border border-line">
                         {req.id}
                       </span>
                       <span className="text-sm font-bold text-slate-900 truncate">

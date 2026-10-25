@@ -65,9 +65,9 @@ export const Footer: React.FC = () => {
   const linkClass = 'hover:text-white transition-colors text-left inline-flex items-center gap-1.5 min-h-[36px]';
 
   return (
-    <footer className="bg-slate-950 text-slate-400 border-t border-slate-800/80 pt-12 pb-8 print:hidden">
+    <footer className="bg-ink text-slate-400 border-t border-white/10 pt-12 pb-8 print:hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 pb-10 border-b border-slate-800/80">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 pb-10 border-b border-white/10">
           {/* Brand */}
           <div className="space-y-4 sm:col-span-2 lg:col-span-1">
             <GRSportsLogo theme="dark" />
@@ -75,10 +75,10 @@ export const Footer: React.FC = () => {
               Badminton racket stringing and repair in {cityOf(shop)}, with doorstep pickup and delivery.
             </p>
             <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-[11px] text-emerald-400 font-semibold">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[11px] text-emerald-400 font-semibold">
                 <Truck className="w-3.5 h-3.5" /> Free pickup within {distanceConfig.freeRadiusKm} KM
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-[11px] text-blue-300 font-semibold">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[11px] text-white/80 font-semibold">
                 <Wallet className="w-3.5 h-3.5" /> Pay after delivery (cash / UPI)
               </span>
             </div>
@@ -130,20 +130,20 @@ export const Footer: React.FC = () => {
             </ul>
 
             {!isLoggedIn && (
-              <div className="pt-3 mt-2 space-y-2 border-t border-slate-800">
+              <div className="pt-3 mt-2 space-y-2 border-t border-white/10">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Staff access</span>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => openAuthModal('EMPLOYEE')}
-                    className="px-3 min-h-[40px] rounded-xl bg-slate-900 border border-slate-800 hover:border-emerald-600/50 text-emerald-400 font-bold text-xs inline-flex items-center gap-2"
+                    className="px-3 min-h-[40px] rounded-xl bg-white/5 border border-white/10 hover:border-white/30 text-emerald-400 font-bold text-xs inline-flex items-center gap-2"
                   >
                     <Wrench className="w-3.5 h-3.5" /> Employee login
                   </button>
                   <button
                     type="button"
                     onClick={() => openAuthModal('ADMIN')}
-                    className="px-3 min-h-[40px] rounded-xl bg-slate-900 border border-slate-800 hover:border-purple-600/50 text-purple-300 font-bold text-xs inline-flex items-center gap-2"
+                    className="px-3 min-h-[40px] rounded-xl bg-white/5 border border-white/10 hover:border-white/30 text-white/80 font-bold text-xs inline-flex items-center gap-2"
                   >
                     <ShieldCheck className="w-3.5 h-3.5" /> Admin login
                   </button>
@@ -162,7 +162,7 @@ export const Footer: React.FC = () => {
                 rel="noopener noreferrer"
                 className="flex items-start gap-2 text-slate-300 hover:text-white"
               >
-                <MapPin className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                <MapPin className="w-4 h-4 text-accent shrink-0 mt-0.5" />
                 <span>{fullAddress(shop)}</span>
               </a>
               <a href={telHref(shop.phone)} className="flex items-center gap-2 text-slate-300 hover:text-white min-h-[32px]">

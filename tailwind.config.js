@@ -37,6 +37,7 @@ export default {
           DEFAULT: '#0F1B2B',
           soft: '#3A4757',
           muted: '#5C6878',
+          hover: '#1C2D44', // hover state for navy buttons in the app screens
         },
         paper: {
           DEFAULT: '#F6F4EF',

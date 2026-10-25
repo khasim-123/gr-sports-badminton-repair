@@ -61,7 +61,7 @@ export const ChangePasswordModal: React.FC<Props> = ({ open, onClose }) => {
 
   const inputType = show ? 'text' : 'password';
   const inputCls =
-    'mt-1 w-full min-h-[44px] px-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none';
+    'mt-1 w-full min-h-[44px] px-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 focus:border-ink outline-none';
 
   // Rendered into <body>: the top bar uses backdrop-blur, which would otherwise trap this
   // fixed overlay inside the bar and cut the dialog off.
@@ -76,11 +76,11 @@ export const ChangePasswordModal: React.FC<Props> = ({ open, onClose }) => {
         aria-labelledby="change-password-title"
         onClick={(e) => e.stopPropagation()}
         onSubmit={submit}
-        className="w-full max-w-sm my-auto bg-white rounded-3xl shadow-2xl p-5 space-y-4"
+        className="w-full max-w-sm my-auto bg-white rounded-2xl shadow-2xl p-5 space-y-4"
       >
         <div className="flex items-center justify-between">
           <h2 id="change-password-title" className="flex items-center gap-2 text-base font-black text-slate-900">
-            <KeyRound className="w-5 h-5 text-blue-600" /> Change password
+            <KeyRound className="w-5 h-5 text-ink" /> Change password
           </h2>
           <button
             type="button"
@@ -155,7 +155,7 @@ export const ChangePasswordModal: React.FC<Props> = ({ open, onClose }) => {
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 min-h-[44px] rounded-xl bg-blue-600 text-white text-sm font-bold disabled:opacity-60"
+            className="flex-1 min-h-[44px] rounded-xl bg-ink text-white text-sm font-bold disabled:opacity-60"
           >
             {saving ? 'Saving…' : 'Change password'}
           </button>

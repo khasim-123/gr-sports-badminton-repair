@@ -16,7 +16,7 @@ export const StatusBadge: React.FC<BadgeProps> = ({
   children,
   dot = true,
 }) => {
-  let colorClasses = 'bg-slate-100 text-slate-700 border-slate-200';
+  let colorClasses = 'bg-slate-100 text-slate-700 border-line';
   let dotColor = 'bg-slate-400';
 
   const text = children || status;
@@ -36,32 +36,32 @@ export const StatusBadge: React.FC<BadgeProps> = ({
         dotColor = 'bg-rose-500';
         break;
       case 'info':
-        colorClasses = 'bg-blue-50 text-blue-700 border-blue-200';
-        dotColor = 'bg-blue-500';
+        colorClasses = 'bg-paper text-ink border-line';
+        dotColor = 'bg-ink';
         break;
       case 'purple':
         colorClasses = 'bg-purple-50 text-purple-700 border-purple-200';
         dotColor = 'bg-purple-500';
         break;
       case 'neutral':
-        colorClasses = 'bg-slate-100 text-slate-600 border-slate-200';
+        colorClasses = 'bg-slate-100 text-slate-600 border-line';
         dotColor = 'bg-slate-400';
         break;
     }
   } else if (status) {
     switch (status) {
       case 'Submitted':
-        colorClasses = 'bg-sky-50 text-sky-700 border-sky-200';
-        dotColor = 'bg-sky-500';
+        colorClasses = 'bg-paper text-ink border-line';
+        dotColor = 'bg-ink';
         break;
       case 'Accepted':
-        colorClasses = 'bg-blue-50 text-blue-700 border-blue-200';
-        dotColor = 'bg-blue-500';
+        colorClasses = 'bg-paper text-ink border-line';
+        dotColor = 'bg-ink';
         break;
       case 'Employee Assigned':
       case 'Pickup Scheduled':
-        colorClasses = 'bg-indigo-50 text-indigo-700 border-indigo-200';
-        dotColor = 'bg-indigo-500';
+        colorClasses = 'bg-paper text-ink border-line';
+        dotColor = 'bg-ink';
         break;
       case 'Bat Picked Up':
         colorClasses = 'bg-cyan-50 text-cyan-700 border-cyan-200';
@@ -91,8 +91,8 @@ export const StatusBadge: React.FC<BadgeProps> = ({
         dotColor = 'bg-teal-500';
         break;
       case 'Out for Delivery':
-        colorClasses = 'bg-blue-50 text-blue-800 border-blue-300';
-        dotColor = 'bg-blue-600';
+        colorClasses = 'bg-paper text-ink border-line';
+        dotColor = 'bg-ink';
         break;
       case 'Delivered':
         colorClasses = 'bg-emerald-50 text-emerald-800 border-emerald-300';
@@ -114,7 +114,7 @@ export const StatusBadge: React.FC<BadgeProps> = ({
         dotColor = 'bg-rose-500';
         break;
       default:
-        colorClasses = 'bg-slate-100 text-slate-700 border-slate-200';
+        colorClasses = 'bg-slate-100 text-slate-700 border-line';
         dotColor = 'bg-slate-400';
     }
   }

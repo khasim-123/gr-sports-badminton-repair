@@ -135,12 +135,12 @@ export const RequestProgress: React.FC<Props> = ({ request, gettingServices, rep
                 {done ? (
                   <CheckCircle2 className="w-6 h-6 text-emerald-600" />
                 ) : current ? (
-                  <Clock className="w-6 h-6 text-blue-600" />
+                  <Clock className="w-6 h-6 text-ink" />
                 ) : (
                   <Circle className="w-5 h-5 text-slate-300" />
                 )}
               </span>
-              <span className={`text-sm pt-0.5 ${done ? 'text-slate-900 font-semibold' : current ? 'text-blue-800 font-bold' : 'text-slate-400'}`}>
+              <span className={`text-sm pt-0.5 ${done ? 'text-slate-900 font-semibold' : current ? 'text-ink font-bold' : 'text-slate-400'}`}>
                 {m.label}
                 {current && waitingForCustomer && m.reachedAt === 'Repair Approved' && (
                   <span className="block text-[11px] font-semibold text-amber-700">Waiting for your approval</span>
@@ -174,7 +174,7 @@ export const RequestProgress: React.FC<Props> = ({ request, gettingServices, rep
       {open && ((readyBy && (daysLeft! >= 0 || pastReadyDate)) || readyNote || waitingForCustomer) && (
         <div
           className={`p-3.5 rounded-2xl border text-xs flex items-start gap-2.5 ${
-            pastReadyDate && !waitingForCustomer ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-slate-50 border-slate-200 text-slate-700'
+            pastReadyDate && !waitingForCustomer ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-paper border-line text-slate-700'
           }`}
         >
           <CalendarDays className="w-4 h-4 shrink-0 mt-0.5" />
@@ -213,7 +213,7 @@ export const RequestProgress: React.FC<Props> = ({ request, gettingServices, rep
           <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">History</h4>
           <ol className="space-y-2">
             {[...request.timeline].reverse().map((event, idx) => (
-              <li key={`${event.timestamp}-${idx}`} className="p-3 rounded-xl border border-slate-200 bg-white text-xs">
+              <li key={`${event.timestamp}-${idx}`} className="p-3 rounded-xl border border-line bg-white text-xs">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                   <span className="font-bold text-slate-900">{tidyRupees(event.label)}</span>
                   <span className="text-[11px] text-slate-500 whitespace-nowrap">{event.timestamp}</span>

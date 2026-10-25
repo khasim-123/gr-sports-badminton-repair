@@ -46,7 +46,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
   switch (type) {
     case 'no_requests':
-      defaultIcon = <Inbox className="w-12 h-12 text-blue-500" />;
+      defaultIcon = <Inbox className="w-12 h-12 text-ink-soft" />;
       defaultTitle = 'No Service Requests Yet';
       defaultDesc = 'Book a professional badminton bat stringing or composite structural repair in just 2 minutes!';
       defaultBtn = 'Book New Service';
@@ -70,7 +70,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       defaultBtn = 'Add New Address';
       break;
     case 'no_pickups':
-      defaultIcon = <Truck className="w-12 h-12 text-indigo-500" />;
+      defaultIcon = <Truck className="w-12 h-12 text-ink-soft" />;
       defaultTitle = 'No Pickup Tasks Assigned';
       defaultDesc = 'All doorstep bat pickups for today have been completed or none are scheduled.';
       defaultBtn = 'Check Dashboard';
@@ -109,7 +109,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
   return (
     <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-8 sm:p-12 text-center flex flex-col items-center justify-center max-w-md mx-auto my-6 shadow-2xs">
-      <div className="w-20 h-20 rounded-2xl bg-slate-50 flex items-center justify-center mb-4 border border-slate-100">
+      <div className="w-20 h-20 rounded-2xl bg-paper flex items-center justify-center mb-4 border border-line/70">
         {defaultIcon}
       </div>
       <h3 className="text-base font-bold text-slate-900 mb-1.5">{title || defaultTitle}</h3>

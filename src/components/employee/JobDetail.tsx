@@ -24,7 +24,7 @@ import {
 } from './jobLogic';
 
 const Card: React.FC<{ title: string; icon?: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => (
-  <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-2xs">
+  <section className="bg-white rounded-2xl border border-line p-4 sm:p-5 shadow-2xs">
     <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3">
       {icon}
       {title}
@@ -51,7 +51,7 @@ const Photos: React.FC<{ photos: string[]; label: string; onView: (src: string) 
         key={i}
         type="button"
         onClick={() => onView(src)}
-        className="w-24 h-24 rounded-xl overflow-hidden border border-slate-200 hover:ring-2 hover:ring-blue-400"
+        className="w-24 h-24 rounded-xl overflow-hidden border border-line hover:ring-2 hover:ring-ink/40"
         aria-label={`View ${label} ${i + 1}`}
       >
         <img src={src} alt={`${label} ${i + 1}`} className="w-full h-full object-cover" />
@@ -105,21 +105,21 @@ export const JobDetail: React.FC<JobDetailProps> = ({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 min-h-[44px] pr-3 text-sm font-semibold text-slate-600 hover:text-blue-700"
+          className="inline-flex items-center gap-2 min-h-[44px] pr-3 text-sm font-semibold text-slate-600 hover:text-ink"
         >
           <ArrowLeft className="w-4 h-4" /> {backLabel}
         </button>
         <span className="text-xs text-slate-500">Booked {formatDateTime(r.createdAt)}</span>
       </div>
 
-      <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <section className="bg-white rounded-2xl border border-line p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <ServiceTypeTile type={r.serviceType} />
           <div className="min-w-0">
             <p className="text-xs text-slate-500">
               <span className="font-mono font-bold text-slate-700">{r.id}</span> · {serviceName(r)}
             </p>
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 break-words">
+            <h1 className="font-display tracking-[0.01em] text-lg sm:text-xl font-bold text-slate-900 break-words">
               {r.batBrand} {r.batModel}
             </h1>
             <p className="text-xs text-slate-500">
@@ -137,7 +137,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
           {/* What to do next */}
           <section
             className={`rounded-2xl border p-4 sm:p-5 ${
-              stage === 'done' ? 'bg-emerald-50/60 border-emerald-200' : readOnly ? 'bg-slate-50 border-slate-200' : 'bg-blue-50/60 border-blue-200'
+              stage === 'done' ? 'bg-emerald-50/60 border-emerald-200' : readOnly ? 'bg-paper border-line' : 'bg-paper border-line'
             }`}
             aria-label="Next step"
           >
@@ -173,13 +173,13 @@ export const JobDetail: React.FC<JobDetailProps> = ({
           </section>
 
           {/* Customer & pickup */}
-          <Card title="Customer & pickup" icon={<MapPin className="w-4 h-4 text-blue-600" />}>
+          <Card title="Customer & pickup" icon={<MapPin className="w-4 h-4 text-ink" />}>
             <dl className="space-y-3 text-sm">
               <div>
                 <Label>Customer</Label>
                 <dd className="font-semibold text-slate-900">{r.customerName}</dd>
                 {tel ? (
-                  <a href={tel} className="inline-flex items-center gap-1.5 min-h-[44px] font-bold text-blue-700 hover:underline">
+                  <a href={tel} className="inline-flex items-center gap-1.5 min-h-[44px] font-bold text-ink hover:underline">
                     <Phone className="w-4 h-4" /> {formatMobile(r.customerMobile)}
                   </a>
                 ) : (
@@ -199,7 +199,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                     className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold border ${
                       distSource.needsCheck && stage !== 'done'
                         ? 'bg-amber-50 border-amber-300 text-amber-900'
-                        : 'bg-slate-50 border-slate-200 text-slate-600'
+                        : 'bg-paper border-line text-slate-600'
                     }`}
                   >
                     Distance {distSource.label}
@@ -231,7 +231,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
           </Card>
 
           {/* What was booked */}
-          <Card title={isRepair ? 'Repair' : 'Stringing'} icon={<ClipboardList className="w-4 h-4 text-blue-600" />}>
+          <Card title={isRepair ? 'Repair' : 'Stringing'} icon={<ClipboardList className="w-4 h-4 text-ink" />}>
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
               <div>
                 <Label>Racket</Label>
@@ -273,7 +273,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
           </Card>
 
           {r.pickupCondition && (
-            <Card title="Condition at pickup" icon={<ClipboardList className="w-4 h-4 text-blue-600" />}>
+            <Card title="Condition at pickup" icon={<ClipboardList className="w-4 h-4 text-ink" />}>
               <div className="text-sm space-y-1">
                 <p className="font-semibold text-slate-900">{r.pickupCondition.condition}</p>
                 {r.pickupCondition.notes && <p className="text-slate-700 whitespace-pre-line">{r.pickupCondition.notes}</p>}
@@ -293,7 +293,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
 
           {est && (
             <Card title={est.isRevised ? 'Repair estimate (revised)' : 'Repair estimate'} icon={<Wrench className="w-4 h-4 text-amber-600" />}>
-              <dl className="text-sm divide-y divide-slate-100">
+              <dl className="text-sm divide-y divide-line/70">
                 <Line label="Labour" value={formatINR(est.labourCharge)} />
                 <Line label="Materials / parts" value={formatINR(est.materialsCharge)} />
                 {est.additionalCharges > 0 && <Line label="Additional" value={formatINR(est.additionalCharges)} />}
@@ -315,8 +315,8 @@ export const JobDetail: React.FC<JobDetailProps> = ({
         </div>
 
         <div className="lg:col-span-2 space-y-4">
-          <Card title="Charges" icon={<Wallet className="w-4 h-4 text-blue-600" />}>
-            <dl className="text-sm divide-y divide-slate-100">
+          <Card title="Charges" icon={<Wallet className="w-4 h-4 text-ink" />}>
+            <dl className="text-sm divide-y divide-line/70">
               {isRepair ? (
                 <Line
                   label="Repair"
@@ -343,7 +343,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
             </dl>
             <p
               className={`mt-3 rounded-xl px-3 py-2 text-xs ${
-                isPaid ? 'bg-emerald-50 border border-emerald-200 text-emerald-900' : 'bg-slate-50 border border-slate-200 text-slate-700'
+                isPaid ? 'bg-emerald-50 border border-emerald-200 text-emerald-900' : 'bg-paper border border-line text-slate-700'
               }`}
             >
               {isPaid && r.paymentRecord
@@ -358,14 +358,14 @@ export const JobDetail: React.FC<JobDetailProps> = ({
             </p>
           </Card>
 
-          <Card title="Timeline" icon={<History className="w-4 h-4 text-blue-600" />}>
+          <Card title="Timeline" icon={<History className="w-4 h-4 text-ink" />}>
             {(r.timeline || []).length === 0 ? (
               <p className="text-sm text-slate-500">No updates yet.</p>
             ) : (
-              <ol className="space-y-3 border-l-2 border-slate-200 pl-4 ml-1">
+              <ol className="space-y-3 border-l-2 border-line pl-4 ml-1">
                 {[...(r.timeline || [])].reverse().map((ev, i) => (
                   <li key={i} className="relative">
-                    <span className="absolute -left-[23px] top-1.5 w-3 h-3 rounded-full bg-white border-2 border-blue-500" aria-hidden="true" />
+                    <span className="absolute -left-[23px] top-1.5 w-3 h-3 rounded-full bg-white border-2 border-ink" aria-hidden="true" />
                     <p className="text-sm font-semibold text-slate-900">{tidyRupees(ev.label || ev.status)}</p>
                     <p className="text-xs text-slate-500">
                       {ev.timestamp}
@@ -389,7 +389,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
             <button
               type="button"
               onClick={() => setViewPhoto(null)}
-              className="flex-1 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50"
+              className="flex-1 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-paper"
             >
               Close
             </button>

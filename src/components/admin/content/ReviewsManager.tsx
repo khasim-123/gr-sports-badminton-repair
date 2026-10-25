@@ -104,7 +104,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review: r, busyAction, onModera
               ? 'bg-amber-50 text-amber-800 border-amber-200'
               : r.status === 'approved'
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-slate-100 text-slate-600 border-slate-200'
+                : 'bg-slate-100 text-slate-600 border-line'
           }`}
         >
           {STATUS_LABEL[r.status]}
@@ -114,8 +114,8 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review: r, busyAction, onModera
       <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line break-words">{r.comment}</p>
 
       {r.adminReply && !replyOpen && (
-        <div className="ml-3 pl-3 border-l-2 border-blue-200">
-          <p className="text-[11px] font-bold text-blue-800">Reply from GR Sports</p>
+        <div className="ml-3 pl-3 border-l-2 border-line">
+          <p className="text-[11px] font-bold text-ink">Reply from GR Sports</p>
           <p className="text-xs text-slate-600 whitespace-pre-line break-words">{r.adminReply}</p>
         </div>
       )}
@@ -155,7 +155,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review: r, busyAction, onModera
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
+      <div className="flex flex-wrap gap-2 pt-2 border-t border-line/70">
         {r.status !== 'approved' && (
           <Button
             type="button"

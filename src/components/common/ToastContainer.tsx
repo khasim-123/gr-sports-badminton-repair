@@ -10,8 +10,8 @@ export const ToastContainer: React.FC = () => {
   return (
     <div className="fixed top-3 inset-x-0 sm:inset-x-auto sm:top-auto sm:bottom-5 sm:right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full mx-auto sm:mx-0 pointer-events-none px-4 sm:px-0">
       {toasts.map((toast) => {
-        let icon = <Info className="w-5 h-5 text-blue-500 shrink-0" />;
-        let borderClass = 'border-blue-200 bg-white/95';
+        let icon = <Info className="w-5 h-5 text-ink-soft shrink-0" />;
+        let borderClass = 'border-line bg-white/95';
 
         if (toast.type === 'success') {
           icon = <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />;

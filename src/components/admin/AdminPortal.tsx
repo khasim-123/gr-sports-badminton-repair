@@ -65,8 +65,8 @@ import type { PaymentMethod } from '../../types';
 // Request stages (used by the dashboard work queue and the requests filter)
 // ---------------------------------------------------------------------------
 const STAGES: { id: string; label: string; statuses: RequestStatus[]; dot: string }[] = [
-  { id: 'new', label: 'New – accept & assign', statuses: ['Submitted', 'Accepted'], dot: 'bg-blue-500' },
-  { id: 'pickup', label: 'Waiting for pickup', statuses: ['Employee Assigned', 'Pickup Scheduled'], dot: 'bg-indigo-500' },
+  { id: 'new', label: 'New – accept & assign', statuses: ['Submitted', 'Accepted'], dot: 'bg-ink' },
+  { id: 'pickup', label: 'Waiting for pickup', statuses: ['Employee Assigned', 'Pickup Scheduled'], dot: 'bg-ink' },
   {
     id: 'workshop',
     label: 'In the workshop',
@@ -155,7 +155,7 @@ const SLA_STATE_CLASS: Record<SlaState, string> = {
   overdue: 'bg-rose-100 text-rose-800 border border-rose-200',
   due_soon: 'bg-amber-100 text-amber-800 border border-amber-200',
   on_track: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
-  not_started: 'bg-slate-100 text-slate-600 border border-slate-200',
+  not_started: 'bg-slate-100 text-slate-600 border border-line',
 };
 
 /** Distance form (strings so fields can be cleared while typing). */
@@ -277,9 +277,9 @@ interface ConfirmState {
 }
 
 const inputCls =
-  'w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 bg-white';
+  'w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-ink/40 bg-white';
 const labelCls = 'block text-xs font-bold text-slate-700 mb-1';
-const cardCls = 'bg-white rounded-3xl border border-slate-200 shadow-xs';
+const cardCls = 'bg-white rounded-2xl border border-line shadow-xs';
 
 export const AdminPortal: React.FC = () => {
   const {
@@ -708,7 +708,7 @@ export const AdminPortal: React.FC = () => {
   const pageHeader = (title: string, subtitle: React.ReactNode, actions?: React.ReactNode) => (
     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
       <div className="min-w-0">
-        <h2 className="text-xl sm:text-2xl font-black text-slate-900">{title}</h2>
+        <h2 className="font-display tracking-[0.01em] text-3xl sm:text-4xl font-bold text-slate-900">{title}</h2>
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{subtitle}</p>
       </div>
       {actions && <div className="flex flex-wrap gap-2 shrink-0 print:hidden">{actions}</div>}
@@ -729,14 +729,14 @@ export const AdminPortal: React.FC = () => {
   const visibleActivity = auditLogs.filter((l) => showSignIns || !/login|sign[- ]?in|logout/i.test(l.action));
 
   return (
-    <div className="flex flex-col lg:flex-row lg:h-full lg:min-h-0 bg-slate-50 border-t border-slate-200 print:block print:h-auto">
+    <div className="flex flex-col lg:flex-row lg:h-full lg:min-h-0 bg-paper border-t border-line print:block print:h-auto">
       {/* Sidebar: fixed full-height column on desktop (scrolls on its own only if the menu is taller than the
           screen); horizontal scroller on mobile */}
-      <aside className="w-full lg:w-64 lg:h-full lg:overflow-y-auto sidebar-scroll bg-slate-900 text-slate-300 border-r border-slate-800 shrink-0 select-none z-20 print:hidden">
+      <aside className="w-full lg:w-64 lg:h-full lg:overflow-y-auto sidebar-scroll bg-ink text-white/75 border-r border-white/10 shrink-0 select-none z-20 print:hidden">
         <div className="p-3 lg:p-3 flex flex-col gap-2">
-          <div className="px-3 py-1 lg:py-2 lg:mb-1 lg:border-b border-slate-800">
-            <h3 className="text-base font-bold text-white tracking-tight">GR Sports Admin</h3>
-            <p className="text-[11px] text-slate-400 hidden lg:block">Shop management</p>
+          <div className="px-3 py-1 lg:py-2 lg:mb-1 lg:border-b border-white/10">
+            <h3 className="font-display text-xl font-bold text-white tracking-[0.01em]">GR Sports Admin</h3>
+            <p className="text-[11px] text-white/50 hidden lg:block">Shop management</p>
           </div>
 
           <nav
@@ -755,7 +755,7 @@ export const AdminPortal: React.FC = () => {
                   aria-current={isActive ? 'page' : undefined}
                   onClick={() => goTo(item.id)}
                   className={`flex items-center justify-between gap-2 px-3 min-h-[40px] lg:min-h-[36px] rounded-xl text-xs font-semibold transition-all whitespace-nowrap shrink-0 lg:w-full ${
-                    isActive ? 'bg-blue-600 text-white shadow-sm font-bold' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                    isActive ? 'bg-accent text-ink font-bold' : 'text-white/75 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   <span className="flex items-center gap-2.5">
@@ -766,7 +766,7 @@ export const AdminPortal: React.FC = () => {
                     <span
                       title={item.badgeTitle}
                       className={`text-[10px] min-w-[20px] text-center px-1.5 py-0.5 rounded-full font-bold ${
-                        item.alert ? 'bg-rose-600 text-white' : isActive ? 'bg-blue-800 text-white' : 'bg-slate-800 text-slate-300'
+                        item.alert ? 'bg-rose-600 text-white' : isActive ? 'bg-ink text-white' : 'bg-white/10 text-white/80'
                       }`}
                     >
                       {item.badge}
@@ -787,7 +787,7 @@ export const AdminPortal: React.FC = () => {
       >
         {isDataLoading && (
           <p className="text-xs text-slate-500 flex items-center gap-2 print:hidden" role="status">
-            <span className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <span className="w-3 h-3 border-2 border-ink border-t-transparent rounded-full animate-spin" />
             Loading the latest data…
           </p>
         )}
@@ -868,13 +868,13 @@ export const AdminPortal: React.FC = () => {
                   <h3 className="text-sm font-bold text-slate-900">Work queue by stage</h3>
                   <p className="text-[11px] text-slate-500">Tap a stage to see those requests.</p>
                 </div>
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-line/70">
                   {stageCounts.map((s) => (
                     <button
                       key={s.id}
                       type="button"
                       onClick={() => openStage(s.id)}
-                      className="w-full min-h-[44px] flex items-center justify-between gap-3 py-2 text-left hover:bg-slate-50 rounded-lg px-2 -mx-2"
+                      className="w-full min-h-[44px] flex items-center justify-between gap-3 py-2 text-left hover:bg-paper rounded-lg px-2 -mx-2"
                     >
                       <span className="flex items-center gap-2.5 text-sm text-slate-700">
                         <span className={`w-2.5 h-2.5 rounded-full ${s.dot}`} />
@@ -896,7 +896,7 @@ export const AdminPortal: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => goTo('sla_monitor')}
-                    className="text-xs text-blue-600 font-bold hover:underline min-h-[40px] px-2"
+                    className="text-xs text-ink font-bold hover:underline min-h-[40px] px-2"
                   >
                     Open SLA monitor
                   </button>
@@ -905,17 +905,17 @@ export const AdminPortal: React.FC = () => {
                 {repairSlaItems.length === 0 ? (
                   <p className="text-sm text-slate-500 py-6 text-center">No repairs in progress.</p>
                 ) : (
-                  <div className="divide-y divide-slate-100">
+                  <div className="divide-y divide-line/70">
                     {repairSlaItems.slice(0, 5).map((item) => (
                       <button
                         key={item.request.id}
                         type="button"
                         onClick={() => setDetailRequestId(item.request.id)}
-                        className="w-full py-3 flex items-center justify-between gap-3 text-left hover:bg-slate-50 rounded-lg px-2 -mx-2"
+                        className="w-full py-3 flex items-center justify-between gap-3 text-left hover:bg-paper rounded-lg px-2 -mx-2"
                       >
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-x-2">
-                            <span className="font-mono text-xs font-bold text-blue-900">{item.request.id}</span>
+                            <span className="font-mono text-xs font-bold text-ink">{item.request.id}</span>
                             <span className="text-xs font-bold text-slate-900">
                               {item.request.batBrand} {item.request.batModel}
                             </span>
@@ -945,7 +945,7 @@ export const AdminPortal: React.FC = () => {
               <div className={`${cardCls} p-5 sm:p-6 space-y-4`}>
                 <h3 className="text-sm font-bold text-slate-900">Service mix</h3>
                 {[
-                  { label: 'Stringing (getting)', count: gettingCount, bar: 'bg-blue-600', text: 'text-blue-700' },
+                  { label: 'Stringing (getting)', count: gettingCount, bar: 'bg-ink', text: 'text-ink' },
                   { label: 'Repairs', count: repairCount, bar: 'bg-amber-500', text: 'text-amber-700' },
                 ].map((row) => (
                   <div key={row.label}>
@@ -962,7 +962,7 @@ export const AdminPortal: React.FC = () => {
                 ))}
 
                 {requests.length > 0 && (
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-600">
+                  <div className="p-3 bg-paper rounded-xl border border-line/70 text-xs text-slate-600">
                     <b>Free radius:</b> {withinFreeRadius} of {requests.length} requests (
                     {pct(withinFreeRadius, requests.length)}%) are within the current {distanceConfig.freeRadiusKm} KM free
                     pickup & delivery radius.
@@ -1003,7 +1003,7 @@ export const AdminPortal: React.FC = () => {
                     key={s.view}
                     type="button"
                     onClick={() => goTo(s.view)}
-                    className="w-full min-h-[48px] flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 text-left transition-colors"
+                    className="w-full min-h-[48px] flex items-center justify-between gap-3 p-3 rounded-xl border border-line hover:border-line hover:bg-paper text-left transition-colors"
                   >
                     <span className="min-w-0">
                       <span className="block text-sm font-bold text-slate-900">{s.title}</span>
@@ -1047,7 +1047,7 @@ export const AdminPortal: React.FC = () => {
             )}
 
             {/* Filter Bar */}
-            <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+            <div className="bg-white p-3 sm:p-4 rounded-2xl border border-line shadow-2xs space-y-3">
               <div className="relative">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
@@ -1113,7 +1113,7 @@ export const AdminPortal: React.FC = () => {
                   Showing {filteredRequests.length} of {requests.length} requests
                 </span>
                 {filtersActive && (
-                  <button type="button" onClick={clearFilters} className="font-bold text-blue-600 hover:underline min-h-[40px] px-2">
+                  <button type="button" onClick={clearFilters} className="font-bold text-ink hover:underline min-h-[40px] px-2">
                     Clear filters
                   </button>
                 )}
@@ -1125,7 +1125,7 @@ export const AdminPortal: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[880px] text-left border-collapse text-xs [&_td]:px-3 [&_th]:px-3">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                    <tr className="bg-paper border-b border-line text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                       <th className={thCls}>Request</th>
                       <th className={thCls}>Customer</th>
                       <th className={thCls}>Service & racket</th>
@@ -1133,19 +1133,19 @@ export const AdminPortal: React.FC = () => {
                       <th className={thCls}>Distance</th>
                       <th className={thCls}>Amount</th>
                       <th className={thCls}>Status</th>
-                      <th className={`${thCls} text-right sticky right-0 bg-slate-50 shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.15)]`}>Actions</th>
+                      <th className={`${thCls} text-right sticky right-0 bg-paper shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.15)]`}>Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-line/70">
                     {filteredRequests.length === 0 &&
                       emptyRow(8, requests.length === 0 ? 'No service requests yet.' : 'No requests match these filters.')}
                     {filteredRequests.map((req) => (
-                      <tr key={req.id} className="hover:bg-slate-50/70 transition-colors">
+                      <tr key={req.id} className="hover:bg-paper/70 transition-colors">
                         <td className={tdCls}>
                           <button
                             type="button"
                             onClick={() => setDetailRequestId(req.id)}
-                            className="font-mono font-bold text-blue-700 hover:underline whitespace-nowrap"
+                            className="font-mono font-bold text-ink hover:underline whitespace-nowrap"
                           >
                             {req.id}
                           </button>
@@ -1154,7 +1154,7 @@ export const AdminPortal: React.FC = () => {
                         <td className={tdCls}>
                           <p className="font-bold text-slate-900">{req.customerName}</p>
                           {mobileTelHref(req.customerMobile) ? (
-                            <a href={mobileTelHref(req.customerMobile)} className="text-[11px] text-blue-700 hover:underline whitespace-nowrap">
+                            <a href={mobileTelHref(req.customerMobile)} className="text-[11px] text-ink hover:underline whitespace-nowrap">
                               {formatMobile(req.customerMobile)}
                             </a>
                           ) : (
@@ -1162,7 +1162,7 @@ export const AdminPortal: React.FC = () => {
                           )}
                         </td>
                         <td className={tdCls}>
-                          <span className={`font-semibold ${req.serviceType === 'GETTING' ? 'text-blue-700' : 'text-amber-700'}`}>
+                          <span className={`font-semibold ${req.serviceType === 'GETTING' ? 'text-ink' : 'text-amber-700'}`}>
                             {serviceLabel(req)}
                           </span>
                           <p className="text-slate-600">
@@ -1176,7 +1176,7 @@ export const AdminPortal: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => openAssign(req)}
-                              className="min-h-[40px] px-2.5 rounded-lg bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 whitespace-nowrap"
+                              className="min-h-[40px] px-2.5 rounded-lg bg-paper text-ink font-bold hover:bg-paper-deep whitespace-nowrap"
                             >
                               + Assign staff
                             </button>
@@ -1215,7 +1215,7 @@ export const AdminPortal: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setDetailRequestId(req.id)}
-                              className="min-h-[40px] px-3 inline-flex items-center gap-1 rounded-lg border border-slate-200 text-slate-700 font-bold hover:text-blue-700 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                              className="min-h-[40px] px-3 inline-flex items-center gap-1 rounded-lg border border-line text-slate-700 font-bold hover:text-ink hover:border-line hover:bg-paper transition-colors"
                             >
                               <Eye className="w-3.5 h-3.5" /> Open
                             </button>
@@ -1250,7 +1250,7 @@ export const AdminPortal: React.FC = () => {
                 { label: 'Due within 2 days', value: slaDueSoon, cls: slaDueSoon ? 'text-amber-600' : 'text-slate-900' },
                 { label: 'Not picked up yet', value: slaNotStarted, cls: 'text-slate-900' },
               ].map((c) => (
-                <div key={c.label} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+                <div key={c.label} className="bg-white p-4 rounded-2xl border border-line shadow-2xs">
                   <p className="text-xs font-semibold text-slate-500">{c.label}</p>
                   <p className={`text-2xl font-black mt-1 ${c.cls}`}>{c.value}</p>
                 </div>
@@ -1261,7 +1261,7 @@ export const AdminPortal: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[780px] text-left border-collapse text-xs [&_td]:px-3 [&_th]:px-3">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                    <tr className="bg-paper border-b border-line text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                       <th className={thCls}>Request</th>
                       <th className={thCls}>Customer</th>
                       <th className={thCls}>Issue</th>
@@ -1271,15 +1271,15 @@ export const AdminPortal: React.FC = () => {
                       <th className={thCls}>Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-line/70">
                     {repairSlaItems.length === 0 && emptyRow(7, 'No repairs in progress.')}
                     {repairSlaItems.map((item) => (
-                      <tr key={item.request.id} className="hover:bg-slate-50/70">
+                      <tr key={item.request.id} className="hover:bg-paper/70">
                         <td className={tdCls}>
                           <button
                             type="button"
                             onClick={() => setDetailRequestId(item.request.id)}
-                            className="block -my-2 py-2 font-mono font-bold text-blue-700 hover:underline whitespace-nowrap text-left"
+                            className="block -my-2 py-2 font-mono font-bold text-ink hover:underline whitespace-nowrap text-left"
                           >
                             {item.request.id}
                           </button>
@@ -1313,7 +1313,7 @@ export const AdminPortal: React.FC = () => {
 
         {/* SHARED PRICING SUB-NAVIGATION (distance / stringing / repair) */}
         {(adminSubView === 'distance' || adminSubView === 'getting_config' || adminSubView === 'repair_config') && (
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 p-2 bg-white rounded-2xl border border-slate-200 shadow-2xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 p-2 bg-white rounded-2xl border border-line shadow-2xs">
             <div className="hidden md:flex overflow-x-auto no-scrollbar gap-1.5">
               {[
                 { id: 'distance', label: `Delivery & free radius (${distanceConfig.freeRadiusKm} KM)`, icon: Compass },
@@ -1327,7 +1327,7 @@ export const AdminPortal: React.FC = () => {
                     type="button"
                     onClick={() => goTo(t.id)}
                     className={`min-h-[40px] px-3.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
-                      adminSubView === t.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      adminSubView === t.id ? 'bg-ink text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
@@ -1393,7 +1393,7 @@ export const AdminPortal: React.FC = () => {
                 }}
               >
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Compass className="w-4 h-4 text-blue-600" />
+                  <Compass className="w-4 h-4 text-ink" />
                   Workshop location & delivery charges
                 </h3>
 
@@ -1470,7 +1470,7 @@ export const AdminPortal: React.FC = () => {
                         className={`min-h-[40px] text-xs font-bold px-3 rounded-xl border transition-all ${
                           num(distForm.freeRadiusKm) === km
                             ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-100 hover:text-emerald-900'
+                            : 'bg-white text-slate-700 border-line hover:bg-emerald-100 hover:text-emerald-900'
                         }`}
                       >
                         {km} KM
@@ -1494,8 +1494,8 @@ export const AdminPortal: React.FC = () => {
                         onClick={() => setDist({ pricingMethod: m.id })}
                         className={`min-h-[40px] rounded-xl text-xs font-bold border ${
                           distForm.pricingMethod === m.id
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                            ? 'bg-ink text-white border-ink'
+                            : 'bg-paper text-slate-700 border-line hover:bg-slate-100'
                         }`}
                       >
                         {m.label}
@@ -1544,7 +1544,7 @@ export const AdminPortal: React.FC = () => {
                 </div>
 
                 {distForm.pricingMethod === 'SLAB' && (
-                  <div className="space-y-2 pt-3 border-t border-slate-200">
+                  <div className="space-y-2 pt-3 border-t border-line">
                     <p className="text-xs font-bold text-slate-700">Distance slabs (flat charge per slab)</p>
                     <div className="flex items-center justify-between p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-xs">
                       <span className="font-semibold text-emerald-900">0 – {distForm.freeRadiusKm || '?'} KM</span>
@@ -1553,7 +1553,7 @@ export const AdminPortal: React.FC = () => {
                     {distForm.slabs.map((slab, i) => {
                       const prev = i === 0 ? num(distForm.freeRadiusKm) : num(distForm.slabs[i - 1].maxKm);
                       return (
-                        <div key={i} className="flex flex-wrap items-end gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                        <div key={i} className="flex flex-wrap items-end gap-2 p-2.5 bg-paper rounded-xl border border-line text-xs">
                           <span className="font-semibold text-slate-600 min-w-[80px] pb-2.5">
                             From {Number.isFinite(prev) ? +(prev + 0.1).toFixed(1) : '?'} KM
                           </span>
@@ -1618,7 +1618,7 @@ export const AdminPortal: React.FC = () => {
                   </p>
                 )}
 
-                <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 pt-3 border-t border-slate-100">
+                <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 pt-3 border-t border-line/70">
                   {distDirty && (
                     <Button
                       type="button"
@@ -1645,7 +1645,7 @@ export const AdminPortal: React.FC = () => {
               </form>
 
               {/* Charge preview */}
-              <div className="bg-slate-900 text-white p-5 sm:p-6 rounded-3xl border border-slate-800 shadow-lg space-y-4 self-start">
+              <div className="bg-ink text-white p-5 sm:p-6 rounded-2xl border border-white/10 shadow-lg space-y-4 self-start">
                 <div>
                   <h3 className="text-sm font-bold text-emerald-400">Delivery charge preview</h3>
                   <p className="text-xs text-slate-400 mt-1">
@@ -1676,7 +1676,7 @@ export const AdminPortal: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="p-4 bg-slate-950/80 rounded-2xl border border-slate-800 text-xs space-y-2.5">
+                <div className="p-4 bg-ink/80 rounded-2xl border border-white/10 text-xs space-y-2.5">
                   <div className="flex justify-between gap-3">
                     <span className="text-slate-400">Free radius</span>
                     <span className="font-bold text-emerald-400">{previewConfig.freeRadiusKm} KM</span>
@@ -1695,7 +1695,7 @@ export const AdminPortal: React.FC = () => {
                         : `${formatINR(previewConfig.perKmRateBeyondFree)} × ${preview.chargeableKm} KM`}
                     </span>
                   </div>
-                  <div className="pt-2 border-t border-slate-800 flex justify-between items-baseline gap-3">
+                  <div className="pt-2 border-t border-white/10 flex justify-between items-baseline gap-3">
                     <span className="text-sm font-extrabold">Pickup & delivery charge</span>
                     <span className="text-emerald-400 font-mono text-lg font-extrabold">
                       {preview.charge === 0 ? 'Free' : formatINR(preview.charge)}
@@ -1751,7 +1751,7 @@ export const AdminPortal: React.FC = () => {
                         </span>
                       </div>
                       <div className="text-right shrink-0">
-                        <span className="text-xl font-black text-blue-700">{formatINR(item.price)}</span>
+                        <span className="text-xl font-black text-ink">{formatINR(item.price)}</span>
                         {item.isActive === false && (
                           <span className="block text-[10px] text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded mt-0.5">
                             Hidden from customers
@@ -1761,7 +1761,7 @@ export const AdminPortal: React.FC = () => {
                     </div>
                     {item.description && <p className="text-xs text-slate-600 leading-relaxed">{item.description}</p>}
                     {item.features.length > 0 && (
-                      <div className="p-2.5 bg-slate-50 rounded-xl text-xs space-y-1">
+                      <div className="p-2.5 bg-paper rounded-xl text-xs space-y-1">
                         {item.features.map((f, i) => (
                           <p key={i} className="text-slate-700 flex items-center gap-1.5">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> {f}
@@ -1771,7 +1771,7 @@ export const AdminPortal: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="pt-3 border-t border-slate-100 flex justify-end">
+                  <div className="pt-3 border-t border-line/70 flex justify-end">
                     <Button
                       onClick={() => {
                         setEditingGettingItem(item);
@@ -1784,7 +1784,7 @@ export const AdminPortal: React.FC = () => {
                       variant="outline"
                       size="sm"
                       className="text-xs font-bold min-h-[40px]"
-                      leftIcon={<Edit3 className="w-3.5 h-3.5 text-blue-600" />}
+                      leftIcon={<Edit3 className="w-3.5 h-3.5 text-ink" />}
                     >
                       Edit
                     </Button>
@@ -1851,7 +1851,7 @@ export const AdminPortal: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="pt-3 border-t border-slate-100 flex justify-end">
+                  <div className="pt-3 border-t border-line/70 flex justify-end">
                     <Button
                       onClick={() => {
                         setEditingRepairItem(cat);
@@ -1864,7 +1864,7 @@ export const AdminPortal: React.FC = () => {
                       variant="outline"
                       size="sm"
                       className="text-xs font-bold min-h-[40px]"
-                      leftIcon={<Edit3 className="w-3.5 h-3.5 text-blue-600" />}
+                      leftIcon={<Edit3 className="w-3.5 h-3.5 text-ink" />}
                     >
                       Edit
                     </Button>
@@ -1898,17 +1898,17 @@ export const AdminPortal: React.FC = () => {
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <div className="bg-white p-4 rounded-2xl border border-line shadow-2xs">
                 <p className="text-xs font-semibold text-slate-500">Collected</p>
                 <p className="text-2xl font-black text-emerald-600 mt-1">{formatINR(totalCollected)}</p>
                 <p className="text-[11px] text-slate-500 mt-1">{paidRequests.length} paid</p>
               </div>
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <div className="bg-white p-4 rounded-2xl border border-line shadow-2xs">
                 <p className="text-xs font-semibold text-slate-500">To be collected</p>
                 <p className="text-2xl font-black text-amber-600 mt-1">{formatINR(pendingCollection)}</p>
                 <p className="text-[11px] text-slate-500 mt-1">{unpaidRequests.length} unpaid (excludes cancelled)</p>
               </div>
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <div className="bg-white p-4 rounded-2xl border border-line shadow-2xs">
                 <p className="text-xs font-semibold text-slate-500">Collected by method</p>
                 <p className="text-sm font-bold text-slate-900 mt-2">
                   {(['Cash', 'UPI', 'Other'] as const)
@@ -1937,7 +1937,7 @@ export const AdminPortal: React.FC = () => {
                   aria-selected={payFilter === t.id}
                   onClick={() => setPayFilter(t.id)}
                   className={`min-h-[40px] px-3.5 rounded-xl text-xs font-bold border ${
-                    payFilter === t.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    payFilter === t.id ? 'bg-ink text-white border-ink' : 'bg-white text-slate-700 border-line hover:bg-paper'
                   }`}
                 >
                   {t.label}
@@ -1949,7 +1949,7 @@ export const AdminPortal: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[880px] text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                    <tr className="bg-paper border-b border-line text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                       <th className={thCls}>Request</th>
                       <th className={thCls}>Customer</th>
                       <th className={thCls}>Amount</th>
@@ -1960,18 +1960,18 @@ export const AdminPortal: React.FC = () => {
                       <th className={thCls}>Notes</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-line/70">
                     {(() => {
                       const rows =
                         payFilter === 'PAID' ? paidRequests : payFilter === 'UNPAID' ? unpaidRequests : requests;
                       if (rows.length === 0) return emptyRow(8, 'No payments to show.');
                       return rows.map((r) => (
-                        <tr key={r.id} className="hover:bg-slate-50/70">
+                        <tr key={r.id} className="hover:bg-paper/70">
                           <td className={tdCls}>
                             <button
                               type="button"
                               onClick={() => setDetailRequestId(r.id)}
-                              className="block -my-2 py-2 font-mono font-bold text-blue-700 hover:underline whitespace-nowrap text-left"
+                              className="block -my-2 py-2 font-mono font-bold text-ink hover:underline whitespace-nowrap text-left"
                             >
                               {r.id}
                             </button>
@@ -2058,7 +2058,7 @@ export const AdminPortal: React.FC = () => {
                     type="checkbox"
                     checked={showSignIns}
                     onChange={(e) => setShowSignIns(e.target.checked)}
-                    className="w-4 h-4 accent-blue-600"
+                    className="w-4 h-4 accent-ink"
                   />
                   Show sign-ins
                 </label>
@@ -2066,7 +2066,7 @@ export const AdminPortal: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-slate-50 border-y border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                    <tr className="bg-paper border-y border-line text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                       <th className={thCls}>When</th>
                       <th className={thCls}>Who</th>
                       <th className={thCls}>What</th>
@@ -2074,7 +2074,7 @@ export const AdminPortal: React.FC = () => {
                       <th className={thCls}>Details</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-line/70">
                     {visibleActivity.length === 0 && emptyRow(5, 'No activity recorded yet.')}
                     {visibleActivity.slice(0, activityLimit).map((log) => (
                       <tr key={log.id}>
@@ -2089,7 +2089,7 @@ export const AdminPortal: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setDetailRequestId(log.requestId)}
-                              className="text-blue-700 font-bold hover:underline min-h-[40px]"
+                              className="text-ink font-bold hover:underline min-h-[40px]"
                             >
                               {log.requestId}
                             </button>
@@ -2104,11 +2104,11 @@ export const AdminPortal: React.FC = () => {
                 </table>
               </div>
               {visibleActivity.length > activityLimit && (
-                <div className="p-3 border-t border-slate-100 text-center print:hidden">
+                <div className="p-3 border-t border-line/70 text-center print:hidden">
                   <button
                     type="button"
                     onClick={() => setActivityLimit((n) => n + 50)}
-                    className="min-h-[40px] px-4 text-xs font-bold text-blue-700 hover:underline"
+                    className="min-h-[40px] px-4 text-xs font-bold text-ink hover:underline"
                   >
                     Show more ({visibleActivity.length - activityLimit} older)
                   </button>
@@ -2137,7 +2137,7 @@ export const AdminPortal: React.FC = () => {
 
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider pt-2">Other settings</p>
 
-            <div className={`${cardCls} divide-y divide-slate-100`}>
+            <div className={`${cardCls} divide-y divide-line/70`}>
               <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Workshop location & delivery</p>
@@ -2222,11 +2222,11 @@ export const AdminPortal: React.FC = () => {
 
             {/* Account Creation Card */}
             <div className={`${cardCls} p-5 sm:p-6 space-y-4`}>
-              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-line/70">
                 <h3 className="font-bold text-base text-slate-900">Create account</h3>
                 <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold" role="radiogroup" aria-label="Account type">
                   {[
-                    { id: 'EMPLOYEE' as const, label: 'Staff', on: 'bg-blue-600' },
+                    { id: 'EMPLOYEE' as const, label: 'Staff', on: 'bg-ink' },
                     { id: 'ADMIN' as const, label: 'Admin', on: 'bg-purple-600' },
                   ].map((t) => (
                     <button
@@ -2367,9 +2367,9 @@ export const AdminPortal: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-line/70">
                   <span className="text-[11px] text-slate-500 flex items-start gap-1.5">
-                    <KeyRound className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
+                    <KeyRound className="w-3.5 h-3.5 text-ink shrink-0 mt-0.5" />
                     <span>
                       They sign in with this mobile number and password. Nothing is sent automatically — a generated password is
                       shown once after creation; hand it over in person.
@@ -2398,7 +2398,7 @@ export const AdminPortal: React.FC = () => {
 
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider border-y border-slate-200 text-[10px] font-bold">
+                  <thead className="bg-paper text-slate-600 uppercase tracking-wider border-y border-line text-[10px] font-bold">
                     <tr>
                       <th className={thCls}>Name</th>
                       <th className={thCls}>Job</th>
@@ -2408,19 +2408,19 @@ export const AdminPortal: React.FC = () => {
                       <th className={`${thCls} text-right`}>Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-line/70">
                     {activeEmployees.length === 0 && emptyRow(6, 'No staff accounts yet.')}
                     {activeEmployees.map((emp) => {
                       const isSelf = !!userMobile && normalizeMobile(emp.phone) === normalizeMobile(userMobile);
                       const openJobs = openJobsFor(emp.id);
                       return (
-                        <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors">
+                        <tr key={emp.id} className="hover:bg-paper/80 transition-colors">
                           <td className={tdCls}>
                             <div className="flex items-center gap-2.5">
                               <span
                                 aria-hidden="true"
                                 className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 ${
-                                  emp.userRole === 'ADMIN' ? 'bg-purple-600' : 'bg-blue-600'
+                                  emp.userRole === 'ADMIN' ? 'bg-purple-600' : 'bg-ink'
                                 }`}
                               >
                                 {initials(emp.name)}
@@ -2440,7 +2440,7 @@ export const AdminPortal: React.FC = () => {
                               className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
                                 emp.userRole === 'ADMIN'
                                   ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                                  : 'bg-blue-100 text-blue-800 border border-blue-200'
+                                  : 'bg-paper-deep text-ink border border-line'
                               }`}
                             >
                               {emp.userRole === 'ADMIN' ? 'Admin' : 'Staff'}
@@ -2476,7 +2476,7 @@ export const AdminPortal: React.FC = () => {
                                     onConfirm: () => resetStaffPassword(emp.id, emp.name),
                                   })
                                 }
-                                className="min-h-[40px] px-3 rounded-lg text-blue-700 hover:bg-blue-50 font-bold text-[11px]"
+                                className="min-h-[40px] px-3 rounded-lg text-ink hover:bg-paper font-bold text-[11px]"
                               >
                                 Reset password
                               </button>
@@ -2537,7 +2537,7 @@ export const AdminPortal: React.FC = () => {
             aria-modal="true"
             aria-labelledby="assign-title"
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] animate-in zoom-in-95"
+            className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] animate-in zoom-in-95"
           >
             <div className="shrink-0 flex items-start justify-between gap-3">
               <div>
@@ -2572,14 +2572,14 @@ export const AdminPortal: React.FC = () => {
                     aria-checked={selectedEmpId === emp.id}
                     onClick={() => setSelectedEmpId(emp.id)}
                     className={`w-full p-3 rounded-2xl border-2 flex items-center justify-between gap-3 text-left text-xs ${
-                      selectedEmpId === emp.id ? 'border-blue-600 bg-blue-50/50' : 'border-slate-200 hover:bg-slate-50'
+                      selectedEmpId === emp.id ? 'border-ink bg-paper' : 'border-line hover:bg-paper'
                     }`}
                   >
                     <span>
                       <span className="block font-bold text-slate-900">
                         {emp.name}
                         {assignRequest.assignedEmployeeId === emp.id && (
-                          <span className="ml-1.5 text-[10px] text-blue-700">(currently assigned)</span>
+                          <span className="ml-1.5 text-[10px] text-ink">(currently assigned)</span>
                         )}
                       </span>
                       <span className="block text-slate-500 text-[11px]">
@@ -2645,9 +2645,9 @@ export const AdminPortal: React.FC = () => {
             aria-modal="true"
             aria-labelledby="detail-title"
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl my-auto flex flex-col max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)] animate-in zoom-in-95"
+            className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl my-auto flex flex-col max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)] animate-in zoom-in-95"
           >
-            <div className="flex justify-between items-start gap-3 p-4 sm:p-6 pb-3 border-b border-slate-100 shrink-0">
+            <div className="flex justify-between items-start gap-3 p-4 sm:p-6 pb-3 border-b border-line/70 shrink-0">
               <div className="min-w-0">
                 <h3 id="detail-title" className="text-lg font-bold text-slate-900 flex flex-wrap items-center gap-2">
                   <span className="font-mono">{detailRequest.id}</span>
@@ -2670,13 +2670,13 @@ export const AdminPortal: React.FC = () => {
 
             <div className="overflow-y-auto p-4 sm:p-6 space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-3 bg-slate-50 rounded-xl space-y-1">
+                <div className="p-3 bg-paper rounded-xl space-y-1">
                   <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Customer</p>
                   <p className="font-bold text-slate-900 text-sm">{detailRequest.customerName}</p>
                   {mobileTelHref(detailRequest.customerMobile) ? (
                     <a
                       href={mobileTelHref(detailRequest.customerMobile)}
-                      className="inline-flex items-center gap-1 text-blue-700 font-semibold hover:underline min-h-[40px]"
+                      className="inline-flex items-center gap-1 text-ink font-semibold hover:underline min-h-[40px]"
                     >
                       <Phone className="w-3.5 h-3.5" /> {formatMobile(detailRequest.customerMobile)}
                     </a>
@@ -2685,7 +2685,7 @@ export const AdminPortal: React.FC = () => {
                   )}
                 </div>
 
-                <div className="p-3 bg-slate-50 rounded-xl space-y-1">
+                <div className="p-3 bg-paper rounded-xl space-y-1">
                   <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Pickup address</p>
                   <p className="text-slate-800">
                     {[
@@ -2729,7 +2729,7 @@ export const AdminPortal: React.FC = () => {
                   )}
                   {distanceFix && detailRequest.paymentStatus !== 'Paid' && detailRequest.status !== 'Cancelled' && (
                     <form
-                      className="mt-2 space-y-2 border-t border-slate-200 pt-2"
+                      className="mt-2 space-y-2 border-t border-line pt-2"
                       onSubmit={async (e) => {
                         e.preventDefault();
                         const km = Number(distanceFix.km);
@@ -2813,7 +2813,7 @@ export const AdminPortal: React.FC = () => {
                         <button
                           type="submit"
                           disabled={distanceFixSaving}
-                          className="flex-1 min-h-[40px] rounded-lg bg-blue-600 text-white text-xs font-bold disabled:opacity-60"
+                          className="flex-1 min-h-[40px] rounded-lg bg-ink text-white text-xs font-bold disabled:opacity-60"
                         >
                           {distanceFixSaving ? 'Saving…' : 'Save distance'}
                         </button>
@@ -2824,7 +2824,7 @@ export const AdminPortal: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-3 border border-slate-200 rounded-xl space-y-1">
+                <div className="p-3 border border-line rounded-xl space-y-1">
                   <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Racket & service</p>
                   <dl className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1">
                     <dt className="text-slate-500">Racket</dt>
@@ -2888,14 +2888,14 @@ export const AdminPortal: React.FC = () => {
                     <div className="flex flex-wrap gap-2 pt-1">
                       {detailPhotos.batPhotos.slice(0, 6).map((src, i) => (
                         <a key={i} href={src} target="_blank" rel="noreferrer" className="block">
-                          <img src={src} alt={`Racket photo ${i + 1}`} className="w-14 h-14 rounded-lg object-cover border border-slate-200" />
+                          <img src={src} alt={`Racket photo ${i + 1}`} className="w-14 h-14 rounded-lg object-cover border border-line" />
                         </a>
                       ))}
                     </div>
                   )}
                 </div>
 
-                <div className="p-3 border border-slate-200 rounded-xl space-y-1">
+                <div className="p-3 border border-line rounded-xl space-y-1">
                   <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Charges & payment</p>
                   <dl className="grid grid-cols-[1fr,auto] gap-x-3 gap-y-1">
                     <dt className="text-slate-500">Service</dt>
@@ -2910,8 +2910,8 @@ export const AdminPortal: React.FC = () => {
                         <dd className="text-right text-emerald-700">-{formatINR(detailRequest.discount)}</dd>
                       </>
                     )}
-                    <dt className="font-bold text-slate-900 border-t border-slate-100 pt-1">Total</dt>
-                    <dd className="text-right font-bold text-slate-900 border-t border-slate-100 pt-1">{amountText(detailRequest)}</dd>
+                    <dt className="font-bold text-slate-900 border-t border-line/70 pt-1">Total</dt>
+                    <dd className="text-right font-bold text-slate-900 border-t border-line/70 pt-1">{amountText(detailRequest)}</dd>
                     <dt className="text-slate-500">Payment</dt>
                     <dd className={`text-right font-semibold ${detailRequest.paymentStatus === 'Paid' ? 'text-emerald-700' : 'text-amber-700'}`}>
                       {paymentText(detailRequest)}
@@ -2930,7 +2930,7 @@ export const AdminPortal: React.FC = () => {
                   )}
                   {paymentForm && detailRequest.paymentStatus !== 'Paid' && (
                     <form
-                      className="mt-2 space-y-2 border-t border-slate-100 pt-2"
+                      className="mt-2 space-y-2 border-t border-line/70 pt-2"
                       onSubmit={async (e) => {
                         e.preventDefault();
                         const amount = Number(paymentForm.amount);
@@ -3073,7 +3073,7 @@ export const AdminPortal: React.FC = () => {
               )}
 
               {detailRequest.pickupCondition && (
-                <div className="p-3 border border-slate-200 rounded-xl space-y-1">
+                <div className="p-3 border border-line rounded-xl space-y-1">
                   <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Condition at pickup</p>
                   <p className="text-slate-800">
                     <b>{detailRequest.pickupCondition.condition}</b>
@@ -3087,7 +3087,7 @@ export const AdminPortal: React.FC = () => {
                     <div className="flex flex-wrap gap-2 pt-1">
                       {detailPhotos.pickupPhotos.slice(0, 6).map((src, i) => (
                         <a key={i} href={src} target="_blank" rel="noreferrer" className="block">
-                          <img src={src} alt={`Pickup photo ${i + 1}`} className="w-14 h-14 rounded-lg object-cover border border-slate-200" />
+                          <img src={src} alt={`Pickup photo ${i + 1}`} className="w-14 h-14 rounded-lg object-cover border border-line" />
                         </a>
                       ))}
                     </div>
@@ -3096,7 +3096,7 @@ export const AdminPortal: React.FC = () => {
               )}
 
               {detailRequest.review && (
-                <div className="p-3 border border-slate-200 rounded-xl space-y-1">
+                <div className="p-3 border border-line rounded-xl space-y-1">
                   <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Customer review</p>
                   <p className="text-slate-800">
                     <b>{detailRequest.review.rating} / 5</b>
@@ -3106,7 +3106,7 @@ export const AdminPortal: React.FC = () => {
               )}
 
               {/* Staff & status actions */}
-              <div className="p-3 border border-blue-200 bg-blue-50/40 rounded-xl space-y-3">
+              <div className="p-3 border border-line bg-paper rounded-xl space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-slate-800">
                     <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px] block">Assigned staff</span>
@@ -3125,7 +3125,7 @@ export const AdminPortal: React.FC = () => {
                   )}
                 </div>
 
-                <div className="border-t border-blue-100 pt-3 space-y-2">
+                <div className="border-t border-line pt-3 space-y-2">
                   <label htmlFor="status-override" className="font-bold text-slate-500 uppercase tracking-wider text-[10px] block">
                     Change status
                   </label>
@@ -3207,10 +3207,10 @@ export const AdminPortal: React.FC = () => {
                 {(detailRequest.timeline || []).length === 0 ? (
                   <p className="text-slate-500">No events yet.</p>
                 ) : (
-                  <ol className="space-y-2 border-l-2 border-slate-200 pl-4">
+                  <ol className="space-y-2 border-l-2 border-line pl-4">
                     {[...(detailRequest.timeline || [])].reverse().map((ev, i) => (
                       <li key={i} className="relative">
-                        <span className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white" />
+                        <span className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-ink border-2 border-white" />
                         <p className="font-semibold text-slate-900">{ev.label || ev.status}</p>
                         <p className="text-[11px] text-slate-500">
                           {ev.timestamp}
@@ -3224,7 +3224,7 @@ export const AdminPortal: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 p-4 sm:px-6 border-t border-slate-100 shrink-0">
+            <div className="flex justify-end gap-2 p-4 sm:px-6 border-t border-line/70 shrink-0">
               <Button onClick={() => setDetailRequestId(null)} variant="primary" size="sm" className="min-h-[40px] px-6">
                 Close
               </Button>
@@ -3246,7 +3246,7 @@ export const AdminPortal: React.FC = () => {
             aria-modal="true"
             aria-labelledby="confirm-title"
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 animate-in zoom-in-95"
+            className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 animate-in zoom-in-95"
           >
             <h3 id="confirm-title" className="font-bold text-base text-slate-900 flex items-start gap-2">
               {confirmState.danger && <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />}
@@ -3287,11 +3287,11 @@ export const AdminPortal: React.FC = () => {
             role="dialog"
             aria-modal="true"
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto animate-in zoom-in-95"
+            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto animate-in zoom-in-95"
           >
-            <div className="flex justify-between items-center pb-2 border-b border-slate-100 shrink-0">
+            <div className="flex justify-between items-center pb-2 border-b border-line/70 shrink-0">
               <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-blue-600" />
+                <Edit3 className="w-4 h-4 text-ink" />
                 Edit stringing package
               </h3>
               <button
@@ -3327,7 +3327,7 @@ export const AdminPortal: React.FC = () => {
                       setGetFormPrice(val === '' ? '' : parseInt(val, 10) || 0);
                     }}
                     placeholder="e.g. 450"
-                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-black text-blue-700 outline-none"
+                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-black text-ink outline-none"
                   />
                 </div>
                 <div>
@@ -3366,7 +3366,7 @@ export const AdminPortal: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex gap-2 pt-2 border-t border-slate-100 shrink-0">
+            <div className="flex gap-2 pt-2 border-t border-line/70 shrink-0">
               <Button onClick={() => setEditingGettingItem(null)} variant="outline" className="flex-1 min-h-[40px]" size="sm">
                 Cancel
               </Button>
@@ -3415,9 +3415,9 @@ export const AdminPortal: React.FC = () => {
             role="dialog"
             aria-modal="true"
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto animate-in zoom-in-95"
+            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto animate-in zoom-in-95"
           >
-            <div className="flex justify-between items-center pb-2 border-b border-slate-100 shrink-0">
+            <div className="flex justify-between items-center pb-2 border-b border-line/70 shrink-0">
               <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-600" />
                 Add stringing package
@@ -3456,7 +3456,7 @@ export const AdminPortal: React.FC = () => {
                       const val = e.target.value;
                       setGetFormPrice(val === '' ? '' : parseInt(val, 10) || 0);
                     }}
-                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-black text-blue-700 outline-none"
+                    className="w-full min-h-[40px] p-2.5 rounded-xl border border-slate-300 text-sm font-black text-ink outline-none"
                   />
                 </div>
                 <div>
@@ -3494,7 +3494,7 @@ export const AdminPortal: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex gap-2 pt-2 border-t border-slate-100 shrink-0">
+            <div className="flex gap-2 pt-2 border-t border-line/70 shrink-0">
               <Button onClick={() => setAddGettingModalOpen(false)} variant="outline" className="flex-1 min-h-[40px]" size="sm">
                 Cancel
               </Button>
@@ -3553,11 +3553,11 @@ export const AdminPortal: React.FC = () => {
             role="dialog"
             aria-modal="true"
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto animate-in zoom-in-95"
+            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto animate-in zoom-in-95"
           >
-            <div className="flex justify-between items-center pb-2 border-b border-slate-100 shrink-0">
+            <div className="flex justify-between items-center pb-2 border-b border-line/70 shrink-0">
               <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-blue-600" />
+                <Edit3 className="w-4 h-4 text-ink" />
                 Edit repair category
               </h3>
               <button
@@ -3635,7 +3635,7 @@ export const AdminPortal: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex gap-2 pt-2 border-t border-slate-100 shrink-0">
+            <div className="flex gap-2 pt-2 border-t border-line/70 shrink-0">
               <Button onClick={() => setEditingRepairItem(null)} variant="outline" className="flex-1 min-h-[40px]" size="sm">
                 Cancel
               </Button>
@@ -3685,9 +3685,9 @@ export const AdminPortal: React.FC = () => {
             role="dialog"
             aria-modal="true"
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto animate-in zoom-in-95"
+            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-auto flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto animate-in zoom-in-95"
           >
-            <div className="flex justify-between items-center pb-2 border-b border-slate-100 shrink-0">
+            <div className="flex justify-between items-center pb-2 border-b border-line/70 shrink-0">
               <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-600" />
                 Add repair category
@@ -3769,7 +3769,7 @@ export const AdminPortal: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex gap-2 pt-2 border-t border-slate-100 shrink-0">
+            <div className="flex gap-2 pt-2 border-t border-line/70 shrink-0">
               <Button onClick={() => setAddRepairModalOpen(false)} variant="outline" className="flex-1 min-h-[40px]" size="sm">
                 Cancel
               </Button>

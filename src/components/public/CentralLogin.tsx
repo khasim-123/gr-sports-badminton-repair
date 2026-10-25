@@ -19,11 +19,11 @@ export const CentralLogin: React.FC = () => {
   };
 
   return (
-    <div className="bg-slate-50 px-4 py-8 sm:py-12">
+    <div className="bg-paper px-4 py-8 sm:py-12">
       <div className="max-w-md mx-auto">
-        <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 sm:p-6 space-y-4">
+        <section className="bg-white rounded-2xl border border-line shadow-sm p-5 sm:p-6 space-y-4">
           <div>
-            <h1 className="text-xl font-black text-slate-900">{heading.title}</h1>
+            <h1 className="font-display tracking-[0.01em] text-2xl font-bold text-slate-900">{heading.title}</h1>
             <p className="text-sm text-slate-600 mt-1">{heading.text}</p>
           </div>
           <SignInPanel

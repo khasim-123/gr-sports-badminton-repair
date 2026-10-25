@@ -291,7 +291,7 @@ const DocumentFormModal: React.FC<{
           />
         </Field>
 
-        <div className="rounded-2xl border border-slate-200 px-3">
+        <div className="rounded-2xl border border-line px-3">
           <Switch
             checked={form.isPublic}
             onChange={(v) => set('isPublic', v)}
@@ -426,7 +426,7 @@ export const DocumentsManager: React.FC = () => {
                         <div className="flex items-start gap-3 flex-1 min-w-0">
                           <div
                             className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border ${
-                              isPdfDoc(d) ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-blue-50 border-blue-100 text-blue-600'
+                              isPdfDoc(d) ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-paper border-line text-ink'
                             }`}
                           >
                             <Icon className="w-5 h-5" />
@@ -439,7 +439,7 @@ export const DocumentsManager: React.FC = () => {
                                   <Globe className="w-3 h-3" /> Visible on website
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-line">
                                   <Lock className="w-3 h-3" /> Staff only
                                 </span>
                               )}
@@ -450,7 +450,7 @@ export const DocumentsManager: React.FC = () => {
                             </p>
                           </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-1.5 sm:justify-end shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:justify-end shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-line/70">
                           <Switch
                             checked={d.isPublic}
                             onChange={() => toggleVisibility(d)}
@@ -463,7 +463,7 @@ export const DocumentsManager: React.FC = () => {
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label={`Open "${d.title}" in a new tab`}
-                            className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"
+                            className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-line text-slate-600 hover:bg-paper"
                           >
                             <ExternalLink className="w-4 h-4" />
                           </a>
@@ -471,7 +471,7 @@ export const DocumentsManager: React.FC = () => {
                             type="button"
                             onClick={() => setEditing(d)}
                             aria-label={`Edit "${d.title}"`}
-                            className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-slate-200 text-blue-700 hover:bg-blue-50"
+                            className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-line text-ink hover:bg-paper"
                           >
                             <Pencil className="w-4 h-4" />
                           </button>
@@ -479,7 +479,7 @@ export const DocumentsManager: React.FC = () => {
                             type="button"
                             onClick={() => setToDelete(d)}
                             aria-label={`Delete "${d.title}"`}
-                            className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-slate-200 text-rose-600 hover:bg-rose-50"
+                            className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-line text-rose-600 hover:bg-rose-50"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

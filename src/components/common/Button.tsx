@@ -27,7 +27,7 @@ export const Button: React.FC<ButtonProps> = ({
   switch (variant) {
     case 'primary':
       variantClasses =
-        'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md focus:ring-blue-500';
+        'bg-ink hover:bg-ink-hover text-white shadow-sm hover:shadow-md focus:ring-ink/40';
       break;
     case 'secondary':
       variantClasses =
@@ -35,7 +35,7 @@ export const Button: React.FC<ButtonProps> = ({
       break;
     case 'outline':
       variantClasses =
-        'border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs focus:ring-slate-400';
+        'border border-slate-300 bg-white hover:bg-paper text-slate-700 shadow-2xs focus:ring-slate-400';
       break;
     case 'ghost':
       variantClasses =
@@ -55,7 +55,7 @@ export const Button: React.FC<ButtonProps> = ({
       break;
     case 'dark':
       variantClasses =
-        'bg-slate-850 hover:bg-slate-800 text-white border border-slate-700 shadow-sm focus:ring-slate-500';
+        'bg-ink hover:bg-ink-hover text-white border border-slate-700 shadow-sm focus:ring-slate-500';
       break;
     case 'glass':
       variantClasses =

@@ -62,7 +62,7 @@ export const nullIfEmpty = (value?: string | null): string | null => {
 // ---------- styles ----------
 
 export const inputClass =
-  'w-full min-h-[42px] px-3 py-2 text-sm rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-50 disabled:text-slate-500';
+  'w-full min-h-[42px] px-3 py-2 text-sm rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 shadow-2xs focus:outline-none focus:ring-2 focus:ring-ink/40 focus:border-ink disabled:bg-paper disabled:text-slate-500';
 
 export const inputErrorClass = '!border-rose-400 focus:!ring-rose-400 focus:!border-rose-400';
 
@@ -137,7 +137,7 @@ export const Switch: React.FC<SwitchProps> = ({
         aria-labelledby={`${id}-label`}
         disabled={disabled}
         onClick={() => onChange(!checked)}
-        className="shrink-0 inline-flex items-center gap-2 min-h-[40px] px-1 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"
+        className="shrink-0 inline-flex items-center gap-2 min-h-[40px] px-1 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 disabled:opacity-50"
       >
         {(onLabel || offLabel) && (
           <span className={`text-[11px] font-bold ${checked ? 'text-emerald-700' : 'text-slate-500'}`}>
@@ -215,9 +215,9 @@ export const Modal: React.FC<ModalProps> = ({
         role={role}
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`bg-white w-full ${width} rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[calc(100vh-2rem)] animate-fadeIn`}
+        className={`bg-white w-full ${width} rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[calc(100vh-2rem)] animate-fadeIn`}
       >
-        <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 border-b border-slate-100 shrink-0">
+        <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 border-b border-line/70 shrink-0">
           <div className="min-w-0">
             <h3 id={titleId} className="font-bold text-base text-slate-900 break-words">
               {title}
@@ -236,7 +236,7 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
         <div className="px-5 py-4 overflow-y-auto overscroll-contain flex-1 min-h-0">{children}</div>
         {footer && (
-          <div className="px-5 py-3 border-t border-slate-100 shrink-0 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="px-5 py-3 border-t border-line/70 shrink-0 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             {footer}
           </div>
         )}
@@ -373,7 +373,7 @@ export function Pills<T extends string>({
             className={`shrink-0 inline-flex items-center gap-1.5 min-h-[40px] px-3.5 rounded-xl text-xs font-semibold border transition-colors ${
               active
                 ? 'bg-sportsBlue text-white border-sportsBlue shadow-sm'
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                : 'bg-white text-slate-600 border-line hover:bg-paper'
             }`}
           >
             {opt.label}

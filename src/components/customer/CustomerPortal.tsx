@@ -22,7 +22,7 @@ const TABS = [
 ];
 
 const inputClass =
-  'w-full px-3.5 min-h-[44px] rounded-xl border border-slate-300 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white';
+  'w-full px-3.5 min-h-[44px] rounded-xl border border-slate-300 text-sm outline-none focus:ring-2 focus:ring-ink/40 bg-white';
 
 const formatAddress = (a: Address) =>
   [a.houseFlat, a.street, a.area, a.city].filter((p) => p && p.trim()).join(', ') + (a.pincode ? ` – ${a.pincode}` : '');
@@ -149,7 +149,7 @@ export const CustomerPortal: React.FC = () => {
   return (
     <div>
       {/* Section tabs on phones / tablets (desktop uses the navbar). Sticks under the navbar. */}
-      <nav className="lg:hidden sticky top-16 z-30 bg-white/95 backdrop-blur border-b border-slate-200" aria-label="Your account">
+      <nav className="lg:hidden sticky top-16 z-30 bg-white/95 backdrop-blur border-b border-line" aria-label="Your account">
         <div className="max-w-6xl mx-auto px-3 sm:px-6 flex overflow-x-auto no-scrollbar gap-1 py-1.5 text-xs font-semibold">
           {TABS.map((tab) => (
             <button
@@ -158,7 +158,7 @@ export const CustomerPortal: React.FC = () => {
               onClick={() => setCustomerSubView(tab.id)}
               aria-current={activeTab === tab.id ? 'page' : undefined}
               className={`flex-1 px-2.5 min-h-[40px] rounded-xl whitespace-nowrap transition-all ${
-                activeTab === tab.id ? 'bg-blue-600 text-white font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                activeTab === tab.id ? 'bg-ink text-white font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               {tab.label}
@@ -177,7 +177,7 @@ export const CustomerPortal: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-black text-slate-900">Pickup addresses</h1>
+              <h1 className="font-display tracking-[0.01em] text-3xl font-bold text-slate-900">Pickup addresses</h1>
               <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
                 Saved addresses make booking quicker. They are stored on this device only and are cleared when you log out.
               </p>
@@ -201,10 +201,10 @@ export const CustomerPortal: React.FC = () => {
                 const calc = calculateDistanceCharge(addr.distanceKm);
                 const outside = maxServiceKm > 0 && addr.distanceKm > maxServiceKm;
                 return (
-                  <li key={addr.id} className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-2xs flex flex-col gap-2">
+                  <li key={addr.id} className="bg-white p-4 sm:p-5 rounded-2xl border border-line shadow-2xs flex flex-col gap-2">
                     <div className="flex justify-between items-center gap-2">
                       <span className="flex items-center gap-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-blue-900 bg-blue-100 px-2.5 py-0.5 rounded-md">
+                        <span className="text-xs font-bold uppercase tracking-wider text-ink bg-paper-deep px-2.5 py-0.5 rounded-md">
                           {addr.label}
                         </span>
                         {addr.isDefault && (
@@ -225,7 +225,7 @@ export const CustomerPortal: React.FC = () => {
                         : `Pickup & delivery ${formatINR(calc.charge)}`}
                     </p>
 
-                    <div className="pt-2 mt-auto border-t border-slate-100 flex items-center justify-end gap-2 text-xs">
+                    <div className="pt-2 mt-auto border-t border-line/70 flex items-center justify-end gap-2 text-xs">
                       {confirmDeleteId === addr.id ? (
                         <>
                           <span className="mr-auto text-slate-600">Remove this address?</span>
@@ -247,7 +247,7 @@ export const CustomerPortal: React.FC = () => {
                       ) : (
                         <>
                           {!addr.isDefault && (
-                            <Button variant="ghost" size="sm" className="min-h-[40px] text-blue-700" onClick={() => setDefaultAddress(addr.id)}>
+                            <Button variant="ghost" size="sm" className="min-h-[40px] text-ink" onClick={() => setDefaultAddress(addr.id)}>
                               Make default
                             </Button>
                           )}
@@ -274,11 +274,11 @@ export const CustomerPortal: React.FC = () => {
       {customerSubView === 'profile' && (
         <div className="max-w-2xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-5">
           <div>
-            <h1 className="text-2xl font-black text-slate-900">Profile</h1>
+            <h1 className="font-display tracking-[0.01em] text-3xl font-bold text-slate-900">Profile</h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Your name and the mobile number you sign in with.</p>
           </div>
 
-          <form onSubmit={handleSaveProfile} className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-4 text-sm">
+          <form onSubmit={handleSaveProfile} className="bg-white p-4 sm:p-6 rounded-2xl border border-line shadow-2xs space-y-4 text-sm">
             <div>
               <label htmlFor="profile-name" className="block text-xs font-bold text-slate-700 mb-1">
                 Full name
@@ -303,20 +303,20 @@ export const CustomerPortal: React.FC = () => {
 
             <div>
               <span className="block text-xs font-bold text-slate-700 mb-1">Mobile number (sign-in)</span>
-              <div className="flex items-center gap-2 px-3.5 min-h-[44px] rounded-xl border border-slate-200 bg-slate-50 font-semibold text-slate-800">
+              <div className="flex items-center gap-2 px-3.5 min-h-[44px] rounded-xl border border-line bg-paper font-semibold text-slate-800">
                 <Phone className="w-4 h-4 text-slate-400" />
                 <span>{formatMobile(userMobile) || '—'}</span>
               </div>
               <p className="text-[11px] text-slate-500 mt-1">
                 You sign in with this number and our pickup agent calls it. To change it, call the shop on{' '}
-                <a href={telHref(shop.phone)} className="font-semibold text-blue-700 whitespace-nowrap">
+                <a href={telHref(shop.phone)} className="font-semibold text-ink whitespace-nowrap">
                   {phoneDisplay(shop.phone)}
                 </a>
                 .
               </p>
             </div>
 
-            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-600 flex items-start gap-2">
+            <div className="p-3 bg-paper rounded-2xl border border-line text-xs text-slate-600 flex items-start gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
               <span>This number was verified with an SMS code when you signed in.</span>
             </div>
@@ -349,7 +349,7 @@ export const CustomerPortal: React.FC = () => {
             </div>
           </form>
 
-          <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-line shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-start gap-2 text-xs text-slate-600">
               <Smartphone className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
               <span>
@@ -376,14 +376,14 @@ export const CustomerPortal: React.FC = () => {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200 my-auto flex flex-col max-h-[calc(100dvh-1.5rem)] animate-in zoom-in-95"
+            className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl border border-line my-auto flex flex-col max-h-[calc(100dvh-1.5rem)] animate-in zoom-in-95"
           >
-            <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white px-5 py-4 flex items-start justify-between gap-3 shrink-0">
+            <div className="bg-ink text-white px-5 py-4 flex items-start justify-between gap-3 shrink-0">
               <div>
                 <h3 id="add-address-title" className="text-lg font-bold">
                   Add pickup address
                 </h3>
-                <p className="text-xs text-blue-200 mt-0.5">Saved on this device. Free pickup within {distanceConfig.freeRadiusKm} KM.</p>
+                <p className="text-xs text-white/70 mt-0.5">Saved on this device. Free pickup within {distanceConfig.freeRadiusKm} KM.</p>
               </div>
               <button
                 type="button"
@@ -406,7 +406,7 @@ export const CustomerPortal: React.FC = () => {
                       onClick={() => setAddrLabel(l)}
                       aria-pressed={addrLabel === l}
                       className={`min-h-[40px] rounded-xl text-xs font-bold border transition-all ${
-                        addrLabel === l ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        addrLabel === l ? 'bg-ink text-white border-ink' : 'border-line text-slate-600 hover:bg-paper'
                       }`}
                     >
                       {l}
@@ -452,12 +452,12 @@ export const CustomerPortal: React.FC = () => {
                 </label>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="p-3.5 rounded-2xl bg-paper border border-line space-y-2">
                 <div className="flex justify-between items-center text-xs">
                   <label htmlFor="addr-distance" className="font-bold text-slate-700">
                     Approx. distance from our {localityOf(shop)} shop
                   </label>
-                  <span className="font-bold font-mono text-blue-700">{addrDistance} KM</span>
+                  <span className="font-bold font-mono text-ink">{addrDistance} KM</span>
                 </div>
                 <input
                   id="addr-distance"
@@ -467,7 +467,7 @@ export const CustomerPortal: React.FC = () => {
                   step={0.5}
                   value={addrDistance}
                   onChange={(e) => setAddrDistance(parseFloat(e.target.value))}
-                  className="w-full accent-blue-600 h-8"
+                  className="w-full accent-ink h-8"
                 />
                 <p
                   className={`text-xs font-semibold ${
@@ -488,7 +488,7 @@ export const CustomerPortal: React.FC = () => {
                 </p>
               )}
 
-              <div className="sticky bottom-0 -mx-4 sm:-mx-5 px-4 sm:px-5 py-3 bg-white border-t border-slate-200 grid grid-cols-2 gap-3">
+              <div className="sticky bottom-0 -mx-4 sm:-mx-5 px-4 sm:px-5 py-3 bg-white border-t border-line grid grid-cols-2 gap-3">
                 <Button type="button" onClick={() => setAddressModalOpen(false)} variant="outline" size="md" className="min-h-[44px]">
                   Cancel
                 </Button>

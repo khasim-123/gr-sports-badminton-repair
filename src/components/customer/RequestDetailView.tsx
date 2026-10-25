@@ -28,7 +28,7 @@ const REVIEW_MAX = 1500;
 const Row: React.FC<{ label: string; children: React.ReactNode; strong?: boolean }> = ({ label, children, strong }) => (
   <div className="flex justify-between items-baseline gap-4 py-2">
     <span className={strong ? 'font-bold text-slate-900' : 'text-slate-600'}>{label}</span>
-    <span className={`text-right ${strong ? 'text-base font-extrabold text-blue-800' : 'font-semibold text-slate-900'}`}>{children}</span>
+    <span className={`text-right ${strong ? 'text-base font-extrabold text-ink' : 'font-semibold text-slate-900'}`}>{children}</span>
   </div>
 );
 
@@ -38,7 +38,7 @@ const Card: React.FC<{ title: string; icon?: React.ReactNode; children: React.Re
   children,
   className = '',
 }) => (
-  <section className={`bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-2xs ${className}`}>
+  <section className={`bg-white rounded-2xl border border-line p-4 sm:p-5 shadow-2xs ${className}`}>
     <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3">
       {icon}
       {title}
@@ -135,7 +135,7 @@ export const RequestDetailView: React.FC = () => {
         <button
           type="button"
           onClick={() => setCustomerSubView('requests')}
-          className="inline-flex items-center gap-2 min-h-[40px] pr-3 text-sm font-semibold text-slate-600 hover:text-blue-700"
+          className="inline-flex items-center gap-2 min-h-[40px] pr-3 text-sm font-semibold text-slate-600 hover:text-ink"
         >
           <ArrowLeft className="w-4 h-4" /> My Requests
         </button>
@@ -145,15 +145,15 @@ export const RequestDetailView: React.FC = () => {
       </div>
 
       {/* Header */}
-      <section className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <section className="bg-white rounded-2xl border border-line p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <ServiceTypeTile type={request.serviceType} />
           <div className="min-w-0">
             <p className="text-xs text-slate-500">
               {isRepair ? 'Racket repair' : 'Racket stringing'} ·{' '}
-              <span className="font-mono font-bold text-blue-900">{request.id}</span>
+              <span className="font-mono font-bold text-ink">{request.id}</span>
             </p>
-            <h1 className="text-xl font-black text-slate-900 truncate">
+            <h1 className="font-display tracking-[0.01em] text-2xl font-bold text-slate-900 truncate">
               {request.batBrand} {request.batModel}
             </h1>
           </div>
@@ -164,12 +164,12 @@ export const RequestDetailView: React.FC = () => {
       {/* Action needed: estimate approval */}
       {isAwaitingApproval && (
         <section
-          className={`p-4 sm:p-5 rounded-3xl border-2 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-            isRevised ? 'bg-amber-50 border-amber-300' : 'bg-blue-50 border-blue-300'
+          className={`p-4 sm:p-5 rounded-2xl border-2 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+            isRevised ? 'bg-amber-50 border-amber-300' : 'bg-paper border-line'
           }`}
         >
           <div className="flex items-start gap-3">
-            <div className={`p-2.5 rounded-2xl text-white shrink-0 ${isRevised ? 'bg-amber-600' : 'bg-blue-600'}`}>
+            <div className={`p-2.5 rounded-2xl text-white shrink-0 ${isRevised ? 'bg-amber-600' : 'bg-ink'}`}>
               {isRevised ? <ShieldAlert className="w-5 h-5" /> : <Wrench className="w-5 h-5" />}
             </div>
             <div>
@@ -201,7 +201,7 @@ export const RequestDetailView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
         {/* Left: what was booked, pickup, charges */}
         <div className="lg:col-span-3 space-y-5">
-          <Card title="What you booked" icon={<ClipboardCheck className="w-4 h-4 text-blue-600" />}>
+          <Card title="What you booked" icon={<ClipboardCheck className="w-4 h-4 text-ink" />}>
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
               <div>
                 <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Racket</dt>
@@ -241,7 +241,7 @@ export const RequestDetailView: React.FC = () => {
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {photos.map((photo, i) => (
                     <a key={i} href={photo} target="_blank" rel="noreferrer" className="shrink-0">
-                      <img src={photo} alt={`Photo ${i + 1} of your racket`} className="w-24 h-24 object-cover rounded-xl border border-slate-200" />
+                      <img src={photo} alt={`Photo ${i + 1} of your racket`} className="w-24 h-24 object-cover rounded-xl border border-line" />
                     </a>
                   ))}
                 </div>
@@ -249,7 +249,7 @@ export const RequestDetailView: React.FC = () => {
             )}
           </Card>
 
-          <Card title="Pickup & delivery" icon={<MapPin className="w-4 h-4 text-blue-600" />}>
+          <Card title="Pickup & delivery" icon={<MapPin className="w-4 h-4 text-ink" />}>
             <div className="space-y-2 text-sm">
               <p className="text-slate-800">
                 {addressLine || 'Address not recorded'}
@@ -278,14 +278,14 @@ export const RequestDetailView: React.FC = () => {
                 </span>
               </div>
               {notes && (
-                <p className="text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-xl p-2.5 whitespace-pre-line">
+                <p className="text-xs text-slate-600 bg-paper border border-line/70 rounded-xl p-2.5 whitespace-pre-line">
                   Your note: {notes}
                 </p>
               )}
             </div>
 
             {request.pickupCondition && (
-              <div className="mt-4 pt-4 border-t border-slate-100 text-sm space-y-1">
+              <div className="mt-4 pt-4 border-t border-line/70 text-sm space-y-1">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Condition when we collected it</p>
                 <p className="font-semibold text-slate-900">{request.pickupCondition.condition}</p>
                 {request.pickupCondition.notes && <p className="text-xs text-slate-600">{request.pickupCondition.notes}</p>}
@@ -297,7 +297,7 @@ export const RequestDetailView: React.FC = () => {
                 {pickupPhotos.length > 0 && (
                   <div className="flex gap-2 overflow-x-auto pt-1">
                     {pickupPhotos.map((photo, i) => (
-                      <img key={i} src={photo} alt={`Pickup photo ${i + 1}`} className="w-20 h-20 object-cover rounded-xl border border-slate-200 shrink-0" />
+                      <img key={i} src={photo} alt={`Pickup photo ${i + 1}`} className="w-20 h-20 object-cover rounded-xl border border-line shrink-0" />
                     ))}
                   </div>
                 )}
@@ -305,8 +305,8 @@ export const RequestDetailView: React.FC = () => {
             )}
           </Card>
 
-          <Card title="Charges" icon={<Wallet className="w-4 h-4 text-blue-600" />}>
-            <div className="text-sm divide-y divide-slate-100">
+          <Card title="Charges" icon={<Wallet className="w-4 h-4 text-ink" />}>
+            <div className="text-sm divide-y divide-line/70">
               {isRepair ? (
                 <Row label={isAwaitingApproval ? 'Repair (estimate)' : 'Repair'}>
                   {declined ? (
@@ -341,7 +341,7 @@ export const RequestDetailView: React.FC = () => {
             </div>
             <div
               className={`mt-3 p-3 rounded-2xl text-xs flex items-start gap-2 ${
-                isPaid ? 'bg-emerald-50 border border-emerald-200 text-emerald-900' : 'bg-slate-50 border border-slate-200 text-slate-700'
+                isPaid ? 'bg-emerald-50 border border-emerald-200 text-emerald-900' : 'bg-paper border border-line text-slate-700'
               }`}
             >
               <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${isPaid ? 'text-emerald-600' : 'text-slate-400'}`} />
@@ -367,8 +367,8 @@ export const RequestDetailView: React.FC = () => {
           </Card>
 
           {request.assignedEmployeeName && (
-            <section className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-2xs flex items-center gap-3">
-              <span className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+            <section className="bg-white rounded-2xl border border-line p-4 sm:p-5 shadow-2xs flex items-center gap-3">
+              <span className="w-10 h-10 rounded-full bg-paper-deep text-ink flex items-center justify-center shrink-0">
                 <User className="w-5 h-5" />
               </span>
               <span>
@@ -432,7 +432,7 @@ export const RequestDetailView: React.FC = () => {
                         if (reviewError) setReviewError(null);
                       }}
                       placeholder="e.g. tension felt right, pickup was on time…"
-                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-ink/40 outline-none"
                     />
                   </div>
                   {reviewError && (
@@ -457,11 +457,11 @@ export const RequestDetailView: React.FC = () => {
             </Card>
           )}
 
-          <section className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 flex items-center gap-3">
+          <section className="rounded-2xl border border-line bg-paper p-4 text-xs text-slate-600 flex items-center gap-3">
             <Phone className="w-4 h-4 text-slate-500 shrink-0" />
             <span>
               Questions about this request? Call{' '}
-              <a href={telHref(shop.phone)} className="font-bold text-blue-700 underline whitespace-nowrap">
+              <a href={telHref(shop.phone)} className="font-bold text-ink underline whitespace-nowrap">
                 {phoneDisplay(shop.phone)}
               </a>{' '}
               and quote <span className="font-mono font-bold">{request.id}</span>.

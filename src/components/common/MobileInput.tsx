@@ -31,7 +31,7 @@ export const MobileInput: React.FC<MobileInputProps> = ({
   required,
   autoFocus,
   disabled,
-  ringClass = 'focus-within:ring-blue-500',
+  ringClass = 'focus-within:ring-ink/40',
   placeholder = '98765 43210',
   ...aria
 }) => {
@@ -44,7 +44,7 @@ export const MobileInput: React.FC<MobileInputProps> = ({
     >
       <span
         className={`flex items-center px-3 text-sm font-semibold select-none border-r ${
-          dark ? 'text-slate-300 bg-slate-800/80 border-slate-700' : 'text-slate-600 bg-slate-50 border-slate-200'
+          dark ? 'text-slate-300 bg-slate-800/80 border-slate-700' : 'text-slate-600 bg-paper border-line'
         }`}
         aria-hidden="true"
       >
@@ -89,7 +89,7 @@ export const OtpCodeInput: React.FC<OtpCodeInputProps> = ({
   theme = 'light',
   id,
   autoFocus,
-  ringClass = 'focus:ring-blue-500',
+  ringClass = 'focus:ring-ink/40',
 }) => {
   const dark = theme === 'dark';
   return (

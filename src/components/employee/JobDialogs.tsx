@@ -48,7 +48,7 @@ const rupees = (v: string): number => {
 };
 
 const JobSummary: React.FC<{ request: ServiceRequest }> = ({ request }) => (
-  <div className="rounded-2xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+  <div className="rounded-2xl bg-paper border border-line px-3 py-2.5">
     <p className="font-semibold text-slate-900">
       {request.batBrand} {request.batModel}
     </p>
@@ -167,10 +167,10 @@ export const PickupDialog: React.FC<{
                     setError(null);
                   }}
                   className={`min-h-[52px] px-3 py-2 rounded-xl border text-left transition-colors ${
-                    active ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600' : 'border-slate-200 bg-white hover:bg-slate-50'
+                    active ? 'border-ink bg-paper ring-1 ring-ink/40' : 'border-line bg-white hover:bg-paper'
                   }`}
                 >
-                  <span className={`block text-sm font-bold ${active ? 'text-blue-800' : 'text-slate-800'}`}>{c.value}</span>
+                  <span className={`block text-sm font-bold ${active ? 'text-ink' : 'text-slate-800'}`}>{c.value}</span>
                   <span className="block text-[11px] text-slate-500 leading-tight">{c.hint}</span>
                 </button>
               );
@@ -200,7 +200,7 @@ export const PickupDialog: React.FC<{
           </p>
           <div className="flex flex-wrap gap-2">
             {photos.map((src, i) => (
-              <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden border border-slate-200">
+              <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden border border-line">
                 <img src={src} alt={`Pickup photo ${i + 1}`} className="w-full h-full object-cover" />
                 <button
                   type="button"
@@ -219,7 +219,7 @@ export const PickupDialog: React.FC<{
                 type="button"
                 onClick={() => fileRef.current?.click()}
                 disabled={reading}
-                className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-300 text-slate-600 hover:border-blue-400 hover:text-blue-700 flex flex-col items-center justify-center gap-1 text-xs font-semibold disabled:opacity-60"
+                className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-300 text-slate-600 hover:border-ink/30 hover:text-ink flex flex-col items-center justify-center gap-1 text-xs font-semibold disabled:opacity-60"
               >
                 <Camera className="w-5 h-5" />
                 {reading ? 'Adding…' : 'Add photo'}
@@ -361,7 +361,7 @@ export const EstimateDialog: React.FC<{
             : `Suggested from the usual ${DEFAULT_REPAIR_DAYS}-day repair turnaround.`}
         </p>
 
-        <dl className="rounded-2xl border border-slate-200 divide-y divide-slate-100 text-sm">
+        <dl className="rounded-2xl border border-line divide-y divide-line/70 text-sm">
           <div className="flex justify-between gap-3 px-3 py-2">
             <dt className="text-slate-600">Repair estimate</dt>
             <dd className="font-semibold text-slate-900 tabular-nums">{formatINR(total)}</dd>
@@ -370,7 +370,7 @@ export const EstimateDialog: React.FC<{
             <dt className="text-slate-600">Pickup & delivery</dt>
             <dd className="font-semibold text-slate-900 tabular-nums">{delivery > 0 ? formatINR(delivery) : 'Free'}</dd>
           </div>
-          <div className="flex justify-between gap-3 px-3 py-2 bg-slate-50 rounded-b-2xl">
+          <div className="flex justify-between gap-3 px-3 py-2 bg-paper rounded-b-2xl">
             <dt className="font-bold text-slate-900">Customer pays on delivery</dt>
             <dd className="font-bold text-slate-900 tabular-nums">{formatINR(total + delivery)}</dd>
           </div>
@@ -438,7 +438,7 @@ export const ReviseDialog: React.FC<{
           />
           <p className="text-[11px] text-slate-500 mt-1">Shown to the customer.</p>
         </div>
-        <dl className="rounded-2xl border border-slate-200 divide-y divide-slate-100 text-sm">
+        <dl className="rounded-2xl border border-line divide-y divide-line/70 text-sm">
           <div className="flex justify-between gap-3 px-3 py-2">
             <dt className="text-slate-600">Approved estimate</dt>
             <dd className="font-semibold tabular-nums">{formatINR(current)}</dd>
@@ -447,7 +447,7 @@ export const ReviseDialog: React.FC<{
             <dt className="text-slate-600">Extra</dt>
             <dd className="font-semibold tabular-nums">+{formatINR(Number.isNaN(add) ? 0 : add)}</dd>
           </div>
-          <div className="flex justify-between gap-3 px-3 py-2 bg-slate-50">
+          <div className="flex justify-between gap-3 px-3 py-2 bg-paper">
             <dt className="font-bold text-slate-900">New repair estimate</dt>
             <dd className="font-bold tabular-nums">{formatINR(newTotal)}</dd>
           </div>
@@ -513,7 +513,7 @@ export const PaymentDialog: React.FC<{
     >
       <form id="payment-form" onSubmit={submit} className="space-y-4" noValidate>
         <JobSummary request={request} />
-        <dl className="rounded-2xl border border-slate-200 divide-y divide-slate-100 text-sm">
+        <dl className="rounded-2xl border border-line divide-y divide-line/70 text-sm">
           {declined ? (
             <>
               <div className="flex justify-between gap-3 px-3 py-2">
@@ -543,7 +543,7 @@ export const PaymentDialog: React.FC<{
               <dd className="font-semibold tabular-nums">−{formatINR(request.discount)}</dd>
             </div>
           )}
-          <div className="flex justify-between gap-3 px-3 py-2 bg-slate-50 rounded-b-2xl">
+          <div className="flex justify-between gap-3 px-3 py-2 bg-paper rounded-b-2xl">
             <dt className="font-bold text-slate-900">Amount due</dt>
             <dd className="font-bold text-slate-900 tabular-nums">{formatINR(due)}</dd>
           </div>
@@ -567,7 +567,7 @@ export const PaymentDialog: React.FC<{
                 aria-checked={method === m}
                 onClick={() => setMethod(m)}
                 className={`min-h-[44px] rounded-xl border text-sm font-bold transition-colors ${
-                  method === m ? 'border-emerald-600 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-600' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  method === m ? 'border-emerald-600 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-600' : 'border-line bg-white text-slate-700 hover:bg-paper'
                 }`}
               >
                 {m}
@@ -672,7 +672,7 @@ export const DistanceDialog: React.FC<{
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 min-h-[44px] rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold"
+            className="flex-1 min-h-[44px] rounded-xl bg-ink hover:bg-ink-hover text-white text-sm font-bold"
           >
             Done
           </button>
@@ -716,7 +716,7 @@ export const DistanceDialog: React.FC<{
     >
       <form id="distance-form" onSubmit={submit} className="space-y-4" noValidate>
         <JobSummary request={request} />
-        <p className={`text-xs rounded-xl px-3 py-2 border ${source.needsCheck ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
+        <p className={`text-xs rounded-xl px-3 py-2 border ${source.needsCheck ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-paper border-line text-slate-700'}`}>
           Now <b>{currentKm} km</b> ({source.label}) · pickup & delivery {oldCharge > 0 ? formatINR(oldCharge) : 'free'}.
         </p>
         <div>
@@ -753,7 +753,7 @@ export const DistanceDialog: React.FC<{
           <p className="text-[11px] text-slate-500 mt-1">Shown to the customer in their request timeline.</p>
         </div>
         {preview && (
-          <dl className="rounded-2xl border border-slate-200 divide-y divide-slate-100 text-sm">
+          <dl className="rounded-2xl border border-line divide-y divide-line/70 text-sm">
             <div className="flex justify-between gap-3 px-3 py-2">
               <dt className="text-slate-600">New pickup & delivery</dt>
               <dd className="font-semibold tabular-nums">{preview.charge > 0 ? formatINR(preview.charge) : 'Free'}</dd>

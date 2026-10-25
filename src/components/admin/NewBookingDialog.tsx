@@ -11,9 +11,9 @@ import { formatINR } from '../../utils/format';
 import { formatMobile, localMobileDigits, normalizeMobile, INVALID_MOBILE_MESSAGE } from '../../utils/phone';
 
 const inputCls =
-  'w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 bg-white';
+  'w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-ink/40 bg-white';
 const labelCls = 'block text-xs font-bold text-slate-700 mb-1';
-const sectionCls = 'p-4 rounded-2xl border border-slate-200 space-y-3';
+const sectionCls = 'p-4 rounded-2xl border border-line space-y-3';
 const sectionTitle = 'text-[11px] font-bold text-slate-500 uppercase tracking-wider';
 
 const productLabel = (p: StringProduct) =>
@@ -232,7 +232,7 @@ export const NewBookingDialog: React.FC<Props> = ({ open, prefill, onClose, onCr
 
   const toggleBtn = (active: boolean) =>
     `flex-1 min-h-[40px] px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 ${
-      active ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+      active ? 'bg-ink border-ink text-white' : 'bg-white border-slate-300 text-slate-700 hover:bg-paper'
     }`;
 
   return createPortal(
@@ -247,9 +247,9 @@ export const NewBookingDialog: React.FC<Props> = ({ open, prefill, onClose, onCr
         noValidate
         onSubmit={submit}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl my-auto flex flex-col max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] animate-in zoom-in-95"
+        className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl my-auto flex flex-col max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] animate-in zoom-in-95"
       >
-        <div className="flex justify-between items-start gap-3 p-4 sm:p-5 border-b border-slate-100 shrink-0">
+        <div className="flex justify-between items-start gap-3 p-4 sm:p-5 border-b border-line/70 shrink-0">
           <div className="min-w-0">
             <h3 id="new-booking-title" className="text-lg font-bold text-slate-900">
               New booking
@@ -375,7 +375,7 @@ export const NewBookingDialog: React.FC<Props> = ({ open, prefill, onClose, onCr
                       <label htmlFor="nb-colour" className={labelCls}>
                         Colour
                       </label>
-                      <select id="nb-colour" value={colour} onChange={(e) => setColour(e.target.value)} disabled={!product} className={`${inputCls} disabled:bg-slate-50`}>
+                      <select id="nb-colour" value={colour} onChange={(e) => setColour(e.target.value)} disabled={!product} className={`${inputCls} disabled:bg-paper`}>
                         <option value="">{product ? 'Any colour' : 'Choose a string first'}</option>
                         {colours.map((v) => (
                           <option key={v.id} value={v.colour}>
@@ -521,7 +521,7 @@ export const NewBookingDialog: React.FC<Props> = ({ open, prefill, onClose, onCr
           </div>
         </div>
 
-        <div className="shrink-0 border-t border-slate-100 p-3 sm:p-4 space-y-2">
+        <div className="shrink-0 border-t border-line/70 p-3 sm:p-4 space-y-2">
           {submitError && (
             <div role="alert" className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -536,14 +536,14 @@ export const NewBookingDialog: React.FC<Props> = ({ open, prefill, onClose, onCr
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="flex-1 min-h-[44px] rounded-xl border border-slate-300 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              className="flex-1 min-h-[44px] rounded-xl border border-slate-300 text-sm font-bold text-slate-700 hover:bg-paper disabled:opacity-60"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex-[2] min-h-[44px] rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold disabled:opacity-60"
+              className="flex-[2] min-h-[44px] rounded-xl bg-ink hover:bg-ink-hover text-white text-sm font-bold disabled:opacity-60"
             >
               {submitting ? 'Creating booking…' : 'Create booking'}
             </button>

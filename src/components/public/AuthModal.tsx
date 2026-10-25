@@ -54,7 +54,7 @@ const AuthDialog: React.FC<{
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[calc(100dvh-0.75rem)] sm:max-h-[calc(100dvh-2rem)]"
+        className="w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[calc(100dvh-0.75rem)] sm:max-h-[calc(100dvh-2rem)]"
       >
         <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 shrink-0">
           <div className="min-w-0 pt-1">

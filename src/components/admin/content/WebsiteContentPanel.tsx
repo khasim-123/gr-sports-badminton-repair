@@ -82,7 +82,7 @@ export const WebsiteContentPanel: React.FC = () => {
   return (
     <div className="space-y-5 min-w-0">
       <div>
-        <h2 className="text-2xl font-black text-slate-900">Website Content</h2>
+        <h2 className="font-display tracking-[0.01em] text-3xl sm:text-4xl font-bold text-slate-900">Website Content</h2>
         <p className="text-xs text-slate-500 mt-0.5">
           Manage what customers see on the GR Sports website — events, banners, string stock, rackets, reviews, documents and pickup days.
         </p>
@@ -91,7 +91,7 @@ export const WebsiteContentPanel: React.FC = () => {
       <div
         role="tablist"
         aria-label="Website content sections"
-        className="flex gap-1 p-1 bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-x-auto max-w-full"
+        className="flex gap-1 p-1 bg-white rounded-2xl border border-line shadow-2xs overflow-x-auto max-w-full"
       >
         {TABS.map((tab, i) => {
           const Icon = tab.icon;

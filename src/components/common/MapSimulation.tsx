@@ -35,9 +35,9 @@ export const MapSimulation: React.FC<MapSimulationProps> = ({ distanceKm, source
   };
 
   return (
-    <div className="bg-slate-900 text-white rounded-2xl overflow-hidden border border-slate-800 shadow-md">
+    <div className="bg-ink text-white rounded-2xl overflow-hidden border border-white/10 shadow-md">
       {/* Map Header / Status Bar */}
-      <div className="px-4 py-3 bg-slate-950/80 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
+      <div className="px-4 py-3 bg-ink/80 border-b border-white/10 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Compass className="w-4 h-4 text-emerald-400 animate-spin-slow" />
           <span className="text-xs font-semibold text-slate-200">
@@ -163,7 +163,7 @@ export const MapSimulation: React.FC<MapSimulationProps> = ({ distanceKm, source
         <span className="absolute bottom-2 right-3 text-[10px] text-slate-500">Diagram, not to scale</span>
 
         {/* Floating Distance Badge on map */}
-        <div className="absolute top-3 left-3 bg-slate-950/85 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-700/80 text-xs">
+        <div className="absolute top-3 left-3 bg-ink/85 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-700/80 text-xs">
           <p className="text-[11px] text-slate-400">About</p>
           <p className="text-base font-extrabold text-white mt-0.5 flex items-center gap-1.5">
             <Navigation className="w-4 h-4 text-emerald-400 rotate-45" />
@@ -174,9 +174,9 @@ export const MapSimulation: React.FC<MapSimulationProps> = ({ distanceKm, source
       </div>
 
       {/* Charge breakdown */}
-      <div className="p-4 bg-slate-900/90 border-t border-slate-800">
+      <div className="p-4 bg-ink/90 border-t border-white/10">
         {/* Pricing Breakdown Card */}
-        <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 text-xs space-y-2">
+        <div className="bg-ink/60 p-3.5 rounded-xl border border-white/10 text-xs space-y-2">
           <div className="flex justify-between items-center">
             <span className="text-slate-400">Distance:</span>
             <span className="font-semibold text-white">{distanceKm} KM</span>
@@ -187,7 +187,7 @@ export const MapSimulation: React.FC<MapSimulationProps> = ({ distanceKm, source
           </div>
 
           {calculation.isFree ? (
-            <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-emerald-400 font-bold">
+            <div className="pt-2 border-t border-white/10 flex justify-between items-center text-emerald-400 font-bold">
               <span>Doorstep Pickup & Delivery:</span>
               <span className="text-sm">Free</span>
             </div>
@@ -205,7 +205,7 @@ export const MapSimulation: React.FC<MapSimulationProps> = ({ distanceKm, source
                   <span>{formatINR(distanceConfig.perKmRateBeyondFree)} / KM</span>
                 </div>
               )}
-              <div className="pt-2 border-t border-slate-800 flex justify-between items-center gap-3 text-amber-300 font-bold">
+              <div className="pt-2 border-t border-white/10 flex justify-between items-center gap-3 text-amber-300 font-bold">
                 <span>Pickup &amp; delivery charge:</span>
                 <span className="text-sm text-right">
                   {isSlab

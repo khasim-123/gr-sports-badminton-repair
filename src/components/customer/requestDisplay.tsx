@@ -96,8 +96,8 @@ export const CustomerEmptyState: React.FC<{
   actionText: string;
   onAction: () => void;
 }> = ({ icon = 'requests', title, description, actionText, onAction }) => (
-  <div className="bg-white rounded-3xl border border-dashed border-slate-300 px-6 py-10 text-center flex flex-col items-center max-w-lg mx-auto">
-    <span className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-4 text-blue-600">
+  <div className="bg-white rounded-2xl border border-dashed border-slate-300 px-6 py-10 text-center flex flex-col items-center max-w-lg mx-auto">
+    <span className="w-16 h-16 rounded-2xl bg-paper border border-line flex items-center justify-center mb-4 text-ink">
       {icon === 'addresses' ? <MapPin className="w-8 h-8" /> : <Inbox className="w-8 h-8" />}
     </span>
     <h3 className="text-base font-bold text-slate-900">{title}</h3>
@@ -105,7 +105,7 @@ export const CustomerEmptyState: React.FC<{
     <button
       type="button"
       onClick={onAction}
-      className="inline-flex items-center gap-2 px-5 min-h-[44px] rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-sm"
+      className="inline-flex items-center gap-2 px-5 min-h-[44px] rounded-xl bg-ink hover:bg-ink-hover text-white text-sm font-bold shadow-sm"
     >
       <PlusCircle className="w-4 h-4" /> {actionText}
     </button>
@@ -119,7 +119,7 @@ export const ServiceTypeTile: React.FC<{ type: ServiceRequest['serviceType']; si
   return (
     <div
       className={`${box} shrink-0 flex items-center justify-center border ${
-        isRepair ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-blue-50 border-blue-200 text-blue-700'
+        isRepair ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-paper border-line text-ink'
       }`}
       aria-hidden="true"
     >

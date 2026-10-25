@@ -53,7 +53,7 @@ export const App: React.FC = () => {
       // A restored session is being validated with the server (GET /auth/me).
       return (
         <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3 text-sm text-slate-500">
-          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-10 h-10 border-4 border-ink border-t-transparent rounded-full animate-spin" />
           <span>Restoring your session…</span>
         </div>
       );
@@ -109,7 +109,7 @@ export const App: React.FC = () => {
 
   return (
     <div
-      className={`min-h-screen bg-slate-50 flex flex-col text-slate-900 font-sans selection:bg-blue-600 selection:text-white max-w-[100vw] ${
+      className={`min-h-screen bg-paper flex flex-col text-slate-900 font-sans selection:bg-ink selection:text-white max-w-[100vw] ${
         useStickyHeader || isAdminShell ? 'overflow-x-clip' : 'overflow-x-hidden'
       } ${isAdminShell ? 'lg:h-screen lg:overflow-hidden print:h-auto print:overflow-visible' : ''}`}
     >

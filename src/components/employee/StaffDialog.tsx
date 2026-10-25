@@ -69,9 +69,9 @@ export const StaffDialog: React.FC<StaffDialogProps> = ({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`w-full ${width === 'sm' ? 'sm:max-w-md' : 'sm:max-w-lg'} bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[calc(100dvh-0.75rem)] sm:max-h-[calc(100dvh-2rem)] outline-none`}
+        className={`w-full ${width === 'sm' ? 'sm:max-w-md' : 'sm:max-w-lg'} bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[calc(100dvh-0.75rem)] sm:max-h-[calc(100dvh-2rem)] outline-none`}
       >
-        <div className="flex items-start justify-between gap-3 px-4 sm:px-5 pt-4 pb-3 border-b border-slate-100 shrink-0">
+        <div className="flex items-start justify-between gap-3 px-4 sm:px-5 pt-4 pb-3 border-b border-line/70 shrink-0">
           <div className="min-w-0 pt-1">
             <h2 id={titleId} className="text-base font-bold text-slate-900">
               {title}
@@ -89,7 +89,7 @@ export const StaffDialog: React.FC<StaffDialogProps> = ({
           </button>
         </div>
         <div className="overflow-y-auto overscroll-contain px-4 sm:px-5 py-4 space-y-4 text-sm">{children}</div>
-        <div className="flex gap-2 px-4 sm:px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-slate-100 shrink-0">
+        <div className="flex gap-2 px-4 sm:px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-line/70 shrink-0">
           {footer}
         </div>
       </div>
@@ -115,14 +115,14 @@ export const DialogButtons: React.FC<{
       ? 'bg-emerald-600 hover:bg-emerald-700'
       : tone === 'danger'
       ? 'bg-rose-600 hover:bg-rose-700'
-      : 'bg-blue-600 hover:bg-blue-700';
+      : 'bg-ink hover:bg-ink-hover';
   return (
     <>
       <button
         type="button"
         onClick={onCancel}
         disabled={busy}
-        className="flex-1 sm:flex-none sm:px-5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+        className="flex-1 sm:flex-none sm:px-5 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-paper disabled:opacity-50"
       >
         Cancel
       </button>
@@ -148,6 +148,6 @@ export const FieldError: React.FC<{ children?: React.ReactNode }> = ({ children 
 
 export const fieldLabel = 'block text-xs font-bold text-slate-700 mb-1';
 export const inputCls =
-  'w-full min-h-[44px] px-3 rounded-xl border border-slate-300 text-base sm:text-sm text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none';
+  'w-full min-h-[44px] px-3 rounded-xl border border-slate-300 text-base sm:text-sm text-slate-900 bg-white focus:ring-2 focus:ring-ink/40 focus:border-ink outline-none';
 export const textareaCls =
-  'w-full px-3 py-2.5 rounded-xl border border-slate-300 text-base sm:text-sm text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none';
+  'w-full px-3 py-2.5 rounded-xl border border-slate-300 text-base sm:text-sm text-slate-900 bg-white focus:ring-2 focus:ring-ink/40 focus:border-ink outline-none';

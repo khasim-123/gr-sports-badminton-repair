@@ -352,7 +352,7 @@ export const EmployeePortal: React.FC = () => {
         <>
           <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900">{listHeading}</h1>
+              <h1 className="font-display tracking-[0.01em] text-2xl sm:text-3xl font-bold text-slate-900">{listHeading}</h1>
               <p className="text-sm text-slate-500 truncate">
                 {userName || 'Staff'} · {formatDate(today)}
               </p>
@@ -361,7 +361,7 @@ export const EmployeePortal: React.FC = () => {
               type="button"
               onClick={refreshData}
               disabled={isDataLoading}
-              className="inline-flex items-center justify-center gap-2 min-h-[44px] min-w-[44px] px-3 sm:px-4 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60 shrink-0"
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] min-w-[44px] px-3 sm:px-4 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-paper disabled:opacity-60 shrink-0"
               aria-label="Refresh jobs"
             >
               <RefreshCw className={`w-4 h-4 ${isDataLoading ? 'animate-spin' : ''}`} />
@@ -370,7 +370,7 @@ export const EmployeePortal: React.FC = () => {
           </div>
 
           {/* Phone: view switcher (the top bar shows these tabs on wider screens) */}
-          <nav className="md:hidden grid grid-cols-3 gap-1 p-1 rounded-2xl bg-slate-100 border border-slate-200" aria-label="Staff views">
+          <nav className="md:hidden grid grid-cols-3 gap-1 p-1 rounded-2xl bg-slate-100 border border-line" aria-label="Staff views">
             {LIST_VIEWS.map((v) => (
               <button
                 key={v.id}
@@ -383,7 +383,7 @@ export const EmployeePortal: React.FC = () => {
               >
                 {v.id === 'new' ? 'New' : v.label}
                 {counts[v.id] !== null && counts[v.id]! > 0 && (
-                  <span className={`text-[11px] px-1.5 rounded-full ${v.id === 'new' ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                  <span className={`text-[11px] px-1.5 rounded-full ${v.id === 'new' ? 'bg-ink text-white' : 'bg-slate-200 text-slate-700'}`}>
                     {counts[v.id]}
                   </span>
                 )}
@@ -400,7 +400,7 @@ export const EmployeePortal: React.FC = () => {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search name, mobile, ID or racket"
                 aria-label="Search your jobs"
-                className="w-full min-h-[44px] pl-9 pr-11 rounded-xl border border-slate-300 bg-white text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-full min-h-[44px] pl-9 pr-11 rounded-xl border border-slate-300 bg-white text-base sm:text-sm focus:ring-2 focus:ring-ink/40 focus:border-ink outline-none"
               />
               {search && (
                 <button
@@ -441,7 +441,7 @@ export const EmployeePortal: React.FC = () => {
           ) : view === 'done' ? (
             <>
               {collectedToday.count > 0 && (
-                <section className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs text-sm">
+                <section className="bg-white rounded-2xl border border-line p-4 shadow-2xs text-sm">
                   <h2 className="font-bold text-slate-900">Collected today on your jobs</h2>
                   <p className="text-slate-700 mt-1">
                     {[
@@ -469,7 +469,7 @@ export const EmployeePortal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => goTo('new')}
-                  className="w-full min-h-[48px] flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-blue-200 bg-blue-50 text-left text-sm text-blue-900 hover:bg-blue-100"
+                  className="w-full min-h-[48px] flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-line bg-paper text-left text-sm text-ink hover:bg-paper-deep"
                 >
                   <span>
                     <b>
@@ -488,7 +488,7 @@ export const EmployeePortal: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => goTo('new')}
-                      className="min-h-[44px] px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold"
+                      className="min-h-[44px] px-5 rounded-xl bg-ink hover:bg-ink-hover text-white text-sm font-bold"
                     >
                       See new requests
                     </button>

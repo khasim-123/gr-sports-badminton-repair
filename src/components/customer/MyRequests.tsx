@@ -46,7 +46,7 @@ export const MyRequests: React.FC = () => {
     <div className="max-w-5xl mx-auto px-4 py-6 sm:p-6 lg:p-8 space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black text-slate-900">My Requests</h1>
+          <h1 className="font-display tracking-[0.01em] text-3xl font-bold text-slate-900">My Requests</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Every stringing and repair you have booked, newest first. Open one for its progress and charges.
           </p>
@@ -64,7 +64,7 @@ export const MyRequests: React.FC = () => {
 
       {requests.length > 0 && (
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center justify-between">
-          <div className="flex overflow-x-auto no-scrollbar gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200 text-xs font-semibold" role="tablist">
+          <div className="flex overflow-x-auto no-scrollbar gap-1 bg-slate-100 p-1 rounded-2xl border border-line text-xs font-semibold" role="tablist">
             {TABS.map((tab) => {
               const count = requests.filter((r) => matchesTab(r, tab)).length;
               const active = activeTab === tab;
@@ -76,11 +76,11 @@ export const MyRequests: React.FC = () => {
                   aria-selected={active}
                   onClick={() => setActiveTab(tab)}
                   className={`px-3 min-h-[40px] rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                    active ? 'bg-white text-blue-900 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                    active ? 'bg-white text-ink shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   {tab}
-                  <span className={`text-[10px] px-1.5 rounded-full ${active ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-600'}`}>
+                  <span className={`text-[10px] px-1.5 rounded-full ${active ? 'bg-paper-deep text-ink' : 'bg-slate-200 text-slate-600'}`}>
                     {count}
                   </span>
                 </button>
@@ -96,7 +96,7 @@ export const MyRequests: React.FC = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search ID, racket or string"
               aria-label="Search your requests"
-              className="w-full pl-9 pr-3 min-h-[44px] rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              className="w-full pl-9 pr-3 min-h-[44px] rounded-xl border border-line text-sm focus:ring-2 focus:ring-ink/40 outline-none bg-white"
             />
           </div>
         </div>
@@ -130,7 +130,7 @@ export const MyRequests: React.FC = () => {
             No requests match {q ? `"${searchQuery.trim()}"` : 'this filter'}.{' '}
             <button
               type="button"
-              className="text-blue-700 font-bold underline min-h-[40px]"
+              className="text-ink font-bold underline min-h-[40px]"
               onClick={() => {
                 setSearchQuery('');
                 setActiveTab('All');
@@ -149,18 +149,18 @@ export const MyRequests: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => openRequestDetail(req.id)}
-                  className={`w-full text-left bg-white rounded-2xl sm:rounded-3xl border p-4 sm:p-5 hover:border-blue-400 hover:shadow-lg transition-all group grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_12rem_auto] items-center gap-x-4 gap-y-3 ${
-                    approval ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200'
+                  className={`w-full text-left bg-white rounded-2xl sm:rounded-2xl border p-4 sm:p-5 hover:border-ink/30 hover:shadow-lg transition-all group grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_12rem_auto] items-center gap-x-4 gap-y-3 ${
+                    approval ? 'border-amber-300 ring-1 ring-amber-200' : 'border-line'
                   }`}
                 >
                   <ServiceTypeTile type={req.serviceType} />
 
                   <span className="min-w-0">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="font-mono text-xs font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                      <span className="font-mono text-xs font-bold text-ink bg-paper px-2 py-0.5 rounded-md border border-line">
                         {req.id}
                       </span>
-                      <span className="text-base font-extrabold text-slate-900 group-hover:text-blue-700">
+                      <span className="text-base font-extrabold text-slate-900 group-hover:text-ink">
                         {req.batBrand} {req.batModel}
                       </span>
                     </span>
@@ -177,7 +177,7 @@ export const MyRequests: React.FC = () => {
                     </span>
                   </span>
 
-                  <span className="col-span-2 sm:col-span-1 flex sm:flex-col items-center sm:items-end justify-between gap-1 border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
+                  <span className="col-span-2 sm:col-span-1 flex sm:flex-col items-center sm:items-end justify-between gap-1 border-t sm:border-t-0 border-line/70 pt-3 sm:pt-0">
                     <StatusBadge status={req.status} size="sm" />
                     <span className="text-right">
                       <span className="block text-sm font-extrabold text-slate-900">{priceLabel(req)}</span>
@@ -185,7 +185,7 @@ export const MyRequests: React.FC = () => {
                     </span>
                   </span>
 
-                  <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 hidden sm:block" />
+                  <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-ink hidden sm:block" />
                 </button>
               </li>
             );

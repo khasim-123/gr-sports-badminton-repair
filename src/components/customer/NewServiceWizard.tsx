@@ -618,7 +618,7 @@ export const NewServiceWizard: React.FC = () => {
                     isCompleted
                       ? 'bg-emerald-600 text-white shadow-sm'
                       : isCurrent
-                      ? 'bg-blue-600 text-white ring-4 ring-blue-100 shadow-md'
+                      ? 'bg-ink text-white ring-4 ring-ink/40 shadow-md'
                       : 'bg-slate-200 text-slate-500'
                   }`}
                 >
@@ -626,7 +626,7 @@ export const NewServiceWizard: React.FC = () => {
                 </div>
                 <span
                   className={`text-[11px] font-semibold mt-1.5 hidden sm:block ${
-                    isCurrent ? 'text-blue-900 font-bold' : 'text-slate-500'
+                    isCurrent ? 'text-ink font-bold' : 'text-slate-500'
                   }`}
                 >
                   {name}
@@ -637,7 +637,7 @@ export const NewServiceWizard: React.FC = () => {
         </div>
         <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
           <div
-            className="bg-blue-600 h-full transition-all duration-300"
+            className="bg-ink h-full transition-all duration-300"
             style={{ width: `${((currentStep - 1) / 4) * 100}%` }}
           />
         </div>
@@ -647,7 +647,7 @@ export const NewServiceWizard: React.FC = () => {
       {currentStep === 1 && (
         <div className="space-y-6 animate-in fade-in">
           <div className="text-center max-w-lg mx-auto">
-            <h1 className="text-2xl font-black text-slate-900">What do you need?</h1>
+            <h1 className="font-display tracking-[0.01em] text-3xl font-bold text-slate-900">What do you need?</h1>
             <p className="text-sm text-slate-600 mt-1">Choose a service for your badminton racket.</p>
           </div>
 
@@ -680,17 +680,17 @@ export const NewServiceWizard: React.FC = () => {
                   role="radio"
                   aria-checked={selected}
                   onClick={() => setServiceType(card.type)}
-                  className={`text-left p-5 rounded-3xl border-2 transition-all flex flex-col ${
+                  className={`text-left p-5 rounded-2xl border-2 transition-all flex flex-col ${
                     selected
-                      ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-500/20'
-                      : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-md'
+                      ? 'border-ink bg-paper shadow-md ring-2 ring-ink/40'
+                      : 'border-line bg-white hover:border-line hover:shadow-md'
                   }`}
                 >
                   <span className="flex items-start justify-between gap-3">
                     <span className="flex items-center gap-3">
                       <span
                         className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${
-                          card.type === 'REPAIR' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-blue-50 border-blue-200 text-blue-700'
+                          card.type === 'REPAIR' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-paper border-line text-ink'
                         }`}
                       >
                         {card.icon}
@@ -702,14 +702,14 @@ export const NewServiceWizard: React.FC = () => {
                     </span>
                     <span
                       className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                        selected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
+                        selected ? 'border-ink bg-ink text-white' : 'border-slate-300'
                       }`}
                     >
                       {selected && <CheckCircle2 className="w-4 h-4" />}
                     </span>
                   </span>
                   <span className="block text-xs text-slate-600 mt-3 leading-relaxed flex-1">{card.text}</span>
-                  <span className="mt-4 pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span className="mt-4 pt-3 border-t border-line flex flex-wrap items-center justify-between gap-2 text-xs">
                     <span className="font-bold text-slate-800">{card.price}</span>
                     {card.note && <span className="text-slate-500">{card.note}</span>}
                   </span>
@@ -730,7 +730,7 @@ export const NewServiceWizard: React.FC = () => {
       {currentStep === 2 && (
         <div className="space-y-6 animate-in fade-in">
           <div className="text-center max-w-lg mx-auto">
-            <h2 className="text-2xl font-black text-slate-900">
+            <h2 className="font-display tracking-[0.01em] text-3xl font-bold text-slate-900">
               {serviceType === 'GETTING' ? 'Your racket & stringing' : 'Your racket & the damage'}
             </h2>
             <p className="text-sm text-slate-600 mt-1">
@@ -738,7 +738,7 @@ export const NewServiceWizard: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-5 shadow-xs">
+          <div className="bg-white rounded-2xl border border-line p-6 space-y-5 shadow-xs">
             {/* Brand & Model */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -751,7 +751,7 @@ export const NewServiceWizard: React.FC = () => {
                   onChange={(e) => setBatBrand(e.target.value)}
                   placeholder="e.g. Yonex, Li-Ning, Victor, Apacs..."
                   required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
                 />
               </div>
 
@@ -765,7 +765,7 @@ export const NewServiceWizard: React.FC = () => {
                   onChange={(e) => setBatModel(e.target.value)}
                   placeholder="e.g. Astrox 99 Pro / Nanoflare 800"
                   required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
                 />
               </div>
             </div>
@@ -778,7 +778,7 @@ export const NewServiceWizard: React.FC = () => {
               <select
                 value={batType}
                 onChange={(e) => setBatType(e.target.value as BatType)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
               >
                 <option value="Even Balance (All-Round)">Even Balance (All-Round / Controlled Play)</option>
                 <option value="Head Heavy (Power / Smash)">Head Heavy (Maximum Smash & Power)</option>
@@ -790,7 +790,7 @@ export const NewServiceWizard: React.FC = () => {
 
             {/* GETTING SPECIFIC OPTIONS */}
             {serviceType === 'GETTING' && (
-              <div className="space-y-5 pt-2 border-t border-slate-100">
+              <div className="space-y-5 pt-2 border-t border-line/70">
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                   Stringing package *
                 </label>
@@ -809,13 +809,13 @@ export const NewServiceWizard: React.FC = () => {
                         onClick={() => setGettingType(item.name as GettingType)}
                         className={`text-left p-4 rounded-2xl border-2 transition-all ${
                           gettingType === item.name
-                            ? 'border-blue-600 bg-blue-50/50 shadow-xs'
-                            : 'border-slate-200 bg-slate-50/50 hover:border-blue-300'
+                            ? 'border-ink bg-paper shadow-xs'
+                            : 'border-line bg-paper/50 hover:border-line'
                         }`}
                       >
                         <span className="flex justify-between items-center gap-2 mb-1">
                           <span className="font-bold text-sm text-slate-900">{item.name}</span>
-                          <span className="text-sm font-extrabold text-blue-700">
+                          <span className="text-sm font-extrabold text-ink">
                             {item.price === 0 ? 'On request' : formatINR(item.price)}
                           </span>
                         </span>
@@ -842,9 +842,9 @@ export const NewServiceWizard: React.FC = () => {
                       max="32"
                       value={stringTension}
                       onChange={(e) => setStringTension(parseInt(e.target.value))}
-                      className="w-full accent-blue-600"
+                      className="w-full accent-ink"
                     />
-                    <span className="px-3 py-1 bg-blue-100 text-blue-800 font-black rounded-lg text-sm shrink-0">
+                    <span className="px-3 py-1 bg-paper-deep text-ink font-black rounded-lg text-sm shrink-0">
                       {stringTension} lbs
                     </span>
                   </div>
@@ -864,7 +864,7 @@ export const NewServiceWizard: React.FC = () => {
                   )}
 
                   {catalogueStatus === 'loading' && (
-                    <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 text-xs text-slate-500 flex items-center gap-2">
+                    <div className="p-4 rounded-2xl border border-line bg-paper text-xs text-slate-500 flex items-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" /> Loading our string catalogue…
                     </div>
                   )}
@@ -881,14 +881,14 @@ export const NewServiceWizard: React.FC = () => {
                           value={freeTextString}
                           onChange={(e) => setFreeTextString(e.target.value)}
                           placeholder="String (e.g. Yonex BG65) — leave empty for technician's choice"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
                         />
                         <input
                           type="text"
                           value={freeTextColour}
                           onChange={(e) => setFreeTextColour(e.target.value)}
                           placeholder="Preferred colour (optional)"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
                         />
                       </div>
                     </div>
@@ -908,8 +908,8 @@ export const NewServiceWizard: React.FC = () => {
                                 onClick={() => setStringBrandFilter(brand)}
                                 className={`px-3 min-h-[40px] rounded-xl text-xs font-bold border transition-colors ${
                                   active
-                                    ? 'bg-blue-600 text-white border-blue-600'
-                                    : 'bg-white text-slate-600 border-slate-200 hover:border-blue-400'
+                                    ? 'bg-ink text-white border-ink'
+                                    : 'bg-white text-slate-600 border-line hover:border-ink/30'
                                 }`}
                               >
                                 {brand === 'All' ? 'All brands' : brand}
@@ -926,7 +926,7 @@ export const NewServiceWizard: React.FC = () => {
                           onChange={(e) => setStringSearch(e.target.value)}
                           placeholder="Search strings, e.g. BG65, Exbolt, 0.66"
                           aria-label="Search strings"
-                          className="w-full pl-9 pr-3 min-h-[44px] rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                          className="w-full pl-9 pr-3 min-h-[44px] rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none bg-white"
                         />
                       </div>
                       {catalogue.some((p) => p.price == null) && (
@@ -954,10 +954,10 @@ export const NewServiceWizard: React.FC = () => {
                               }}
                               className={`text-left p-4 rounded-2xl border-2 transition-all ${
                                 !selectable
-                                  ? 'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed'
+                                  ? 'border-line bg-paper opacity-60 cursor-not-allowed'
                                   : isSelected
-                                  ? 'border-blue-600 bg-blue-50/50 shadow-xs'
-                                  : 'border-slate-200 bg-white hover:border-blue-300'
+                                  ? 'border-ink bg-paper shadow-xs'
+                                  : 'border-line bg-white hover:border-line'
                               }`}
                             >
                               <div className="flex justify-between items-start gap-2">
@@ -969,7 +969,7 @@ export const NewServiceWizard: React.FC = () => {
                                   <p className="font-bold text-sm text-slate-900">{productLabel(product)}</p>
                                 </div>
                                 {product.price != null && (
-                                  <span className="text-xs font-extrabold shrink-0 text-blue-700">{formatINR(product.price)}</span>
+                                  <span className="text-xs font-extrabold shrink-0 text-ink">{formatINR(product.price)}</span>
                                 )}
                               </div>
                               {product.description && (
@@ -1001,7 +1001,7 @@ export const NewServiceWizard: React.FC = () => {
                             setPrefillStringNotice(null);
                           }}
                           className={`text-left p-4 rounded-2xl border-2 border-dashed transition-all ${
-                            ownString ? 'border-blue-600 bg-blue-50/50' : 'border-slate-300 bg-white hover:border-blue-300'
+                            ownString ? 'border-ink bg-paper' : 'border-slate-300 bg-white hover:border-line'
                           }`}
                         >
                           <div className="flex items-center gap-2">
@@ -1020,7 +1020,7 @@ export const NewServiceWizard: React.FC = () => {
                           value={ownStringNote}
                           onChange={(e) => setOwnStringNote(e.target.value)}
                           placeholder="Which string will you provide? (optional, e.g. Yonex BG80 White)"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
                         />
                       )}
 
@@ -1044,13 +1044,13 @@ export const NewServiceWizard: React.FC = () => {
                                   }}
                                   className={`p-2 rounded-xl border text-left transition-all ${
                                     !variant.inStock
-                                      ? 'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed'
+                                      ? 'border-line bg-paper opacity-60 cursor-not-allowed'
                                       : isSelected
-                                      ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-400 shadow-xs'
-                                      : 'border-slate-200 hover:border-blue-300'
+                                      ? 'border-ink bg-paper ring-1 ring-ink/40 shadow-xs'
+                                      : 'border-line hover:border-line'
                                   }`}
                                 >
-                                  <div className="h-14 w-full rounded-lg overflow-hidden border border-slate-200 bg-slate-100 mb-1.5">
+                                  <div className="h-14 w-full rounded-lg overflow-hidden border border-line bg-slate-100 mb-1.5">
                                     {variant.imageUrl ? (
                                       <img
                                         src={variant.imageUrl}
@@ -1083,7 +1083,7 @@ export const NewServiceWizard: React.FC = () => {
 
             {/* REPAIR SPECIFIC OPTIONS */}
             {serviceType === 'REPAIR' && (
-              <div className="space-y-4 pt-4 border-t border-slate-100">
+              <div className="space-y-4 pt-4 border-t border-line/70">
                 <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
                   <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
                   <p>
@@ -1106,13 +1106,13 @@ export const NewServiceWizard: React.FC = () => {
                             aria-checked={selected}
                             onClick={() => setRepairIssue(cat.name as RepairIssue)}
                             className={`text-left p-3 rounded-2xl border-2 transition-all ${
-                              selected ? 'border-blue-600 bg-blue-50/50' : 'border-slate-200 bg-white hover:border-blue-300'
+                              selected ? 'border-ink bg-paper' : 'border-line bg-white hover:border-line'
                             }`}
                           >
                             <span className="flex justify-between items-baseline gap-2">
                               <span className="text-sm font-bold text-slate-900">{cat.name}</span>
                               {cat.basePrice > 0 && (
-                                <span className="text-xs font-bold text-blue-700 whitespace-nowrap">from {formatINR(cat.basePrice)}</span>
+                                <span className="text-xs font-bold text-ink whitespace-nowrap">from {formatINR(cat.basePrice)}</span>
                               )}
                             </span>
                             {cat.description && <span className="block text-[11px] text-slate-500 mt-0.5 line-clamp-2">{cat.description}</span>}
@@ -1125,7 +1125,7 @@ export const NewServiceWizard: React.FC = () => {
                     <select
                       value={repairIssue}
                       onChange={(e) => setRepairIssue(e.target.value as RepairIssue)}
-                      className="w-full px-3.5 min-h-[44px] rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium bg-white"
+                      className="w-full px-3.5 min-h-[44px] rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium bg-white"
                     >
                       {['Broken Bat', 'Frame Damage', 'Shaft Damage', 'Handle Damage', 'Joint Damage', 'Grip Issue', 'Other'].map((o) => (
                         <option key={o} value={o}>
@@ -1146,7 +1146,7 @@ export const NewServiceWizard: React.FC = () => {
                     value={repairDescription}
                     onChange={(e) => setRepairDescription(e.target.value)}
                     placeholder="Where is the crack or problem, and how did it happen?"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
                   />
                 </div>
               </div>
@@ -1172,7 +1172,7 @@ export const NewServiceWizard: React.FC = () => {
                   </div>
                 ))}
                 {batPhotos.length < MAX_PHOTOS && (
-                  <label className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-500 flex flex-col items-center justify-center cursor-pointer text-slate-400 hover:text-blue-600 transition-colors bg-slate-50">
+                  <label className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 hover:border-ink flex flex-col items-center justify-center cursor-pointer text-slate-400 hover:text-ink transition-colors bg-paper">
                     <Upload className="w-5 h-5 mb-1" />
                     <span className="text-[10px] font-semibold">Upload</span>
                     <input
@@ -1201,7 +1201,7 @@ export const NewServiceWizard: React.FC = () => {
                 value={additionalNotes}
                 onChange={(e) => setAdditionalNotes(e.target.value)}
                 placeholder="e.g. Ring doorbell, call before arriving..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none font-medium"
               />
             </div>
           </div>
@@ -1223,7 +1223,7 @@ export const NewServiceWizard: React.FC = () => {
       {currentStep === 3 && (
         <div className="space-y-6 animate-in fade-in">
           <div className="text-center max-w-lg mx-auto">
-            <h2 className="text-2xl font-black text-slate-900">Doorstep Pickup</h2>
+            <h2 className="font-display tracking-[0.01em] text-3xl font-bold text-slate-900">Doorstep Pickup</h2>
             <p className="text-sm text-slate-600 mt-1">
               Choose where and when we should collect your racket. Free pickup within {distanceConfig.freeRadiusKm} KM.
             </p>
@@ -1248,11 +1248,11 @@ export const NewServiceWizard: React.FC = () => {
                       setCustomDistanceKm(addr.distanceKm);
                     }}
                     className={`text-left p-4 rounded-2xl border-2 transition-all ${
-                      isSelected ? 'border-blue-600 bg-blue-50/50 shadow-xs' : 'border-slate-200 bg-white hover:border-blue-300'
+                      isSelected ? 'border-ink bg-paper shadow-xs' : 'border-line bg-white hover:border-line'
                     }`}
                   >
                     <span className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-bold uppercase tracking-wider text-blue-900 bg-blue-100 px-2 py-0.5 rounded-md">
+                      <span className="text-xs font-bold uppercase tracking-wider text-ink bg-paper-deep px-2 py-0.5 rounded-md">
                         {addr.label}
                       </span>
                       <span className="text-xs font-bold text-slate-700">~{addr.distanceKm} KM</span>
@@ -1270,7 +1270,7 @@ export const NewServiceWizard: React.FC = () => {
                 aria-checked={addressChoice === 'NEW'}
                 onClick={() => setAddressChoice('NEW')}
                 className={`p-4 min-h-[56px] rounded-2xl border-2 border-dashed transition-all flex items-center justify-center text-xs font-bold ${
-                  addressChoice === 'NEW' ? 'border-blue-600 bg-blue-50/50 text-blue-800' : 'border-slate-300 text-slate-600 hover:border-blue-300'
+                  addressChoice === 'NEW' ? 'border-ink bg-paper text-ink' : 'border-slate-300 text-slate-600 hover:border-line'
                 }`}
               >
                 + Enter a new address
@@ -1278,7 +1278,7 @@ export const NewServiceWizard: React.FC = () => {
             </div>
 
             {addressChoice === 'NEW' && (
-              <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 text-xs">
+              <div className="bg-white rounded-2xl border border-line p-4 space-y-3 text-xs">
                 <div className="grid grid-cols-3 gap-2">
                   {(['Home', 'Office', 'Other'] as const).map((l) => (
                     <button
@@ -1286,7 +1286,7 @@ export const NewServiceWizard: React.FC = () => {
                       type="button"
                       onClick={() => updateAddressForm({ label: l })}
                       className={`min-h-[40px] rounded-xl font-bold border transition-all ${
-                        addressForm.label === l ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        addressForm.label === l ? 'bg-ink text-white border-ink' : 'border-line text-slate-600 hover:bg-paper'
                       }`}
                     >
                       {l}
@@ -1298,14 +1298,14 @@ export const NewServiceWizard: React.FC = () => {
                   value={addressForm.houseFlat}
                   onChange={(e) => updateAddressForm({ houseFlat: e.target.value })}
                   placeholder="Flat / House / Court name *"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none"
                 />
                 <input
                   type="text"
                   value={addressForm.street}
                   onChange={(e) => updateAddressForm({ street: e.target.value })}
                   placeholder="Street / Road"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none"
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <input
@@ -1313,14 +1313,14 @@ export const NewServiceWizard: React.FC = () => {
                     value={addressForm.area}
                     onChange={(e) => updateAddressForm({ area: e.target.value })}
                     placeholder="Area / Locality *"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none"
                   />
                   <input
                     type="text"
                     value={addressForm.city}
                     onChange={(e) => updateAddressForm({ city: e.target.value })}
                     placeholder="City"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none"
                   />
                   <input
                     type="text"
@@ -1329,7 +1329,7 @@ export const NewServiceWizard: React.FC = () => {
                     value={addressForm.pincode}
                     onChange={(e) => updateAddressForm({ pincode: e.target.value.replace(/\D/g, '') })}
                     placeholder="Pincode *"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none"
                   />
                 </div>
                 <input
@@ -1337,14 +1337,14 @@ export const NewServiceWizard: React.FC = () => {
                   value={addressForm.landmark}
                   onChange={(e) => updateAddressForm({ landmark: e.target.value })}
                   placeholder="Landmark (optional)"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none"
                 />
                 <label className="flex items-center gap-2 text-slate-600">
                   <input
                     type="checkbox"
                     checked={saveNewAddress}
                     onChange={(e) => setSaveNewAddress(e.target.checked)}
-                    className="accent-blue-600"
+                    className="accent-ink"
                   />
                   Save this address for future bookings
                 </label>
@@ -1357,10 +1357,10 @@ export const NewServiceWizard: React.FC = () => {
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
               Distance from our shop
             </label>
-            <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-4 space-y-3 shadow-2xs">
+            <div className="bg-paper border border-line rounded-2xl p-4 space-y-3 shadow-2xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-start gap-3 min-w-0">
-                  <div className="p-2.5 bg-blue-600 text-white rounded-xl shadow-xs mt-0.5 shrink-0">
+                  <div className="p-2.5 bg-ink text-white rounded-xl shadow-xs mt-0.5 shrink-0">
                     <Locate className={`w-5 h-5 ${fetchingLocation ? 'animate-spin' : ''}`} />
                   </div>
                   <div className="min-w-0">
@@ -1412,7 +1412,7 @@ export const NewServiceWizard: React.FC = () => {
                 </p>
               )}
               {locationKm == null && (
-                <div className="pt-3 border-t border-blue-200/70">
+                <div className="pt-3 border-t border-line">
                   <label htmlFor="pickup-distance-km" className="block text-xs font-semibold text-slate-700">
                     Distance from the shop (km)
                   </label>
@@ -1426,7 +1426,7 @@ export const NewServiceWizard: React.FC = () => {
                     value={manualKmText}
                     onChange={(e) => setManualKmText(e.target.value)}
                     placeholder="e.g. 6"
-                    className="mt-1 w-full sm:w-40 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="mt-1 w-full sm:w-40 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-ink/40 outline-none"
                   />
                   <p className="text-[11px] text-slate-600 mt-1.5">
                     We&apos;ll check the distance when we pick up your racket; if it&apos;s different, the delivery charge is
@@ -1453,9 +1453,9 @@ export const NewServiceWizard: React.FC = () => {
           </div>
 
           {/* Pickup date */}
-          <div className="bg-white rounded-3xl border border-slate-200 p-5 space-y-4 shadow-xs">
+          <div className="bg-white rounded-2xl border border-line p-5 space-y-4 shadow-xs">
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-blue-600" />
+              <Calendar className="w-4 h-4 text-ink" />
               <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Pickup Date *</label>
             </div>
 
@@ -1479,7 +1479,7 @@ export const NewServiceWizard: React.FC = () => {
                   min={tomorrowIso}
                   value={pickupDate}
                   onChange={(e) => setPickupDate(e.target.value)}
-                  className="px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-ink/40 outline-none"
                 />
               </div>
             )}
@@ -1487,8 +1487,8 @@ export const NewServiceWizard: React.FC = () => {
             {availabilityStatus === 'ready' && availability && (
               <>
                 {availability.settings?.notice && (
-                  <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div className="p-3 rounded-xl bg-paper border border-line text-xs text-ink flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-ink shrink-0 mt-0.5" />
                     <span>{availability.settings.notice}</span>
                   </div>
                 )}
@@ -1511,10 +1511,10 @@ export const NewServiceWizard: React.FC = () => {
                           }}
                           className={`p-2 min-h-[64px] rounded-xl border text-center transition-all ${
                             !day.available
-                              ? 'border-slate-100 bg-slate-50 text-slate-400 cursor-not-allowed'
+                              ? 'border-line/70 bg-paper text-slate-400 cursor-not-allowed'
                               : isSelected
-                              ? 'border-blue-600 bg-blue-600 text-white shadow-xs'
-                              : 'border-slate-200 text-slate-700 hover:border-blue-300'
+                              ? 'border-ink bg-ink text-white shadow-xs'
+                              : 'border-line text-slate-700 hover:border-line'
                           }`}
                         >
                           <span className="block text-[10px] font-semibold uppercase">
@@ -1526,7 +1526,7 @@ export const NewServiceWizard: React.FC = () => {
                             <span className="block text-[9px] leading-tight mt-0.5 truncate">{day.reason || 'Unavailable'}</span>
                           )}
                           {day.available && day.remaining != null && (
-                            <span className={`block text-[9px] leading-tight mt-0.5 ${isSelected ? 'text-blue-100' : 'text-emerald-600'}`}>
+                            <span className={`block text-[9px] leading-tight mt-0.5 ${isSelected ? 'text-white/75' : 'text-emerald-600'}`}>
                               {day.remaining} left
                             </span>
                           )}
@@ -1539,7 +1539,7 @@ export const NewServiceWizard: React.FC = () => {
                 {pickupSlots.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-1.5">
-                      <Clock className="w-4 h-4 text-blue-600" />
+                      <Clock className="w-4 h-4 text-ink" />
                       <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Preferred Pickup Time *</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -1550,8 +1550,8 @@ export const NewServiceWizard: React.FC = () => {
                           onClick={() => setPickupSlot(slot)}
                           className={`px-3 min-h-[40px] rounded-xl border text-xs font-semibold transition-all ${
                             pickupSlot === slot
-                              ? 'border-blue-600 bg-blue-50 text-blue-900 ring-1 ring-blue-400'
-                              : 'border-slate-200 text-slate-600 hover:border-blue-300'
+                              ? 'border-ink bg-paper text-ink ring-1 ring-ink/40'
+                              : 'border-line text-slate-600 hover:border-line'
                           }`}
                         >
                           {slot}
@@ -1588,16 +1588,16 @@ export const NewServiceWizard: React.FC = () => {
       {currentStep === 4 && (
         <div className="space-y-6 animate-in fade-in">
           <div className="text-center max-w-lg mx-auto">
-            <h2 className="text-2xl font-black text-slate-900">Review Your Service Request</h2>
+            <h2 className="font-display tracking-[0.01em] text-3xl font-bold text-slate-900">Review Your Service Request</h2>
             <p className="text-sm text-slate-600 mt-1">
               Verify your racket specifications and pickup details before booking.
             </p>
           </div>
 
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-6 shadow-xs">
+          <div className="bg-white rounded-2xl border border-line p-6 space-y-6 shadow-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Service Selection</span>
+              <div className="p-4 bg-paper rounded-2xl border border-line/70 space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-ink">Service Selection</span>
                 <h4 className="text-base font-bold text-slate-900">
                   {serviceType === 'GETTING' ? `Bat Getting: ${gettingType}` : `Bat Repair: ${repairIssue}`}
                 </h4>
@@ -1646,8 +1646,8 @@ export const NewServiceWizard: React.FC = () => {
                 )}
               </div>
 
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Bat Specifications</span>
+              <div className="p-4 bg-paper rounded-2xl border border-line/70 space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-ink">Bat Specifications</span>
                 <h4 className="text-base font-bold text-slate-900">
                   {batBrand} {batModel}
                 </h4>
@@ -1675,10 +1675,10 @@ export const NewServiceWizard: React.FC = () => {
             </div>
 
             {/* Location & Date Summary */}
-            <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 space-y-1 text-xs">
+            <div className="p-4 bg-paper rounded-2xl border border-line space-y-1 text-xs">
               <div className="flex justify-between items-center font-bold text-slate-800 mb-1">
                 <span>Pickup Location:</span>
-                <span className="text-blue-800">About {customDistanceKm} KM from the shop</span>
+                <span className="text-ink">About {customDistanceKm} KM from the shop</span>
               </div>
               <p className="text-slate-700">
                 {[pickupAddressPreview.houseFlat, pickupAddressPreview.street, pickupAddressPreview.area, pickupAddressPreview.city]
@@ -1691,7 +1691,7 @@ export const NewServiceWizard: React.FC = () => {
               )}
               <div className="flex justify-between items-center font-bold text-slate-800 pt-2">
                 <span>Pickup Date:</span>
-                <span className="text-blue-800">
+                <span className="text-ink">
                   {pickupDate ? formatDay(pickupDate, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                   {pickupSlot ? ` • ${pickupSlot}` : ''}
                 </span>
@@ -1699,7 +1699,7 @@ export const NewServiceWizard: React.FC = () => {
             </div>
 
             {/* Charges */}
-            <div className="bg-slate-50 rounded-2xl p-4 divide-y divide-slate-200 text-xs space-y-2.5">
+            <div className="bg-paper rounded-2xl p-4 divide-y divide-line text-xs space-y-2.5">
               <div className="flex justify-between items-center text-slate-700 pb-1">
                 <span>Service Charge:</span>
                 {serviceType === 'GETTING' ? (
@@ -1724,10 +1724,10 @@ export const NewServiceWizard: React.FC = () => {
                 )}
               </div>
 
-              <div className="flex justify-between items-center pt-3 text-base font-extrabold text-blue-900">
+              <div className="flex justify-between items-center pt-3 text-base font-extrabold text-ink">
                 <span>Estimated Total on Delivery:</span>
                 {serviceType === 'GETTING' ? (
-                  <span className="text-2xl text-blue-700">{formatINR(finalTotal)}</span>
+                  <span className="text-2xl text-ink">{formatINR(finalTotal)}</span>
                 ) : (
                   <span className="text-sm font-bold text-amber-800">
                     {distanceCalc.charge > 0 ? `${formatINR(distanceCalc.charge)} + repair price` : 'Repair price after inspection'}
@@ -1806,13 +1806,13 @@ export const NewServiceWizard: React.FC = () => {
           </div>
 
           <div>
-            <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-bold uppercase tracking-wider">
+            <span className="px-3 py-1 rounded-full bg-paper-deep text-ink text-xs font-bold uppercase tracking-wider">
               Request received
             </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">Thanks, we have your request</h2>
+            <h2 className="font-display tracking-[0.01em] text-3xl sm:text-4xl font-bold text-slate-900 mt-2">Thanks, we have your request</h2>
             <p className="text-sm text-slate-600 mt-1.5">
               Your service request ID is{' '}
-              <b className="font-mono text-blue-700 font-extrabold text-base">{submittedRequestId}</b>
+              <b className="font-mono text-ink font-extrabold text-base">{submittedRequestId}</b>
             </p>
           </div>
 
@@ -1828,7 +1828,7 @@ export const NewServiceWizard: React.FC = () => {
             </div>
           )}
 
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-600 space-y-1 text-left">
+          <div className="p-4 bg-paper rounded-2xl border border-line text-xs text-slate-600 space-y-1 text-left">
             <div className="flex justify-between">
               <span>Customer:</span>
               <span className="font-semibold text-slate-900">{userName}</span>

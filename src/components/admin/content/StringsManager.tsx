@@ -225,7 +225,7 @@ const ProductFormModal: React.FC<{
             placeholder="Feel, durability, who it suits…"
           />
         </Field>
-        <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 px-3">
+        <div className="divide-y divide-line/70 rounded-2xl border border-line px-3">
           <Switch
             checked={form.isFeatured}
             onChange={(v) => set('isFeatured', v)}
@@ -379,7 +379,7 @@ const VariantFormModal: React.FC<{
                     type="button"
                     onClick={() => setHex('')}
                     aria-label="Clear swatch colour"
-                    className="w-10 h-[42px] shrink-0 inline-flex items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50"
+                    className="w-10 h-[42px] shrink-0 inline-flex items-center justify-center rounded-xl border border-line text-slate-500 hover:bg-paper"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -411,7 +411,7 @@ const VariantTile: React.FC<{
   return (
     <li
       className={`rounded-2xl border bg-white overflow-hidden flex flex-col transition-shadow ${
-        highlight ? 'ring-2 ring-brandYellow border-amber-300' : v.inStock ? 'border-slate-200' : 'border-rose-200'
+        highlight ? 'ring-2 ring-brandYellow border-amber-300' : v.inStock ? 'border-line' : 'border-rose-200'
       }`}
     >
       <div className="relative aspect-square bg-white">
@@ -437,7 +437,7 @@ const VariantTile: React.FC<{
             type="button"
             onClick={onEdit}
             aria-label={`Edit colour ${v.colour}`}
-            className="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-white/90 border border-slate-200 text-slate-600 hover:text-blue-700 shadow-2xs"
+            className="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-white/90 border border-line text-slate-600 hover:text-ink shadow-2xs"
           >
             <Pencil className="w-3.5 h-3.5" />
           </button>
@@ -445,13 +445,13 @@ const VariantTile: React.FC<{
             type="button"
             onClick={onDelete}
             aria-label={`Delete colour ${v.colour}`}
-            className="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-white/90 border border-slate-200 text-slate-600 hover:text-rose-600 shadow-2xs"
+            className="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-white/90 border border-line text-slate-600 hover:text-rose-600 shadow-2xs"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
-      <div className="px-2 pt-1.5 pb-2 flex flex-col gap-1.5 border-t border-slate-100">
+      <div className="px-2 pt-1.5 pb-2 flex flex-col gap-1.5 border-t border-line/70">
         <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5 min-w-0">
           {v.colourHex && (
             <span
@@ -812,9 +812,9 @@ export const StringsManager: React.FC = () => {
                       onClick={() => toggleExpanded(p.id)}
                       aria-expanded={isOpen}
                       aria-controls={panelId}
-                      className="w-full text-left p-3 sm:p-4 flex items-center gap-3 hover:bg-slate-50/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+                      className="w-full text-left p-3 sm:p-4 flex items-center gap-3 hover:bg-paper/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink/40"
                     >
-                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-white border border-slate-200 shrink-0 overflow-hidden flex items-center justify-center">
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-white border border-line shrink-0 overflow-hidden flex items-center justify-center">
                         {thumb ? (
                           <img src={thumb} alt="" loading="lazy" className="w-full h-full object-contain p-1" />
                         ) : (
@@ -862,7 +862,7 @@ export const StringsManager: React.FC = () => {
                     </button>
 
                     {isOpen && (
-                      <div id={panelId} className="border-t border-slate-100 p-3 sm:p-4 space-y-3 bg-slate-50/40">
+                      <div id={panelId} className="border-t border-line/70 p-3 sm:p-4 space-y-3 bg-paper/40">
                         <div className="flex flex-wrap gap-2">
                           <Button
                             type="button"

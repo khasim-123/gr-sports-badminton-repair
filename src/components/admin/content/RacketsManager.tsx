@@ -92,11 +92,11 @@ const PhotoTile: React.FC<{
   const [broken, setBroken] = useState(false);
   const isMain = index === 0;
   const btn =
-    'flex-1 min-w-[40px] min-h-[40px] inline-flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500';
+    'flex-1 min-w-[40px] min-h-[40px] inline-flex items-center justify-center text-slate-600 hover:bg-paper disabled:opacity-30 disabled:hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink/40';
   return (
     <li
       className={`rounded-2xl border bg-white overflow-hidden flex flex-col ${
-        isMain ? 'border-amber-300 ring-2 ring-brandYellow' : 'border-slate-200'
+        isMain ? 'border-amber-300 ring-2 ring-brandYellow' : 'border-line'
       }`}
     >
       <div className="relative aspect-square bg-white">
@@ -116,13 +116,13 @@ const PhotoTile: React.FC<{
         )}
         <span
           className={`absolute top-1.5 left-1.5 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded ${
-            isMain ? 'bg-brandYellow text-sportsBlue' : 'bg-white/90 border border-slate-200 text-slate-600'
+            isMain ? 'bg-brandYellow text-sportsBlue' : 'bg-white/90 border border-line text-slate-600'
           }`}
         >
           {isMain ? 'Main photo' : `#${index + 1}`}
         </span>
       </div>
-      <div className="flex border-t border-slate-100 divide-x divide-slate-100">
+      <div className="flex border-t border-line/70 divide-x divide-line/70">
         <button
           type="button"
           className={btn}
@@ -539,7 +539,7 @@ const RacketFormModal: React.FC<{
           />
         </Field>
 
-        <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 px-3">
+        <div className="divide-y divide-line/70 rounded-2xl border border-line px-3">
           <Switch
             checked={form.inStock}
             onChange={(v) => set('inStock', v)}
@@ -575,7 +575,7 @@ const RacketThumb: React.FC<{ racket: Racket }> = ({ racket }) => {
   const [broken, setBroken] = useState(false);
   const main = photos[0];
   return (
-    <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-white border border-slate-200 shrink-0 overflow-hidden flex items-center justify-center">
+    <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-white border border-line shrink-0 overflow-hidden flex items-center justify-center">
       {main && !broken ? (
         <img
           src={main}
@@ -608,12 +608,12 @@ const RacketRow: React.FC<{
   const specs = [r.balance, r.flex, r.weight, r.maxTension].filter((s) => s && s.trim());
   const noPhoto = photosOf(r).length === 0;
   return (
-    <li className={`${cardClass} p-3 sm:p-4 flex flex-col md:flex-row md:items-center gap-3 ${r.isActive ? '' : 'bg-slate-50/80'}`}>
+    <li className={`${cardClass} p-3 sm:p-4 flex flex-col md:flex-row md:items-center gap-3 ${r.isActive ? '' : 'bg-paper/80'}`}>
       <div className="flex gap-3 min-w-0 flex-1">
         <RacketThumb racket={r} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-50 text-sportsBlue border border-blue-200">
+            <span className="text-[10px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded bg-paper text-sportsBlue border border-line">
               {r.brand}
             </span>
             {r.tag && (
@@ -647,7 +647,7 @@ const RacketRow: React.FC<{
               </span>
             )}
             {noPhoto && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border border-slate-300 bg-slate-50 text-slate-600">
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border border-slate-300 bg-paper text-slate-600">
                 <ImageOff className="w-3 h-3" /> No photo yet
               </span>
             )}
@@ -694,7 +694,7 @@ const RacketRow: React.FC<{
           onClick={onDelete}
           aria-label={`Delete ${racketLabel(r)}`}
           title="Delete racket"
-          className="shrink-0 w-11 h-11 inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50"
+          className="shrink-0 w-11 h-11 inline-flex items-center justify-center rounded-xl border border-line bg-white text-slate-500 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50"
         >
           <Trash2 className="w-4 h-4" />
         </button>

@@ -146,7 +146,7 @@ const RankList: React.FC<{ title: string; items: ReportCount[]; label?: (s: stri
                 </span>
               </div>
               <div className="h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
-                <div className="h-full bg-blue-600 rounded-full" style={{ width: `${(item.count / total) * 100}%` }} />
+                <div className="h-full bg-ink rounded-full" style={{ width: `${(item.count / total) * 100}%` }} />
               </div>
             </li>
           ))}
@@ -285,7 +285,7 @@ export const VisitorReports: React.FC = () => {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
-                  <thead className="bg-slate-50 text-slate-500 text-left">
+                  <thead className="bg-paper text-slate-500 text-left">
                     <tr>
                       <th className="px-4 py-2 font-bold">Customer</th>
                       <th className="px-4 py-2 font-bold">Mobile</th>
@@ -294,12 +294,12 @@ export const VisitorReports: React.FC = () => {
                       <th className="px-4 py-2 font-bold text-right">Page views</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-line/70">
                     {summary.recentCustomers.map((c) => (
                       <tr key={c.phone}>
                         <td className="px-4 py-2.5 font-bold text-slate-900">{c.name || 'Not registered yet'}</td>
                         <td className="px-4 py-2.5 whitespace-nowrap">
-                          <a href={`tel:${c.phone.replace(/\s/g, '')}`} className="text-blue-700 hover:underline">
+                          <a href={`tel:${c.phone.replace(/\s/g, '')}`} className="text-ink hover:underline">
                             {c.phone}
                           </a>
                         </td>
