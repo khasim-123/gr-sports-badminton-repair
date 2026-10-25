@@ -2,7 +2,7 @@
  * Admin: pickup availability rules (open days, capacity, lead time, slots, closed dates, notice).
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarPlus, CalendarX2, Clock3, Megaphone, Plus, Save, Trash2, Undo2, X } from 'lucide-react';
+import { CalendarPlus, Check, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
 import { contentService } from '../../../services/contentService';
 import { AvailabilitySettings, ClosedDate } from '../../../types/content';
@@ -10,14 +10,20 @@ import { Button } from '../../common/Button';
 import {
   ErrorState,
   Field,
+  FieldError,
   ListSkeleton,
+  Notice,
+  SaveFailedNotice,
   SectionHeader,
   addDaysISO,
   cardClass,
   errorMessage,
+  focusRing,
   formatDate,
+  hintClass,
   inputClass,
   inputErrorClass,
+  labelClass,
   todayISO,
 } from './shared';
 
@@ -76,11 +82,11 @@ const validate = (f: FormState): { errors: Errors; settings?: AvailabilitySettin
   const cap = parseInt0(f.dailyPickupCapacity);
   const lead = parseInt0(f.leadTimeDays);
   const win = parseInt0(f.bookingWindowDays);
-  if (cap === null) errors.dailyPickupCapacity = 'Whole number, 0 or more.';
-  if (lead === null) errors.leadTimeDays = 'Whole number, 0 or more.';
-  if (win === null || win < 1) errors.bookingWindowDays = 'At least 1 day.';
+  if (cap === null) errors.dailyPickupCapacity = 'Enter a whole number, 0 or more.';
+  if (lead === null) errors.leadTimeDays = 'Enter a whole number, 0 or more.';
+  if (win === null || win < 1) errors.bookingWindowDays = 'Enter at least 1 day.';
   if (lead !== null && win !== null && win >= 1 && lead >= win)
-    errors.bookingWindowDays = 'Must be longer than the lead time, or no days can be booked.';
+    errors.bookingWindowDays = 'Make this more than the days of notice, or no day can be booked.';
   if (f.openWeekdays.length === 0) errors.openWeekdays = 'Choose at least one day, or customers can’t book any pickup.';
   if (Object.keys(errors).length) return { errors };
   return {
@@ -201,6 +207,12 @@ export const AvailabilityManager: React.FC = () => {
     setClosedReason('');
   };
 
+  const discard = () => {
+    setForm(saved);
+    setErrors({});
+    setSaveError(null);
+  };
+
   if (loading && !form) return <ListSkeleton rows={4} withImage={false} />;
   if (loadError && !form) return <ErrorState message={loadError} onRetry={load} retrying={loading} />;
   if (!form) return null;
@@ -218,65 +230,31 @@ export const AvailabilityManager: React.FC = () => {
       : null;
 
   return (
-    <div className="space-y-4 pb-24 sm:pb-0">
+    <div className="space-y-4 pb-28 sm:pb-0">
       <SectionHeader
         title="Pickup availability"
-        description="Controls which days customers can choose for doorstep racket pickup."
+        description="Which days customers can choose for doorstep racket pickup, and how many pickups you take."
         actions={
-          <div className="hidden sm:flex gap-2">
-            {dirty && (
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-[42px]"
-                leftIcon={<Undo2 className="w-4 h-4" />}
-                onClick={() => {
-                  setForm(saved);
-                  setErrors({});
-                  setSaveError(null);
-                }}
-                disabled={saving}
-              >
-                Discard
-              </Button>
-            )}
-            <Button
-              type="button"
-              className="min-h-[42px]"
-              leftIcon={<Save className="w-4 h-4" />}
-              onClick={save}
-              isLoading={saving}
-              disabled={!dirty}
-            >
-              {dirty ? 'Save changes' : 'Saved'}
-            </Button>
-          </div>
+          !dirty && !saving ? (
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-[14px] text-ink-muted" role="status">
+              <Check className="w-4 h-4 text-emerald-700" aria-hidden="true" /> All changes saved
+            </span>
+          ) : undefined
         }
       />
 
-      {dirty && (
-        <div className="hidden sm:flex p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 font-semibold" role="status">
-          You have unsaved changes.
-        </div>
-      )}
-      {saveError && (
-        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700" role="alert">
-          {saveError} Your changes are still here — try saving again.
-        </div>
-      )}
-      {summary && (
-        <div className="p-3 rounded-xl bg-paper border border-line text-xs text-ink">{summary}</div>
-      )}
+      <SaveFailedNotice message={saveError} />
+      {summary && <Notice tone="info">{summary}</Notice>}
 
       {/* Open days */}
-      <section className={`${cardClass} p-4 space-y-3`} aria-labelledby="avail-days">
+      <section className={`${cardClass} p-4 sm:p-5 space-y-4`} aria-labelledby="avail-days">
         <div>
-          <h4 id="avail-days" className="text-sm font-bold text-slate-900">
+          <h4 id="avail-days" className="text-[16px] font-semibold text-ink">
             Open days
           </h4>
-          <p className="text-xs text-slate-500">Days of the week you collect rackets.</p>
+          <p className="mt-0.5 text-[13px] text-ink-muted">Days of the week you collect rackets. Tap a day to open or close it.</p>
         </div>
-        <div className="grid grid-cols-4 min-[420px]:grid-cols-7 gap-1.5" role="group" aria-label="Open weekdays">
+        <div className="grid grid-cols-4 min-[420px]:grid-cols-7 gap-2" role="group" aria-label="Open weekdays">
           {WEEKDAYS.map((d) => {
             const on = form.openWeekdays.includes(d.id);
             return (
@@ -293,32 +271,30 @@ export const AvailabilityManager: React.FC = () => {
                   });
                   if (errors.openWeekdays) setErrors((e) => ({ ...e, openWeekdays: undefined }));
                 }}
-                className={`min-h-[44px] rounded-xl text-xs font-bold border transition-colors ${
-                  on
-                    ? 'bg-sportsBlue text-white border-sportsBlue'
-                    : 'bg-white text-slate-500 border-line hover:bg-paper line-through decoration-slate-300'
+                className={`min-h-[52px] rounded-xl border flex flex-col items-center justify-center leading-tight transition-colors duration-150 ${focusRing} ${
+                  on ? 'bg-ink text-white border-ink hover:bg-ink-hover' : 'bg-white text-ink-muted border-line hover:border-ink/30 hover:text-ink'
                 }`}
               >
-                {d.short}
+                <span className="text-[14px] font-semibold">{d.short}</span>
+                <span className={`text-[12px] ${on ? 'text-white/75' : 'text-ink-muted'}`}>{on ? 'Open' : 'Closed'}</span>
               </button>
             );
           })}
         </div>
-        {errors.openWeekdays && (
-          <p className="text-xs text-rose-600 font-medium" role="alert">
-            {errors.openWeekdays}
-          </p>
-        )}
+        {errors.openWeekdays && <FieldError className="!mt-0">{errors.openWeekdays}</FieldError>}
       </section>
 
       {/* Numbers */}
-      <section className={`${cardClass} p-4`} aria-label="Booking limits">
+      <section className={`${cardClass} p-4 sm:p-5 space-y-4`} aria-labelledby="avail-limits">
+        <h4 id="avail-limits" className="text-[16px] font-semibold text-ink">
+          Booking limits
+        </h4>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Field
-            label="Daily pickup capacity"
+            label="Pickups per day"
             htmlFor="avail-cap"
             error={errors.dailyPickupCapacity}
-            hint={cap === 0 ? 'Unlimited pickups per day' : 'Max pickups per day · 0 = unlimited'}
+            hint={cap === 0 ? 'No limit. Enter a number to cap pickups per day.' : 'The most pickups taken on one day · 0 = no limit'}
           >
             <input
               id="avail-cap"
@@ -335,10 +311,10 @@ export const AvailabilityManager: React.FC = () => {
             />
           </Field>
           <Field
-            label="Lead time (days)"
+            label="Notice needed (days)"
             htmlFor="avail-lead"
             error={errors.leadTimeDays}
-            hint={lead === 0 ? 'Same-day pickup allowed' : lead === 1 ? 'Earliest pickup is tomorrow' : 'Days of notice needed'}
+            hint={lead === 0 ? 'Same-day pickup allowed' : lead === 1 ? 'Earliest pickup is tomorrow' : `Earliest pickup is in ${lead ?? '…'} days`}
           >
             <input
               id="avail-lead"
@@ -355,7 +331,7 @@ export const AvailabilityManager: React.FC = () => {
             />
           </Field>
           <Field
-            label="Booking window (days)"
+            label="Book up to (days ahead)"
             htmlFor="avail-window"
             error={errors.bookingWindowDays}
             hint="How far ahead customers can book"
@@ -378,28 +354,29 @@ export const AvailabilityManager: React.FC = () => {
       </section>
 
       {/* Slots */}
-      <section className={`${cardClass} p-4 space-y-3`} aria-labelledby="avail-slots">
+      <section className={`${cardClass} p-4 sm:p-5 space-y-4`} aria-labelledby="avail-slots">
         <div>
-          <h4 id="avail-slots" className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-            <Clock3 className="w-4 h-4 text-ink" /> Pickup time slots
+          <h4 id="avail-slots" className="text-[16px] font-semibold text-ink">
+            Pickup time slots
           </h4>
-          <p className="text-xs text-slate-500">Customers pick one of these when booking.</p>
+          <p className="mt-0.5 text-[13px] text-ink-muted">Customers pick one of these when booking.</p>
         </div>
         {form.pickupSlots.length === 0 ? (
-          <p className="text-xs text-slate-500 italic">No slots — customers will only choose a date.</p>
+          <p className="text-[14px] text-ink-soft">No slots yet, so customers only choose a date.</p>
         ) : (
-          <ul className="flex flex-wrap gap-2">
+          <ul className="flex flex-wrap gap-2" aria-label="Pickup time slots">
             {form.pickupSlots.map((s) => (
               <li
                 key={s}
-                className="inline-flex items-center gap-1 pl-3 rounded-xl bg-slate-100 border border-line text-xs font-semibold text-slate-800"
+                className="inline-flex items-center gap-0.5 pl-3.5 rounded-full bg-paper border border-line text-[14px] font-medium text-ink tabular-nums"
               >
                 {s}
                 <button
                   type="button"
                   aria-label={`Remove slot ${s}`}
+                  title="Remove slot"
                   onClick={() => update({ pickupSlots: form.pickupSlots.filter((x) => x !== s) })}
-                  className="w-10 h-10 inline-flex items-center justify-center rounded-xl text-slate-500 hover:text-rose-600"
+                  className={`w-11 h-11 inline-flex items-center justify-center rounded-full text-ink-muted transition-colors duration-150 hover:text-rose-700 hover:bg-rose-50 ${focusRing}`}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -409,7 +386,7 @@ export const AvailabilityManager: React.FC = () => {
         )}
         <div className="flex flex-wrap items-end gap-2">
           <div>
-            <label htmlFor="slot-from" className="block text-xs font-semibold text-slate-600 mb-1">
+            <label htmlFor="slot-from" className={labelClass}>
               From
             </label>
             <input
@@ -420,11 +397,11 @@ export const AvailabilityManager: React.FC = () => {
                 setSlotFrom(e.target.value);
                 setSlotError(null);
               }}
-              className={`${inputClass} w-32`}
+              className={`${inputClass} w-36`}
             />
           </div>
           <div>
-            <label htmlFor="slot-to" className="block text-xs font-semibold text-slate-600 mb-1">
+            <label htmlFor="slot-to" className={labelClass}>
               To
             </label>
             <input
@@ -435,35 +412,31 @@ export const AvailabilityManager: React.FC = () => {
                 setSlotTo(e.target.value);
                 setSlotError(null);
               }}
-              className={`${inputClass} w-32`}
+              className={`${inputClass} w-36`}
             />
           </div>
-          <Button type="button" variant="outline" className="min-h-[42px]" leftIcon={<Plus className="w-4 h-4" />} onClick={addSlot}>
+          <Button type="button" variant="secondary" className="min-h-[44px] px-4" leftIcon={<Plus className="w-4 h-4" />} onClick={addSlot}>
             Add slot
           </Button>
         </div>
-        {slotError && (
-          <p className="text-xs text-rose-600 font-medium" role="alert">
-            {slotError}
-          </p>
-        )}
+        {slotError && <FieldError className="!mt-0">{slotError}</FieldError>}
       </section>
 
       {/* Closed dates */}
-      <section className={`${cardClass} p-4 space-y-3`} aria-labelledby="avail-closed">
+      <section className={`${cardClass} p-4 sm:p-5 space-y-4`} aria-labelledby="avail-closed">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h4 id="avail-closed" className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-              <CalendarX2 className="w-4 h-4 text-rose-600" /> Closed dates
+            <h4 id="avail-closed" className="text-[16px] font-semibold text-ink">
+              Closed dates
             </h4>
-            <p className="text-xs text-slate-500">Holidays and days off — no pickups on these dates.</p>
+            <p className="mt-0.5 text-[13px] text-ink-muted">Holidays and days off. No pickups on these dates.</p>
           </div>
           {pastCount > 0 && (
             <Button
               type="button"
               size="sm"
               variant="ghost"
-              className="min-h-[40px] text-slate-600"
+              className="min-h-[44px] sm:min-h-[40px] text-ink-soft"
               onClick={() => update({ closedDates: form.closedDates.filter((c) => c.date >= today) })}
             >
               Clear {pastCount} past date{pastCount === 1 ? '' : 's'}
@@ -472,14 +445,14 @@ export const AvailabilityManager: React.FC = () => {
         </div>
 
         {form.closedDates.length === 0 ? (
-          <p className="text-xs text-slate-500 italic">No closed dates.</p>
+          <p className="text-[14px] text-ink-soft">No closed dates.</p>
         ) : (
-          <ul className="divide-y divide-line/70 rounded-xl border border-line">
+          <ul className="divide-y divide-line rounded-xl border border-line" aria-label="Closed dates">
             {form.closedDates.map((c, idx) => {
               const past = c.date < today;
               return (
-                <li key={c.date} className={`flex items-center gap-2 pl-3 pr-1 py-1 ${past ? 'bg-paper text-slate-400' : ''}`}>
-                  <span className={`text-xs font-bold w-32 shrink-0 ${past ? 'line-through' : 'text-slate-800'}`}>
+                <li key={c.date} className={`flex items-center gap-2 pl-3.5 pr-1 py-1 ${past ? 'bg-paper text-ink-muted' : ''}`}>
+                  <span className={`text-[14px] font-medium w-36 shrink-0 tabular-nums ${past ? 'line-through' : 'text-ink'}`}>
                     {formatDate(c.date, true)}
                   </span>
                   <label htmlFor={`closed-reason-${c.date}`} className="sr-only">
@@ -494,16 +467,17 @@ export const AvailabilityManager: React.FC = () => {
                       update({ closedDates: next });
                     }}
                     placeholder="Reason (optional)"
-                    className={`flex-1 min-w-0 min-h-[40px] px-2 text-xs rounded-lg border border-transparent hover:border-line focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink/40 bg-transparent ${
-                      past ? 'text-slate-400' : 'text-slate-700'
+                    className={`flex-1 min-w-0 min-h-[44px] px-2.5 text-[14px] rounded-lg border border-transparent hover:border-line focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/15 bg-transparent placeholder:text-ink-muted/60 ${
+                      past ? 'text-ink-muted' : 'text-ink'
                     }`}
                   />
-                  {past && <span className="text-xs font-semibold text-slate-400 shrink-0 hidden min-[420px]:inline">Past</span>}
+                  {past && <span className="text-[12px] font-medium text-ink-muted shrink-0 hidden min-[420px]:inline">Past</span>}
                   <button
                     type="button"
                     aria-label={`Remove closed date ${formatDate(c.date)}`}
+                    title="Remove"
                     onClick={() => update({ closedDates: form.closedDates.filter((x) => x.date !== c.date) })}
-                    className="w-10 h-10 shrink-0 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                    className={`w-11 h-11 shrink-0 inline-flex items-center justify-center rounded-lg text-ink-muted transition-colors duration-150 hover:text-rose-700 hover:bg-rose-50 ${focusRing}`}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -513,9 +487,9 @@ export const AvailabilityManager: React.FC = () => {
           </ul>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-[170px_1fr_auto] gap-2 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-[190px_1fr_auto] gap-x-2 gap-y-3 items-end">
           <div>
-            <label htmlFor="closed-date" className="block text-xs font-semibold text-slate-600 mb-1">
+            <label htmlFor="closed-date" className={labelClass}>
               Date
             </label>
             <input
@@ -531,8 +505,8 @@ export const AvailabilityManager: React.FC = () => {
             />
           </div>
           <div>
-            <label htmlFor="closed-reason" className="block text-xs font-semibold text-slate-600 mb-1">
-              Reason (optional)
+            <label htmlFor="closed-reason" className={labelClass}>
+              Reason <span className="font-normal text-ink-muted">(optional)</span>
             </label>
             <input
               id="closed-reason"
@@ -548,61 +522,74 @@ export const AvailabilityManager: React.FC = () => {
               className={inputClass}
             />
           </div>
-          <Button type="button" variant="outline" className="min-h-[42px]" leftIcon={<CalendarPlus className="w-4 h-4" />} onClick={addClosed}>
+          <Button type="button" variant="secondary" className="min-h-[44px] px-4" leftIcon={<CalendarPlus className="w-4 h-4" />} onClick={addClosed}>
             Add date
           </Button>
         </div>
-        {closedError && (
-          <p className="text-xs text-rose-600 font-medium" role="alert">
-            {closedError}
-          </p>
-        )}
+        {closedError && <FieldError className="!mt-0">{closedError}</FieldError>}
       </section>
 
       {/* Notice */}
-      <section className={`${cardClass} p-4 space-y-2`} aria-labelledby="avail-notice">
-        <h4 id="avail-notice" className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-          <Megaphone className="w-4 h-4 text-amber-500" /> Customer notice
+      <section className={`${cardClass} p-4 sm:p-5 space-y-4`} aria-labelledby="avail-notice">
+        <h4 id="avail-notice" className="text-[16px] font-semibold text-ink">
+          Message for customers
         </h4>
-        <label htmlFor="avail-notice-text" className="sr-only">
-          Customer notice text
-        </label>
-        <textarea
-          id="avail-notice-text"
-          rows={2}
-          value={form.notice}
-          onChange={(e) => update({ notice: e.target.value })}
-          placeholder="e.g. Closed 1–3 Nov for Diwali. Pickups resume 4 Nov."
-          className={`${inputClass} resize-y`}
-        />
-        <p className="text-xs text-slate-500">
-          Shown to customers when they choose a pickup date. Leave empty to show nothing. {form.notice.trim().length} characters.
-        </p>
+        <div>
+          <label htmlFor="avail-notice-text" className={labelClass}>
+            Notice <span className="font-normal text-ink-muted">(optional)</span>
+          </label>
+          <textarea
+            id="avail-notice-text"
+            rows={2}
+            value={form.notice}
+            onChange={(e) => update({ notice: e.target.value })}
+            placeholder="e.g. Closed 1–3 Nov for Diwali. Pickups resume 4 Nov."
+            aria-describedby="avail-notice-help"
+            className={`${inputClass} resize-y`}
+          />
+          <p id="avail-notice-help" className={hintClass}>
+            Shown when customers choose a pickup date. Leave it empty to show nothing.
+            {form.notice.trim().length > 0 && <span className="tabular-nums"> {form.notice.trim().length} characters.</span>}
+          </p>
+        </div>
       </section>
 
-      {/* Mobile sticky save bar */}
-      <div className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-line px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex items-center gap-2">
-        <p className={`text-xs font-semibold flex-1 min-w-0 ${dirty ? 'text-amber-700' : 'text-slate-500'}`} role="status">
-          {dirty ? 'Unsaved changes' : 'All changes saved'}
+      {/* Save bar: fixed to the bottom on phones (always), floating at the bottom of the page on
+          wider screens while there are unsaved changes, so Save is reachable from every section. */}
+      <div
+        className={`fixed bottom-0 inset-x-0 z-40 flex items-center gap-2 border-t border-line bg-white/95 backdrop-blur px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:sticky sm:bottom-4 sm:z-20 sm:mx-auto sm:rounded-2xl sm:border sm:shadow-elevated sm:px-4 sm:py-3 ${
+          dirty || saving ? '' : 'sm:hidden'
+        }`}
+      >
+        <p
+          className={`flex-1 min-w-0 inline-flex items-center gap-2 text-[14px] font-medium ${dirty ? 'text-amber-800' : 'text-ink-muted'}`}
+          role="status"
+        >
+          {saving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Saving…
+            </>
+          ) : dirty ? (
+            <>
+              <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
+              <span className="truncate">
+                Unsaved changes<span className="hidden sm:inline"> — customers still see the old settings</span>
+              </span>
+            </>
+          ) : (
+            <>
+              <Check className="w-4 h-4 text-emerald-700" aria-hidden="true" /> All changes saved
+            </>
+          )}
         </p>
         {dirty && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="min-h-[42px]"
-            onClick={() => {
-              setForm(saved);
-              setErrors({});
-              setSaveError(null);
-            }}
-            disabled={saving}
-          >
+          <Button type="button" variant="secondary" className="min-h-[44px] px-4" onClick={discard} disabled={saving}>
             Discard
           </Button>
         )}
-        <Button type="button" size="sm" className="min-h-[42px]" onClick={save} isLoading={saving} disabled={!dirty}>
-          Save
+        <Button type="button" className="min-h-[44px] px-5" onClick={save} isLoading={saving} disabled={!dirty}>
+          <span className="sm:hidden">Save</span>
+          <span className="hidden sm:inline">Save changes</span>
         </Button>
       </div>
     </div>

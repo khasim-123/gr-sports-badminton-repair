@@ -8,14 +8,13 @@ import {
   ChevronDown,
   CircleCheck,
   CircleX,
-  IndianRupee,
+  EyeOff,
   Loader2,
   PackageCheck,
   PackageX,
   Palette,
   Pencil,
   Plus,
-  Search,
   Star,
   Trash2,
   X,
@@ -30,16 +29,29 @@ import {
   ConfirmDialog,
   ErrorState,
   Field,
+  FixFieldsNotice,
+  FormSection,
   ListSkeleton,
   Modal,
+  NoMatches,
   Pills,
+  RefreshFailed,
+  SaveFailedNotice,
+  SearchField,
   SectionHeader,
+  StatGrid,
+  StatTile,
   Switch,
   cardClass,
+  chipClass,
   errorMessage,
+  focusFirstInvalid,
+  focusRing,
+  iconButtonClass,
   inputClass,
   inputErrorClass,
   nullIfEmpty,
+  switchGroupClass,
 } from './shared';
 
 type FilterId = 'all' | 'featured' | 'out' | 'noprice' | 'inactive';
@@ -107,16 +119,19 @@ const ProductFormModal: React.FC<{
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: typeof errors = {};
-    if (!form.brand.trim()) errs.brand = 'Brand is required.';
-    if (!form.name.trim()) errs.name = 'Name is required.';
+    if (!form.brand.trim()) errs.brand = 'Add the brand.';
+    if (!form.name.trim()) errs.name = 'Add the string name.';
     const priceText = form.price.trim();
     let price: number | null = null;
     if (priceText) {
       price = Number(priceText);
-      if (!Number.isFinite(price) || price < 0) errs.price = 'Enter a valid amount, or leave empty.';
+      if (!Number.isFinite(price) || price < 0) errs.price = 'Enter an amount in rupees, or leave it empty.';
     }
     setErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) {
+      focusFirstInvalid(formId);
+      return;
+    }
 
     const input: StringProductInput = {
       brand: form.brand.trim(),
@@ -150,95 +165,100 @@ const ProductFormModal: React.FC<{
     <Modal
       open
       title={product ? `Edit ${productLabel(product)}` : 'New string'}
-      subtitle={product ? 'Details shown in the strings catalogue' : 'Add colours after saving'}
+      subtitle={product ? 'Shown in the strings catalogue on the website' : 'Save the details first, then add its colours.'}
       onClose={onClose}
       busy={saving}
       footer={
         <>
-          <Button type="button" variant="outline" onClick={onClose} disabled={saving} className="min-h-[42px]">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={saving} className="min-h-[44px] sm:px-5">
             Cancel
           </Button>
-          <Button type="submit" form={formId} isLoading={saving} className="min-h-[42px]">
+          <Button type="submit" form={formId} isLoading={saving} className="min-h-[44px] sm:px-6">
             {product ? 'Save changes' : 'Add string'}
           </Button>
         </>
       }
     >
-      <form id={formId} onSubmit={submit} className="space-y-4" noValidate>
-        {saveError && (
-          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700" role="alert">
-            {saveError} Your changes are still here — try again.
+      <form id={formId} onSubmit={submit} className="space-y-7" noValidate>
+        {(saveError || Object.values(errors).some(Boolean)) && (
+          <div className="space-y-2 -mb-2">
+            <SaveFailedNotice message={saveError} />
+            <FixFieldsNotice count={Object.values(errors).filter(Boolean).length} />
           </div>
         )}
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Brand" htmlFor="sp-brand" required error={errors.brand}>
+        <FormSection title="Details">
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Brand" htmlFor="sp-brand" required error={errors.brand}>
+              <input
+                id="sp-brand"
+                value={form.brand}
+                onChange={(e) => set('brand', e.target.value)}
+                className={`${inputClass} ${errors.brand ? inputErrorClass : ''}`}
+              />
+            </Field>
+            <Field label="Code" htmlFor="sp-code" optional hint="e.g. 66XB">
+              <input id="sp-code" value={form.code} onChange={(e) => set('code', e.target.value)} className={inputClass} />
+            </Field>
+          </div>
+          <Field label="Name" htmlFor="sp-name" required error={errors.name}>
             <input
-              id="sp-brand"
-              value={form.brand}
-              onChange={(e) => set('brand', e.target.value)}
-              className={`${inputClass} ${errors.brand ? inputErrorClass : ''}`}
+              id="sp-name"
+              value={form.name}
+              onChange={(e) => set('name', e.target.value)}
+              className={`${inputClass} ${errors.name ? inputErrorClass : ''}`}
+              placeholder="e.g. Pro 66XB"
             />
           </Field>
-          <Field label="Code" htmlFor="sp-code" hint="e.g. 66XB">
-            <input id="sp-code" value={form.code} onChange={(e) => set('code', e.target.value)} className={inputClass} />
-          </Field>
-        </div>
-        <Field label="Name" htmlFor="sp-name" required error={errors.name}>
-          <input
-            id="sp-name"
-            value={form.name}
-            onChange={(e) => set('name', e.target.value)}
-            className={`${inputClass} ${errors.name ? inputErrorClass : ''}`}
-            placeholder="e.g. Pro 66XB"
-          />
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Gauge" htmlFor="sp-gauge" hint="e.g. 0.66 mm">
-            <input id="sp-gauge" value={form.gauge} onChange={(e) => set('gauge', e.target.value)} className={inputClass} />
-          </Field>
-          <Field
-            label="Price (₹)"
-            htmlFor="sp-price"
-            error={errors.price}
-            hint={form.price.trim() ? 'Stringing price incl. string' : 'Empty = "Price on request"'}
-          >
-            <input
-              id="sp-price"
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="any"
-              value={form.price}
-              onChange={(e) => set('price', e.target.value)}
-              placeholder="Price on request"
-              className={`${inputClass} ${errors.price ? inputErrorClass : ''}`}
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Gauge" htmlFor="sp-gauge" optional hint="e.g. 0.66 mm">
+              <input id="sp-gauge" value={form.gauge} onChange={(e) => set('gauge', e.target.value)} className={inputClass} />
+            </Field>
+            <Field
+              label="Price (₹)"
+              htmlFor="sp-price"
+              error={errors.price}
+              hint={form.price.trim() ? 'Stringing price, string included' : 'Empty = shows “Price on request”'}
+            >
+              <input
+                id="sp-price"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step="any"
+                value={form.price}
+                onChange={(e) => set('price', e.target.value)}
+                placeholder="Price on request"
+                className={`${inputClass} ${errors.price ? inputErrorClass : ''}`}
+              />
+            </Field>
+          </div>
+          <Field label="Description" htmlFor="sp-desc" optional>
+            <textarea
+              id="sp-desc"
+              rows={3}
+              value={form.description}
+              onChange={(e) => set('description', e.target.value)}
+              className={`${inputClass} resize-y`}
+              placeholder="Feel, durability, who it suits…"
             />
           </Field>
-        </div>
-        <Field label="Description" htmlFor="sp-desc">
-          <textarea
-            id="sp-desc"
-            rows={3}
-            value={form.description}
-            onChange={(e) => set('description', e.target.value)}
-            className={`${inputClass} resize-y`}
-            placeholder="Feel, durability, who it suits…"
-          />
-        </Field>
-        <div className="divide-y divide-line/70 rounded-2xl border border-line px-3">
-          <Switch
-            checked={form.isFeatured}
-            onChange={(v) => set('isFeatured', v)}
-            label="Featured"
-            description="Highlighted at the top of the catalogue."
-          />
-          <Switch
-            checked={form.isActive}
-            onChange={(v) => set('isActive', v)}
-            label="Show on website"
-            description="Turn off to hide this string from customers."
-          />
-        </div>
+        </FormSection>
+        <FormSection title="On the website">
+          <div className={switchGroupClass}>
+            <Switch
+              checked={form.isActive}
+              onChange={(v) => set('isActive', v)}
+              label="Show on the website"
+              description="Turn off to hide this string from customers."
+            />
+            <Switch
+              checked={form.isFeatured}
+              onChange={(v) => set('isFeatured', v)}
+              label="Featured"
+              description="Shown at the top of the strings catalogue."
+            />
+          </div>
+        </FormSection>
       </form>
     </Modal>
   );
@@ -270,15 +290,18 @@ const VariantFormModal: React.FC<{
     e.preventDefault();
     const errs: typeof errors = {};
     const name = colour.trim();
-    if (!name) errs.colour = 'Colour name is required.';
+    if (!name) errs.colour = 'Add the colour name.';
     else if (
       product.variants.some((v) => v.id !== variant?.id && v.colour.trim().toLowerCase() === name.toLowerCase())
     )
       errs.colour = `${product.name} already has a "${name}" colour.`;
     const hexValue = hex.trim();
-    if (hexValue && !HEX_RE.test(hexValue)) errs.hex = 'Use the format #RRGGBB, or leave empty.';
+    if (hexValue && !HEX_RE.test(hexValue)) errs.hex = 'Pick a colour with the swatch button, or leave it empty.';
     setErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) {
+      focusFirstInvalid(formId);
+      return;
+    }
 
     const input: StringVariantInput = {
       colour: name,
@@ -307,35 +330,36 @@ const VariantFormModal: React.FC<{
   return (
     <Modal
       open
-      title={variant ? `Edit colour — ${variant.colour}` : 'Add colour'}
+      title={variant ? `Edit colour: ${variant.colour}` : 'Add a colour'}
       subtitle={productLabel(product)}
       onClose={onClose}
       busy={saving}
       footer={
         <>
-          <Button type="button" variant="outline" onClick={onClose} disabled={saving} className="min-h-[42px]">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={saving} className="min-h-[44px] sm:px-5">
             Cancel
           </Button>
-          <Button type="submit" form={formId} isLoading={saving} disabled={uploading} className="min-h-[42px]">
+          <Button type="submit" form={formId} isLoading={saving} disabled={uploading} className="min-h-[44px] sm:px-6">
             {uploading ? 'Waiting for upload…' : variant ? 'Save colour' : 'Add colour'}
           </Button>
         </>
       }
     >
-      <form id={formId} onSubmit={submit} className="space-y-4" noValidate>
-        {saveError && (
-          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700" role="alert">
-            {saveError} Your changes are still here — try again.
+      <form id={formId} onSubmit={submit} className="space-y-5" noValidate>
+        {(saveError || Object.values(errors).some(Boolean)) && (
+          <div className="space-y-2">
+            <SaveFailedNotice message={saveError} />
+            <FixFieldsNotice count={Object.values(errors).filter(Boolean).length} />
           </div>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-5">
           <MediaUpload
             label="Pack photo"
             value={imageUrl}
             onChange={(url) => setImageUrl(url)}
             aspectClass="aspect-square"
             compact
-            hint="Square photo on white works best."
+            hint="A square photo of the pack on white works best."
             onUploadingChange={setUploading}
           />
           <div className="space-y-4">
@@ -351,7 +375,7 @@ const VariantFormModal: React.FC<{
                 placeholder="e.g. Lime"
               />
             </Field>
-            <Field label="Swatch colour (optional)" htmlFor="sv-hex" error={errors.hex} hint="Shown as a dot next to the name.">
+            <Field label="Swatch colour" htmlFor="sv-hex" optional error={errors.hex} hint="Shown as a small dot next to the colour name.">
               <div className="flex gap-2">
                 <input
                   type="color"
@@ -361,7 +385,7 @@ const VariantFormModal: React.FC<{
                     setHex(e.target.value.toUpperCase());
                     if (errors.hex) setErrors((x) => ({ ...x, hex: undefined }));
                   }}
-                  className="w-12 h-[42px] rounded-xl border border-slate-300 bg-white p-1 cursor-pointer shrink-0"
+                  className={`w-12 h-11 rounded-xl border border-line bg-white p-1 cursor-pointer shrink-0 ${focusRing}`}
                 />
                 <input
                   id="sv-hex"
@@ -379,14 +403,17 @@ const VariantFormModal: React.FC<{
                     type="button"
                     onClick={() => setHex('')}
                     aria-label="Clear swatch colour"
-                    className="w-10 h-[42px] shrink-0 inline-flex items-center justify-center rounded-xl border border-line text-slate-500 hover:bg-paper"
+                    title="Clear"
+                    className={`${iconButtonClass} sm:w-11 sm:h-11`}
                   >
                     <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
             </Field>
-            <Switch checked={inStock} onChange={setInStock} label="In stock" onLabel="In stock" offLabel="Out of stock" />
+            <div className={switchGroupClass}>
+              <Switch checked={inStock} onChange={setInStock} label="Stock" onLabel="In stock" offLabel="Out of stock" />
+            </div>
           </div>
         </div>
       </form>
@@ -410,8 +437,8 @@ const VariantTile: React.FC<{
   const v = variant;
   return (
     <li
-      className={`rounded-2xl border bg-white overflow-hidden flex flex-col transition-shadow ${
-        highlight ? 'ring-2 ring-brandYellow border-amber-300' : v.inStock ? 'border-line' : 'border-rose-200'
+      className={`rounded-2xl border bg-white overflow-hidden flex flex-col ${
+        highlight ? 'ring-2 ring-accent border-amber-300' : v.inStock ? 'border-line' : 'border-rose-200'
       }`}
     >
       <div className="relative aspect-square bg-white">
@@ -424,38 +451,35 @@ const VariantTile: React.FC<{
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <Palette className="w-8 h-8 text-slate-300" />
+            <Palette className="w-8 h-8 text-slate-300" aria-hidden="true" />
           </div>
         )}
-        {!v.inStock && (
-          <span className="absolute top-1.5 left-1.5 text-xs font-bold uppercase tracking-wide bg-rose-600 text-white px-1.5 py-0.5 rounded">
-            Sold out
-          </span>
-        )}
-        <div className="absolute top-1 right-1 flex gap-1">
+        <div className="absolute top-1.5 right-1.5 flex gap-1.5">
           <button
             type="button"
             onClick={onEdit}
             aria-label={`Edit colour ${v.colour}`}
-            className="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-white/90 border border-line text-slate-600 hover:text-ink shadow-2xs"
+            title="Edit colour"
+            className={`w-11 h-11 sm:w-10 sm:h-10 inline-flex items-center justify-center rounded-xl bg-white/95 border border-line text-ink-soft transition-colors duration-150 hover:text-ink hover:border-slate-300 ${focusRing}`}
           >
-            <Pencil className="w-3.5 h-3.5" />
+            <Pencil className="w-4 h-4" />
           </button>
           <button
             type="button"
             onClick={onDelete}
             aria-label={`Delete colour ${v.colour}`}
-            className="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-white/90 border border-line text-slate-600 hover:text-rose-600 shadow-2xs"
+            title="Delete colour"
+            className={`w-11 h-11 sm:w-10 sm:h-10 inline-flex items-center justify-center rounded-xl bg-white/95 border border-line text-ink-muted transition-colors duration-150 hover:text-rose-700 hover:border-rose-200 hover:bg-rose-50 ${focusRing}`}
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
-      <div className="px-2 pt-1.5 pb-2 flex flex-col gap-1.5 border-t border-line/70">
-        <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5 min-w-0">
+      <div className="px-2.5 pt-2 pb-2.5 flex flex-col gap-2 border-t border-line">
+        <p className="text-[14px] font-medium text-ink flex items-center gap-1.5 min-w-0">
           {v.colourHex && (
             <span
-              className="w-3 h-3 rounded-full border border-slate-300 shrink-0"
+              className="w-3.5 h-3.5 rounded-full border border-slate-300 shrink-0"
               style={{ backgroundColor: v.colourHex }}
               aria-hidden="true"
             />
@@ -469,10 +493,10 @@ const VariantTile: React.FC<{
           aria-pressed={v.inStock}
           aria-busy={pending}
           aria-label={`${v.colour}: ${v.inStock ? 'in stock' : 'out of stock'}. Tap to mark ${v.inStock ? 'out of stock' : 'in stock'}.`}
-          className={`w-full min-h-[44px] rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors active:scale-[0.98] disabled:cursor-wait ${
+          className={`w-full min-h-[44px] rounded-xl border text-[14px] font-semibold inline-flex items-center justify-center gap-1.5 transition-colors duration-150 active:scale-[0.98] disabled:cursor-wait ${focusRing} ${
             v.inStock
-              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-              : 'bg-rose-50 text-rose-700 border border-rose-300 hover:bg-rose-100'
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+              : 'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100'
           }`}
         >
           {pending ? (
@@ -678,13 +702,13 @@ export const StringsManager: React.FC = () => {
     <div className="space-y-4">
       <SectionHeader
         title="Strings & colour stock"
-        description="Tap a colour's stock button to mark it in or out of stock — it saves instantly. Strings without a price show “Price on request” on the website."
+        description="Open a string to see its colours. Tap a colour's stock button to switch it between in stock and out of stock; it saves straight away."
         actions={
           <Button
             type="button"
             onClick={() => setEditingProduct('new')}
             leftIcon={<Plus className="w-4 h-4" />}
-            className="min-h-[42px]"
+            className="min-h-[44px] px-5"
             disabled={loading && products.length === 0}
           >
             Add string
@@ -709,54 +733,22 @@ export const StringsManager: React.FC = () => {
         />
       ) : (
         <>
-          {/* Summary */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className={`${cardClass} p-3`}>
-              <p className="text-xs font-semibold text-slate-500">Strings</p>
-              <p className="text-xl font-bold text-slate-900">{products.length}</p>
-            </div>
-            <div className={`${cardClass} p-3`}>
-              <p className="text-xs font-semibold text-slate-500">Colours</p>
-              <p className="text-xl font-bold text-slate-900">{stats.colours}</p>
-            </div>
-            <div className={`${cardClass} p-3`}>
-              <p className="text-xs font-semibold text-slate-500">Colours out of stock</p>
-              <p className={`text-xl font-bold ${stats.out ? 'text-rose-600' : 'text-emerald-600'}`}>{stats.out}</p>
-            </div>
-            <div className={`${cardClass} p-3`}>
-              <p className="text-xs font-semibold text-slate-500">No price yet</p>
-              <p className={`text-xl font-bold ${stats.noPrice ? 'text-amber-600' : 'text-emerald-600'}`}>
-                {stats.noPrice}
-              </p>
-            </div>
-          </div>
+          <StatGrid>
+            <StatTile label="Strings" value={products.length} />
+            <StatTile label="Colours" value={stats.colours} />
+            <StatTile label="Colours out of stock" value={stats.out} tone={stats.out ? 'bad' : 'default'} />
+            <StatTile label="No price yet" value={stats.noPrice} tone={stats.noPrice ? 'warn' : 'default'} />
+          </StatGrid>
 
           {/* Search + filters */}
-          <div className="space-y-2">
-            <div className="relative">
-              <label htmlFor="strings-search" className="sr-only">
-                Search strings
-              </label>
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                id="strings-search"
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search name, code or colour (e.g. 66XB, lime)"
-                className={`${inputClass} pl-9 pr-10`}
-              />
-              {query && (
-                <button
-                  type="button"
-                  onClick={() => setQuery('')}
-                  aria-label="Clear search"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 inline-flex items-center justify-center text-slate-400 hover:text-slate-700"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+          <div className="space-y-3">
+            <SearchField
+              id="strings-search"
+              label="Search strings"
+              value={query}
+              onChange={setQuery}
+              placeholder="Search by name, code or colour, e.g. 66XB or lime"
+            />
             <Pills<FilterId>
               ariaLabel="Filter strings"
               value={filter}
@@ -766,37 +758,21 @@ export const StringsManager: React.FC = () => {
                 { id: 'featured', label: 'Featured', count: stats.featured },
                 { id: 'out', label: 'Has out-of-stock', count: stats.withOut, highlight: true },
                 { id: 'noprice', label: 'No price yet', count: stats.noPrice, highlight: true },
-                { id: 'inactive', label: 'Inactive', count: stats.inactive },
+                { id: 'inactive', label: 'Hidden', count: stats.inactive },
               ]}
             />
           </div>
 
-          {loadError && (
-            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-center justify-between gap-2">
-              <span>Refresh failed: {loadError}</span>
-              <Button type="button" size="sm" variant="outline" onClick={load} className="min-h-[36px]">
-                Retry
-              </Button>
-            </div>
-          )}
+          {loadError && <RefreshFailed message={loadError} onRetry={load} retrying={loading} />}
 
           {visible.length === 0 ? (
-            <div className={`${cardClass} p-8 text-center`}>
-              <p className="text-sm font-semibold text-slate-700">No strings match</p>
-              <p className="text-xs text-slate-500 mt-1">Try a different search or filter.</p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-3 min-h-[40px]"
-                onClick={() => {
-                  setQuery('');
-                  setFilter('all');
-                }}
-              >
-                Clear search & filters
-              </Button>
-            </div>
+            <NoMatches
+              title="No strings match"
+              onClear={() => {
+                setQuery('');
+                setFilter('all');
+              }}
+            />
           ) : (
             <ul className="space-y-2.5">
               {visible.map(({ product: p, colourMatches }) => {
@@ -812,64 +788,64 @@ export const StringsManager: React.FC = () => {
                       onClick={() => toggleExpanded(p.id)}
                       aria-expanded={isOpen}
                       aria-controls={panelId}
-                      className="w-full text-left p-3 sm:p-4 flex items-center gap-3 hover:bg-paper/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink/40"
+                      className="w-full text-left p-3 sm:p-4 flex items-center gap-3 sm:gap-4 transition-colors duration-150 hover:bg-paper/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink"
                     >
                       <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-white border border-line shrink-0 overflow-hidden flex items-center justify-center">
                         {thumb ? (
                           <img src={thumb} alt="" loading="lazy" className="w-full h-full object-contain p-1" />
                         ) : (
-                          <Palette className="w-6 h-6 text-slate-300" />
+                          <Palette className="w-6 h-6 text-slate-300" aria-hidden="true" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="font-bold text-sm text-slate-900 break-words">{p.name}</span>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="text-[16px] font-semibold leading-snug text-ink break-words">{p.name}</span>
                           {p.isFeatured && (
-                            <span className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded bg-brandYellow text-sportsBlue">
-                              <Star className="w-3 h-3" /> Featured
+                            <span className={`${chipClass} bg-accent/25 border-accent/60 text-ink`}>
+                              <Star className="w-3 h-3" aria-hidden="true" /> Featured
                             </span>
                           )}
                           {!p.isActive && (
-                            <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-600">
-                              Hidden
+                            <span className={`${chipClass} bg-paper-deep border-line text-ink-soft`}>
+                              <EyeOff className="w-3 h-3" aria-hidden="true" /> Hidden
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-500 truncate">
+                        <p className="mt-0.5 text-[13px] text-ink-muted truncate">
                           {[p.brand, p.code, p.gauge].filter(Boolean).join(' · ')}
                         </p>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                        <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[13px]">
                           {hasPrice(p) ? (
-                            <span className="text-xs font-bold text-slate-900">{formatPrice(p.price as number)}</span>
+                            <span className="font-semibold text-ink tabular-nums">{formatPrice(p.price as number)}</span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-800">
-                              <IndianRupee className="w-3 h-3" /> No price — shows “Price on request”
-                            </span>
+                            <span className="font-medium text-amber-800">No price yet</span>
                           )}
+                          <span className="text-line" aria-hidden="true">
+                            |
+                          </span>
                           <span
-                            className={`text-xs font-semibold ${
-                              total === 0 ? 'text-slate-400' : inStock === total ? 'text-emerald-700' : inStock === 0 ? 'text-rose-600' : 'text-amber-700'
+                            className={`font-medium ${
+                              total === 0 ? 'text-ink-muted' : inStock === total ? 'text-emerald-800' : inStock === 0 ? 'text-rose-700' : 'text-amber-800'
                             }`}
                           >
-                            {total === 0 ? 'No colours yet' : `${inStock}/${total} colours in stock`}
+                            {total === 0 ? 'No colours yet' : `${inStock} of ${total} colours in stock`}
                           </span>
-                        </div>
+                        </p>
                       </div>
                       <ChevronDown
-                        className={`w-5 h-5 text-slate-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                        className={`w-5 h-5 text-ink-muted shrink-0 transition-transform duration-200 motion-reduce:transition-none ${isOpen ? 'rotate-180' : ''}`}
                         aria-hidden="true"
                       />
                     </button>
 
                     {isOpen && (
-                      <div id={panelId} className="border-t border-line/70 p-3 sm:p-4 space-y-3 bg-paper/40">
-                        <div className="flex flex-wrap gap-2">
+                      <div id={panelId} className="border-t border-line p-3 sm:p-4 space-y-4 bg-paper/50">
+                        <div className="flex flex-wrap gap-2 [&>button]:min-h-[44px] sm:[&>button]:min-h-[40px]">
                           <Button
                             type="button"
                             size="sm"
-                            variant="outline"
-                            className="min-h-[40px]"
-                            leftIcon={<Pencil className="w-3.5 h-3.5" />}
+                            variant="secondary"
+                            leftIcon={<Pencil className="w-4 h-4" />}
                             onClick={() => setEditingProduct(p)}
                           >
                             Edit details
@@ -877,9 +853,8 @@ export const StringsManager: React.FC = () => {
                           <Button
                             type="button"
                             size="sm"
-                            variant="outline"
-                            className="min-h-[40px]"
-                            leftIcon={<Plus className="w-3.5 h-3.5" />}
+                            variant="secondary"
+                            leftIcon={<Plus className="w-4 h-4" />}
                             onClick={() => setEditingVariant({ product: p, variant: null })}
                           >
                             Add colour
@@ -889,9 +864,8 @@ export const StringsManager: React.FC = () => {
                               <Button
                                 type="button"
                                 size="sm"
-                                variant="outline"
-                                className="min-h-[40px] text-emerald-700"
-                                leftIcon={<PackageCheck className="w-3.5 h-3.5" />}
+                                variant="secondary"
+                                leftIcon={<PackageCheck className="w-4 h-4" />}
                                 disabled={inStock === total}
                                 onClick={() => setConfirm({ kind: 'allStock', product: p, inStock: true })}
                               >
@@ -900,9 +874,8 @@ export const StringsManager: React.FC = () => {
                               <Button
                                 type="button"
                                 size="sm"
-                                variant="outline"
-                                className="min-h-[40px] text-rose-700"
-                                leftIcon={<PackageX className="w-3.5 h-3.5" />}
+                                variant="secondary"
+                                leftIcon={<PackageX className="w-4 h-4" />}
                                 disabled={inStock === 0}
                                 onClick={() => setConfirm({ kind: 'allStock', product: p, inStock: false })}
                               >
@@ -914,28 +887,27 @@ export const StringsManager: React.FC = () => {
                             type="button"
                             size="sm"
                             variant="ghost"
-                            className="min-h-[40px] text-rose-600 sm:ml-auto"
-                            leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                            className="text-rose-700 hover:bg-rose-50 sm:ml-auto"
+                            leftIcon={<Trash2 className="w-4 h-4" />}
                             onClick={() => setConfirm({ kind: 'deleteProduct', product: p })}
                           >
                             Delete string
                           </Button>
                         </div>
 
-                        {p.description && <p className="text-xs text-slate-600">{p.description}</p>}
+                        {p.description && <p className="text-[14px] text-ink-soft max-w-3xl">{p.description}</p>}
 
                         {total === 0 ? (
-                          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center">
-                            <Palette className="w-7 h-7 text-slate-300 mx-auto" />
-                            <p className="text-xs text-slate-500 mt-2">No colours yet.</p>
+                          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-8 text-center">
+                            <p className="text-[15px] font-semibold text-ink">No colours yet</p>
+                            <p className="mt-1 text-[14px] text-ink-muted">Add each colour you sell, with a photo of the pack.</p>
                             <Button
                               type="button"
-                              size="sm"
-                              className="mt-3 min-h-[40px]"
-                              leftIcon={<Plus className="w-3.5 h-3.5" />}
+                              className="mt-4 min-h-[44px] px-5"
+                              leftIcon={<Plus className="w-4 h-4" />}
                               onClick={() => setEditingVariant({ product: p, variant: null })}
                             >
-                              Add first colour
+                              Add the first colour
                             </Button>
                           </div>
                         ) : (
@@ -1042,18 +1014,18 @@ export const StringsManager: React.FC = () => {
         message={
           confirm?.kind === 'deleteProduct' ? (
             <>
-              <b>{productLabel(confirm.product)}</b> and its {confirm.product.variants.length} colour
-              {confirm.product.variants.length === 1 ? '' : 's'} will be removed from the website. This can't be undone.
-              <span className="block mt-2 text-xs text-slate-500">Tip: turn off “Show on website” instead to hide it temporarily.</span>
+              <b className="font-semibold text-ink">{productLabel(confirm.product)}</b> and its {confirm.product.variants.length} colour
+              {confirm.product.variants.length === 1 ? '' : 's'} will be removed from the website. This can’t be undone.
+              <span className="block mt-2 text-[13px] text-ink-muted">Tip: turn off “Show on the website” instead to hide it for now.</span>
             </>
           ) : confirm?.kind === 'deleteVariant' ? (
             <>
-              Remove <b>{confirm.variant.colour}</b> from {productLabel(confirm.product)}? This can't be undone.
+              <b className="font-semibold text-ink">{confirm.variant.colour}</b> will be removed from {productLabel(confirm.product)}. This can’t be undone.
             </>
           ) : confirm?.kind === 'allStock' ? (
             <>
-              All {confirm.product.variants.length} colours of <b>{productLabel(confirm.product)}</b> will be marked{' '}
-              <b>{confirm.inStock ? 'in stock' : 'out of stock'}</b>, replacing the individual colour settings.
+              All {confirm.product.variants.length} colours of <b className="font-semibold text-ink">{productLabel(confirm.product)}</b> will be
+              marked <b className="font-semibold text-ink">{confirm.inStock ? 'in stock' : 'out of stock'}</b>, replacing each colour’s own setting.
             </>
           ) : null
         }

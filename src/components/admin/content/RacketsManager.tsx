@@ -9,17 +9,13 @@ import {
   ChevronRight,
   CircleCheck,
   CircleX,
-  Eye,
   EyeOff,
   ImageOff,
-  IndianRupee,
   Loader2,
   Pencil,
   Plus,
-  Search,
   Star,
   Trash2,
-  X,
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
 import { contentService } from '../../../services/contentService';
@@ -31,16 +27,30 @@ import {
   ConfirmDialog,
   ErrorState,
   Field,
+  FieldError,
+  FixFieldsNotice,
+  FormSection,
   ListSkeleton,
   Modal,
+  NoMatches,
   Pills,
+  RefreshFailed,
+  SaveFailedNotice,
+  SearchField,
   SectionHeader,
+  StatGrid,
+  StatTile,
   Switch,
   cardClass,
+  chipClass,
   errorMessage,
+  focusFirstInvalid,
+  focusRing,
+  iconButtonDangerClass,
   inputClass,
   inputErrorClass,
   nullIfEmpty,
+  switchGroupClass,
 } from './shared';
 
 type FilterId = 'all' | 'featured' | 'out' | 'noprice' | 'nophoto' | 'hidden';
@@ -92,18 +102,14 @@ const PhotoTile: React.FC<{
   const [broken, setBroken] = useState(false);
   const isMain = index === 0;
   const btn =
-    'flex-1 min-w-[40px] min-h-[40px] inline-flex items-center justify-center text-slate-600 hover:bg-paper disabled:opacity-30 disabled:hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink/40';
+    'flex-1 min-w-[40px] min-h-[44px] inline-flex items-center justify-center text-ink-soft transition-colors duration-150 hover:bg-paper hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink';
   return (
-    <li
-      className={`rounded-2xl border bg-white overflow-hidden flex flex-col ${
-        isMain ? 'border-amber-300 ring-2 ring-brandYellow' : 'border-line'
-      }`}
-    >
+    <li className={`rounded-2xl border bg-white overflow-hidden flex flex-col ${isMain ? 'border-ink' : 'border-line'}`}>
       <div className="relative aspect-square bg-white">
         {broken ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-slate-400 p-2 text-center">
-            <ImageOff className="w-6 h-6" />
-            <span className="text-xs font-semibold">Can't load this photo</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-ink-muted p-2 text-center">
+            <ImageOff className="w-6 h-6" aria-hidden="true" />
+            <span className="text-[13px] font-medium">Can’t load this photo</span>
           </div>
         ) : (
           <img
@@ -115,14 +121,14 @@ const PhotoTile: React.FC<{
           />
         )}
         <span
-          className={`absolute top-1.5 left-1.5 text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${
-            isMain ? 'bg-brandYellow text-sportsBlue' : 'bg-white/90 border border-line text-slate-600'
+          className={`absolute top-1.5 left-1.5 text-[12px] font-semibold leading-none px-2 py-1 rounded-full ${
+            isMain ? 'bg-ink text-white' : 'bg-white/95 border border-line text-ink-soft tabular-nums'
           }`}
         >
-          {isMain ? 'Main photo' : `#${index + 1}`}
+          {isMain ? 'Main photo' : index + 1}
         </span>
       </div>
-      <div className="flex border-t border-line/70 divide-x divide-line/70">
+      <div className="flex border-t border-line divide-x divide-line">
         <button
           type="button"
           className={btn}
@@ -135,7 +141,7 @@ const PhotoTile: React.FC<{
         </button>
         <button
           type="button"
-          className={`${btn} ${isMain ? 'text-amber-500' : ''}`}
+          className={`${btn} ${isMain ? '!text-ink' : ''}`}
           disabled={isMain}
           onClick={() => onMove(index, 0)}
           aria-label={isMain ? 'This is the main photo' : `Set photo ${index + 1} as main photo`}
@@ -155,7 +161,7 @@ const PhotoTile: React.FC<{
         </button>
         <button
           type="button"
-          className={`${btn} text-rose-600 hover:bg-rose-50`}
+          className={`${btn} !text-rose-700 hover:!bg-rose-50`}
           onClick={() => onRemove(index)}
           aria-label={`Remove photo ${index + 1}`}
           title="Remove photo"
@@ -195,8 +201,8 @@ const PhotosEditor: React.FC<{
         'error',
         'Photo not added',
         uploaded
-          ? 'The upload worked, but the server returned a non-secure (http) link. Ask your developer to set PUBLIC_API_URL to the https address.'
-          : 'Use a secure link starting with https:// (or a site path starting with /).'
+          ? 'The photo uploaded, but the server gave back a link the website can’t show safely. Please tell your website developer.'
+          : 'Paste a secure link that starts with https://'
       );
       return;
     }
@@ -212,15 +218,14 @@ const PhotosEditor: React.FC<{
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="block text-xs font-semibold text-slate-700">Photos</span>
-        <span className={`text-xs font-bold ${full ? 'text-amber-700' : 'text-slate-500'}`}>
-          {images.length}/{MAX_RACKET_PHOTOS}
-        </span>
-      </div>
+    <div className="space-y-3">
+      {images.length > 0 && (
+        <p className={`text-[13px] ${full ? 'font-medium text-amber-800' : 'text-ink-muted'}`}>
+          {images.length} of {MAX_RACKET_PHOTOS} photos{images.length > 1 ? ' · the first one is the main photo' : ''}
+        </p>
+      )}
       {images.length > 0 ? (
-        <ul className="grid grid-cols-2 min-[480px]:grid-cols-3 gap-2">
+        <ul className="grid grid-cols-2 min-[480px]:grid-cols-3 gap-3">
           {images.map((url, i) => (
             <PhotoTile
               key={url}
@@ -234,9 +239,7 @@ const PhotosEditor: React.FC<{
           ))}
         </ul>
       ) : (
-        <p className="text-xs text-slate-500">
-          No photos yet — the website shows a 🏸 placeholder until you add one.
-        </p>
+        <p className="text-[14px] text-ink-soft">No photos yet. Until you add one, the racket shows on the website without a photo.</p>
       )}
       {/* Kept mounted (only hidden) when full, so an in-flight upload can still report it finished. */}
       <div hidden={full}>
@@ -246,16 +249,13 @@ const PhotosEditor: React.FC<{
           onChange={(url, info) => add(url, !!info?.media)}
           aspectClass="aspect-square"
           compact
-          hint="Square photos on a plain background look best (at least 800×800)."
+          hint="Square photos on a plain background look best, at least 800 × 800 px."
           onUploadingChange={onUploadingChange}
           error={error}
         />
       </div>
-      {full && (
-        <p className="text-xs text-amber-700 font-medium">
-          Maximum of {MAX_RACKET_PHOTOS} photos reached — remove one to add another.
-        </p>
-      )}
+      {full && <p className="text-[13px] text-ink-muted">That’s the most photos a racket can have. Remove one to add another.</p>}
+      {full && error && <FieldError>{error}</FieldError>}
     </div>
   );
 };
@@ -332,18 +332,21 @@ const RacketFormModal: React.FC<{
     e.preventDefault();
     if (uploading) return;
     const errs: typeof errors = {};
-    if (!form.brand.trim()) errs.brand = 'Brand is required.';
-    if (!form.name.trim()) errs.name = 'Model name is required.';
+    if (!form.brand.trim()) errs.brand = 'Add the brand.';
+    if (!form.name.trim()) errs.name = 'Add the model name.';
     const priceText = form.price.trim();
     let price: number | null = null;
     if (priceText) {
       price = Number(priceText);
-      if (!Number.isFinite(price) || price < 0) errs.price = 'Enter a valid amount, or leave empty.';
+      if (!Number.isFinite(price) || price < 0) errs.price = 'Enter an amount in rupees, or leave it empty.';
     }
-    if (form.images.length > MAX_RACKET_PHOTOS) errs.images = `Up to ${MAX_RACKET_PHOTOS} photos.`;
-    else if (form.images.some((u) => !isAllowedPhotoUrl(u))) errs.images = 'Every photo must be an https:// link or a site path.';
+    if (form.images.length > MAX_RACKET_PHOTOS) errs.images = `A racket can have up to ${MAX_RACKET_PHOTOS} photos.`;
+    else if (form.images.some((u) => !isAllowedPhotoUrl(u))) errs.images = 'One of the photos has a link the website can’t use. Remove it and upload the photo instead.';
     setErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) {
+      focusFirstInvalid(formId);
+      return;
+    }
 
     const balance = form.balanceChoice === OTHER ? form.balanceOther : form.balanceChoice;
     const input: RacketInput = {
@@ -383,184 +386,195 @@ const RacketFormModal: React.FC<{
       open
       size="lg"
       title={racket ? `Edit ${racketLabel(racket)}` : 'New racket'}
-      subtitle="Shown in the rackets collection on the website"
+      subtitle="Shown in the rackets section of the website"
       onClose={onClose}
       busy={saving}
       footer={
         <>
-          <Button type="button" variant="outline" onClick={onClose} disabled={saving} className="min-h-[42px]">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={saving} className="min-h-[44px] sm:px-5">
             Cancel
           </Button>
-          <Button type="submit" form={formId} isLoading={saving} disabled={uploading} className="min-h-[42px]">
+          <Button type="submit" form={formId} isLoading={saving} disabled={uploading} className="min-h-[44px] sm:px-6">
             {uploading ? 'Waiting for upload…' : racket ? 'Save changes' : 'Add racket'}
           </Button>
         </>
       }
     >
-      <form id={formId} onSubmit={submit} className="space-y-5" noValidate>
-        {saveError && (
-          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700" role="alert">
-            {saveError} Your changes are still here — try again.
+      <form id={formId} onSubmit={submit} className="space-y-7" noValidate>
+        {(saveError || Object.values(errors).some(Boolean)) && (
+          <div className="space-y-2 -mb-2">
+            <SaveFailedNotice message={saveError} />
+            <FixFieldsNotice count={Object.values(errors).filter(Boolean).length} />
           </div>
         )}
 
-        <PhotosEditor
-          images={form.images}
-          label={label}
-          onChange={(imgs) => set('images', imgs)}
-          onUploadingChange={setUploading}
-          error={errors.images}
-        />
+        <FormSection title="Photos" description="Real photos of the racket. Use the star to choose the main photo.">
+          <PhotosEditor
+            images={form.images}
+            label={label}
+            onChange={(imgs) => set('images', imgs)}
+            onUploadingChange={setUploading}
+            error={errors.images}
+          />
+        </FormSection>
 
-        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-3">
-          <Field label="Brand" htmlFor={`${uid}-brand`} required error={errors.brand} hint="Pick a suggestion or type any brand.">
-            <input
-              id={`${uid}-brand`}
-              list={`${uid}-brands`}
-              value={form.brand}
-              onChange={(e) => set('brand', e.target.value)}
-              placeholder="e.g. Yonex"
-              autoComplete="off"
-              className={`${inputClass} ${errors.brand ? inputErrorClass : ''}`}
-            />
-            <datalist id={`${uid}-brands`}>
-              {BRAND_SUGGESTIONS.map((b) => (
-                <option key={b} value={b} />
-              ))}
-            </datalist>
-          </Field>
-          <Field label="Model name" htmlFor={`${uid}-name`} required error={errors.name}>
-            <input
-              id={`${uid}-name`}
-              value={form.name}
-              onChange={(e) => set('name', e.target.value)}
-              placeholder="e.g. Astrox 88D Pro"
-              className={`${inputClass} ${errors.name ? inputErrorClass : ''}`}
-            />
-          </Field>
-        </div>
+        <FormSection title="Details">
+          <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-4">
+            <Field label="Brand" htmlFor={`${uid}-brand`} required error={errors.brand} hint="Pick a suggestion or type any brand.">
+              <input
+                id={`${uid}-brand`}
+                list={`${uid}-brands`}
+                value={form.brand}
+                onChange={(e) => set('brand', e.target.value)}
+                placeholder="e.g. Yonex"
+                autoComplete="off"
+                className={`${inputClass} ${errors.brand ? inputErrorClass : ''}`}
+              />
+              <datalist id={`${uid}-brands`}>
+                {BRAND_SUGGESTIONS.map((b) => (
+                  <option key={b} value={b} />
+                ))}
+              </datalist>
+            </Field>
+            <Field label="Model name" htmlFor={`${uid}-name`} required error={errors.name}>
+              <input
+                id={`${uid}-name`}
+                value={form.name}
+                onChange={(e) => set('name', e.target.value)}
+                placeholder="e.g. Astrox 88D Pro"
+                className={`${inputClass} ${errors.name ? inputErrorClass : ''}`}
+              />
+            </Field>
+          </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field
-            label="Price (₹)"
-            htmlFor={`${uid}-price`}
-            error={errors.price}
-            hint={form.price.trim() ? 'Shown on the website' : 'Empty = "Price on request"'}
-          >
-            <input
-              id={`${uid}-price`}
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="any"
-              value={form.price}
-              onChange={(e) => set('price', e.target.value)}
-              placeholder="Price on request"
-              className={`${inputClass} ${errors.price ? inputErrorClass : ''}`}
-            />
-          </Field>
-          <Field label="Tag" htmlFor={`${uid}-tag`} hint="Short badge, e.g. Bestseller">
-            <input
-              id={`${uid}-tag`}
-              value={form.tag}
-              onChange={(e) => set('tag', e.target.value)}
-              maxLength={40}
-              className={inputClass}
-            />
-          </Field>
-          <Field label="Weight" htmlFor={`${uid}-weight`} hint='e.g. "3U / 4U"'>
-            <input
-              id={`${uid}-weight`}
-              value={form.weight}
-              onChange={(e) => set('weight', e.target.value)}
-              placeholder="3U / 4U"
-              className={inputClass}
-            />
-          </Field>
-          <Field label="Max tension" htmlFor={`${uid}-tension`} hint='e.g. "Up to 28 lbs"'>
-            <input
-              id={`${uid}-tension`}
-              value={form.maxTension}
-              onChange={(e) => set('maxTension', e.target.value)}
-              placeholder="Up to 28 lbs"
-              className={inputClass}
-            />
-          </Field>
-          <Field label="Balance" htmlFor={`${uid}-balance`}>
-            <select
-              id={`${uid}-balance`}
-              value={form.balanceChoice}
-              onChange={(e) => set('balanceChoice', e.target.value)}
-              className={inputClass}
+          <div className="grid grid-cols-2 gap-4">
+            <Field
+              label="Price (₹)"
+              htmlFor={`${uid}-price`}
+              error={errors.price}
+              hint={form.price.trim() ? 'Shown on the website' : 'Empty = shows “Price on request”'}
             >
-              <option value="">Not specified</option>
-              {BALANCE_OPTIONS.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-              <option value={OTHER}>Other…</option>
-            </select>
-            {form.balanceChoice === OTHER && (
-              <>
-                <label htmlFor={`${uid}-balance-other`} className="sr-only">
-                  Balance (other)
-                </label>
-                <input
-                  id={`${uid}-balance-other`}
-                  value={form.balanceOther}
-                  onChange={(e) => set('balanceOther', e.target.value)}
-                  placeholder="e.g. Slightly Head Heavy"
-                  className={`${inputClass} mt-2`}
-                />
-              </>
-            )}
+              <input
+                id={`${uid}-price`}
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step="any"
+                value={form.price}
+                onChange={(e) => set('price', e.target.value)}
+                placeholder="Price on request"
+                className={`${inputClass} ${errors.price ? inputErrorClass : ''}`}
+              />
+            </Field>
+            <Field label="Tag" htmlFor={`${uid}-tag`} optional hint="A short badge, e.g. Bestseller">
+              <input
+                id={`${uid}-tag`}
+                value={form.tag}
+                onChange={(e) => set('tag', e.target.value)}
+                maxLength={40}
+                className={inputClass}
+              />
+            </Field>
+          </div>
+          <Field label="Description" htmlFor={`${uid}-desc`} optional>
+            <textarea
+              id={`${uid}-desc`}
+              rows={3}
+              value={form.description}
+              onChange={(e) => set('description', e.target.value)}
+              className={`${inputClass} resize-y`}
+              placeholder="Who it suits, playing style, what's included…"
+            />
           </Field>
-          <Field label="Shaft flex" htmlFor={`${uid}-flex`}>
-            <select id={`${uid}-flex`} value={form.flex} onChange={(e) => set('flex', e.target.value)} className={inputClass}>
-              <option value="">Not specified</option>
-              {flexOptions.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
+        </FormSection>
 
-        <Field label="Description" htmlFor={`${uid}-desc`}>
-          <textarea
-            id={`${uid}-desc`}
-            rows={3}
-            value={form.description}
-            onChange={(e) => set('description', e.target.value)}
-            className={`${inputClass} resize-y`}
-            placeholder="Who it suits, playing style, what's included…"
-          />
-        </Field>
+        <FormSection title="Specifications" description="All optional. Shown under the racket name.">
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Weight" htmlFor={`${uid}-weight`} hint='e.g. "3U / 4U"'>
+              <input
+                id={`${uid}-weight`}
+                value={form.weight}
+                onChange={(e) => set('weight', e.target.value)}
+                placeholder="3U / 4U"
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Max tension" htmlFor={`${uid}-tension`} hint='e.g. "Up to 28 lbs"'>
+              <input
+                id={`${uid}-tension`}
+                value={form.maxTension}
+                onChange={(e) => set('maxTension', e.target.value)}
+                placeholder="Up to 28 lbs"
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Balance" htmlFor={`${uid}-balance`}>
+              <select
+                id={`${uid}-balance`}
+                value={form.balanceChoice}
+                onChange={(e) => set('balanceChoice', e.target.value)}
+                className={inputClass}
+              >
+                <option value="">Not specified</option>
+                {BALANCE_OPTIONS.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+                <option value={OTHER}>Other…</option>
+              </select>
+              {form.balanceChoice === OTHER && (
+                <>
+                  <label htmlFor={`${uid}-balance-other`} className="sr-only">
+                    Balance (other)
+                  </label>
+                  <input
+                    id={`${uid}-balance-other`}
+                    value={form.balanceOther}
+                    onChange={(e) => set('balanceOther', e.target.value)}
+                    placeholder="e.g. Slightly Head Heavy"
+                    className={`${inputClass} mt-2`}
+                  />
+                </>
+              )}
+            </Field>
+            <Field label="Shaft flex" htmlFor={`${uid}-flex`}>
+              <select id={`${uid}-flex`} value={form.flex} onChange={(e) => set('flex', e.target.value)} className={inputClass}>
+                <option value="">Not specified</option>
+                {flexOptions.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        </FormSection>
 
-        <div className="divide-y divide-line/70 rounded-2xl border border-line px-3">
-          <Switch
-            checked={form.inStock}
-            onChange={(v) => set('inStock', v)}
-            label="In stock"
-            description="Out of stock rackets stay visible with an “Ask availability” button."
-            onLabel="In stock"
-            offLabel="Out of stock"
-          />
-          <Switch
-            checked={form.isFeatured}
-            onChange={(v) => set('isFeatured', v)}
-            label="Featured"
-            description="Shown in the rackets row on the home page."
-          />
-          <Switch
-            checked={form.isActive}
-            onChange={(v) => set('isActive', v)}
-            label="Visible on website"
-            description="Turn off to hide this racket from customers."
-          />
-        </div>
+        <FormSection title="On the website">
+          <div className={switchGroupClass}>
+            <Switch
+              checked={form.isActive}
+              onChange={(v) => set('isActive', v)}
+              label="Show on the website"
+              description="Turn off to hide this racket from customers."
+            />
+            <Switch
+              checked={form.inStock}
+              onChange={(v) => set('inStock', v)}
+              label="Stock"
+              description="Out-of-stock rackets stay visible with an “Ask availability” button."
+              onLabel="In stock"
+              offLabel="Out of stock"
+            />
+            <Switch
+              checked={form.isFeatured}
+              onChange={(v) => set('isFeatured', v)}
+              label="Featured"
+              description="Shown in the rackets row on the homepage."
+            />
+          </div>
+        </FormSection>
       </form>
     </Modal>
   );
@@ -585,12 +599,13 @@ const RacketThumb: React.FC<{ racket: Racket }> = ({ racket }) => {
           className={`w-full h-full object-contain p-1 ${racket.inStock ? '' : 'grayscale opacity-60'}`}
         />
       ) : (
-        <span className="text-3xl select-none" aria-hidden="true">
-          🏸
+        <span className="flex flex-col items-center gap-1 text-ink-muted" aria-hidden="true">
+          <ImageOff className="w-5 h-5" />
+          <span className="text-[12px] font-medium">No photo</span>
         </span>
       )}
       {photos.length > 1 && (
-        <span className="absolute bottom-1 right-1 text-xs font-bold bg-slate-900/75 text-white px-1 rounded">
+        <span className="absolute bottom-1 right-1 text-[12px] font-medium leading-none bg-ink/75 text-white px-1.5 py-1 rounded-md tabular-nums">
           {photos.length} photos
         </span>
       )}
@@ -608,50 +623,41 @@ const RacketRow: React.FC<{
   const specs = [r.balance, r.flex, r.weight, r.maxTension].filter((s) => s && s.trim());
   const noPhoto = photosOf(r).length === 0;
   return (
-    <li className={`${cardClass} p-3 sm:p-4 flex flex-col md:flex-row md:items-center gap-3 ${r.isActive ? '' : 'bg-paper/80'}`}>
-      <div className="flex gap-3 min-w-0 flex-1">
+    <li className={`${cardClass} p-3 sm:p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-5 ${r.isActive ? '' : 'bg-paper/70'}`}>
+      <div className="flex gap-3 sm:gap-4 min-w-0 flex-1">
         <RacketThumb racket={r} />
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-paper text-sportsBlue border border-line">
-              {r.brand}
-            </span>
-            {r.tag && (
-              <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 max-w-[12rem] truncate">
-                {r.tag}
-              </span>
-            )}
+          <p className="text-[13px] font-medium text-ink-muted">{r.brand}</p>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-[16px] font-semibold leading-snug text-ink break-words">{r.name}</span>
+            {r.tag && <span className={`${chipClass} bg-white border-line text-ink-soft max-w-[12rem] truncate`}>{r.tag}</span>}
             {r.isFeatured && (
-              <span className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded bg-brandYellow text-sportsBlue">
-                <Star className="w-3 h-3" /> Featured
+              <span className={`${chipClass} bg-accent/25 border-accent/60 text-ink`}>
+                <Star className="w-3 h-3" aria-hidden="true" /> Featured
               </span>
             )}
-            {r.isActive ? (
-              <span className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">
-                <Eye className="w-3 h-3" /> On website
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-600">
-                <EyeOff className="w-3 h-3" /> Hidden
+            {!r.isActive && (
+              <span className={`${chipClass} bg-paper-deep border-line text-ink-soft`}>
+                <EyeOff className="w-3 h-3" aria-hidden="true" /> Hidden from website
               </span>
             )}
           </div>
-          <p className="font-bold text-sm text-slate-900 mt-1 break-words">{r.name}</p>
-          {specs.length > 0 && <p className="text-xs text-slate-500 break-words">{specs.join(' · ')}</p>}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+          {specs.length > 0 && <p className="mt-0.5 text-[13px] text-ink-muted break-words">{specs.join(' · ')}</p>}
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[13px]">
             {hasPrice(r) ? (
-              <span className="text-xs font-bold text-slate-900">{formatPrice(r.price as number)}</span>
+              <span className="font-semibold text-ink tabular-nums">{formatPrice(r.price as number)}</span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-800">
-                <IndianRupee className="w-3 h-3" /> No price — shows “Price on request”
-              </span>
+              <span className="font-medium text-amber-800">No price yet</span>
             )}
             {noPhoto && (
-              <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded border border-slate-300 bg-paper text-slate-600">
-                <ImageOff className="w-3 h-3" /> No photo yet
-              </span>
+              <>
+                <span className="text-line" aria-hidden="true">
+                  |
+                </span>
+                <span className="font-medium text-amber-800">No photo yet</span>
+              </>
             )}
-          </div>
+          </p>
         </div>
       </div>
 
@@ -663,10 +669,10 @@ const RacketRow: React.FC<{
           aria-pressed={r.inStock}
           aria-busy={pending}
           aria-label={`${racketLabel(r)}: ${r.inStock ? 'in stock' : 'out of stock'}. Tap to mark ${r.inStock ? 'out of stock' : 'in stock'}.`}
-          className={`flex-1 md:flex-none md:w-36 min-h-[44px] px-3 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors active:scale-[0.98] disabled:cursor-wait ${
+          className={`flex-1 md:flex-none md:w-40 min-h-[44px] px-3 rounded-xl border text-[14px] font-semibold inline-flex items-center justify-center gap-1.5 transition-colors duration-150 active:scale-[0.98] disabled:cursor-wait ${focusRing} ${
             r.inStock
-              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-              : 'bg-rose-50 text-rose-700 border border-rose-300 hover:bg-rose-100'
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+              : 'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100'
           }`}
         >
           {pending ? (
@@ -680,10 +686,9 @@ const RacketRow: React.FC<{
         </button>
         <Button
           type="button"
-          variant="outline"
-          size="sm"
-          className="min-h-[44px]"
-          leftIcon={<Pencil className="w-3.5 h-3.5" />}
+          variant="secondary"
+          className="min-h-[44px] px-4"
+          leftIcon={<Pencil className="w-4 h-4" />}
           onClick={onEdit}
           aria-label={`Edit ${racketLabel(r)}`}
         >
@@ -694,7 +699,7 @@ const RacketRow: React.FC<{
           onClick={onDelete}
           aria-label={`Delete ${racketLabel(r)}`}
           title="Delete racket"
-          className="shrink-0 w-11 h-11 inline-flex items-center justify-center rounded-xl border border-line bg-white text-slate-500 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50"
+          className={`${iconButtonDangerClass} sm:w-11 sm:h-11`}
         >
           <Trash2 className="w-4 h-4" />
         </button>
@@ -825,13 +830,13 @@ export const RacketsManager: React.FC = () => {
     <div className="space-y-4 min-w-0">
       <SectionHeader
         title="Rackets"
-        description="Add real photos, prices and stock for the rackets shown on the website. Tap a racket's stock button to mark it in or out of stock — it saves instantly. Rackets without a price show “Price on request” with an Enquire button."
+        description="Photos, prices and stock for the rackets on the website. Tap a racket's stock button to switch it between in stock and out of stock; it saves straight away."
         actions={
           <Button
             type="button"
             onClick={() => setEditing('new')}
             leftIcon={<Plus className="w-4 h-4" />}
-            className="min-h-[42px]"
+            className="min-h-[44px] px-5"
             disabled={loading && rackets.length === 0}
           >
             Add racket
@@ -856,52 +861,22 @@ export const RacketsManager: React.FC = () => {
         />
       ) : (
         <>
-          {/* Summary */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className={`${cardClass} p-3`}>
-              <p className="text-xs font-semibold text-slate-500">Rackets</p>
-              <p className="text-xl font-bold text-slate-900">{rackets.length}</p>
-            </div>
-            <div className={`${cardClass} p-3`}>
-              <p className="text-xs font-semibold text-slate-500">Out of stock</p>
-              <p className={`text-xl font-bold ${stats.out ? 'text-rose-600' : 'text-emerald-600'}`}>{stats.out}</p>
-            </div>
-            <div className={`${cardClass} p-3`}>
-              <p className="text-xs font-semibold text-slate-500">No price yet</p>
-              <p className={`text-xl font-bold ${stats.noPrice ? 'text-amber-600' : 'text-emerald-600'}`}>{stats.noPrice}</p>
-            </div>
-            <div className={`${cardClass} p-3`}>
-              <p className="text-xs font-semibold text-slate-500">No photo yet</p>
-              <p className={`text-xl font-bold ${stats.noPhoto ? 'text-amber-600' : 'text-emerald-600'}`}>{stats.noPhoto}</p>
-            </div>
-          </div>
+          <StatGrid>
+            <StatTile label="Rackets" value={rackets.length} />
+            <StatTile label="Out of stock" value={stats.out} tone={stats.out ? 'bad' : 'default'} />
+            <StatTile label="No price yet" value={stats.noPrice} tone={stats.noPrice ? 'warn' : 'default'} />
+            <StatTile label="No photo yet" value={stats.noPhoto} tone={stats.noPhoto ? 'warn' : 'default'} />
+          </StatGrid>
 
           {/* Search + filters */}
-          <div className="space-y-2">
-            <div className="relative">
-              <label htmlFor="rackets-search" className="sr-only">
-                Search rackets
-              </label>
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                id="rackets-search"
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search brand, model or tag (e.g. Astrox, Li-Ning)"
-                className={`${inputClass} pl-9 pr-10`}
-              />
-              {query && (
-                <button
-                  type="button"
-                  onClick={() => setQuery('')}
-                  aria-label="Clear search"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 inline-flex items-center justify-center text-slate-400 hover:text-slate-700"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+          <div className="space-y-3">
+            <SearchField
+              id="rackets-search"
+              label="Search rackets"
+              value={query}
+              onChange={setQuery}
+              placeholder="Search by brand, model or tag, e.g. Astrox"
+            />
             <Pills<FilterId>
               ariaLabel="Filter rackets"
               value={filter}
@@ -917,32 +892,16 @@ export const RacketsManager: React.FC = () => {
             />
           </div>
 
-          {loadError && (
-            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-center justify-between gap-2">
-              <span>Refresh failed: {loadError}</span>
-              <Button type="button" size="sm" variant="outline" onClick={load} className="min-h-[36px]">
-                Retry
-              </Button>
-            </div>
-          )}
+          {loadError && <RefreshFailed message={loadError} onRetry={load} retrying={loading} />}
 
           {visible.length === 0 ? (
-            <div className={`${cardClass} p-8 text-center`}>
-              <p className="text-sm font-semibold text-slate-700">No rackets match</p>
-              <p className="text-xs text-slate-500 mt-1">Try a different search or filter.</p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-3 min-h-[40px]"
-                onClick={() => {
-                  setQuery('');
-                  setFilter('all');
-                }}
-              >
-                Clear search & filters
-              </Button>
-            </div>
+            <NoMatches
+              title="No rackets match"
+              onClear={() => {
+                setQuery('');
+                setFilter('all');
+              }}
+            />
           ) : (
             <ul className="space-y-2.5">
               {visible.map((r) => (
@@ -982,10 +941,8 @@ export const RacketsManager: React.FC = () => {
         message={
           deleting ? (
             <>
-              <b>{racketLabel(deleting)}</b> will be removed from the website. This can't be undone.
-              <span className="block mt-2 text-xs text-slate-500">
-                Tip: turn off “Visible on website” instead to hide it temporarily.
-              </span>
+              <b className="font-semibold text-ink">{racketLabel(deleting)}</b> will be removed from the website. This can’t be undone.
+              <span className="block mt-2 text-[13px] text-ink-muted">Tip: turn off “Show on the website” instead to hide it for now.</span>
             </>
           ) : null
         }

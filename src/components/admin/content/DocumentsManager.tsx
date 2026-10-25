@@ -13,17 +13,26 @@ import {
   ConfirmDialog,
   ErrorState,
   Field,
+  FixFieldsNotice,
+  FormSection,
   ListSkeleton,
   Modal,
+  SaveFailedNotice,
   SectionHeader,
   Switch,
   cardClass,
+  chipClass,
   errorMessage,
+  focusFirstInvalid,
+  focusRing,
   formatDate,
+  iconButtonClass,
+  iconButtonDangerClass,
   inputClass,
   inputErrorClass,
   isHttpsUrl,
   nullIfEmpty,
+  switchGroupClass,
 } from './shared';
 
 export const DOCUMENT_CATEGORIES: DocumentCategory[] = [
@@ -100,14 +109,17 @@ const DocumentFormModal: React.FC<{
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: typeof errors = {};
-    if (!form.title.trim()) errs.title = 'Title is required.';
-    if (form.mode === 'upload' && !form.uploadUrl) errs.file = 'Upload a PDF or image.';
+    if (!form.title.trim()) errs.title = 'Add a title.';
+    if (form.mode === 'upload' && !form.uploadUrl) errs.file = 'Upload a PDF or a photo.';
     if (form.mode === 'link') {
-      if (!form.linkUrl.trim()) errs.link = 'Paste the document link.';
-      else if (!isHttpsUrl(form.linkUrl)) errs.link = 'Link must start with https://';
+      if (!form.linkUrl.trim()) errs.link = 'Paste the link to the document.';
+      else if (!isHttpsUrl(form.linkUrl)) errs.link = 'The link must start with https://';
     }
     setErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) {
+      focusFirstInvalid(formId);
+      return;
+    }
 
     const input: SiteDocumentInput =
       form.mode === 'upload'
@@ -150,157 +162,164 @@ const DocumentFormModal: React.FC<{
     <Modal
       open
       title={doc ? 'Edit document' : 'New document'}
-      subtitle="PDFs and images up to the upload limit, or a link to a file hosted elsewhere"
+      subtitle="A PDF or photo customers can open, or a staff-only file"
       onClose={onClose}
       busy={saving}
       footer={
         <>
-          <Button type="button" variant="outline" onClick={onClose} disabled={saving} className="min-h-[42px]">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={saving} className="min-h-[44px] sm:px-5">
             Cancel
           </Button>
-          <Button type="submit" form={formId} isLoading={saving} disabled={uploading} className="min-h-[42px]">
+          <Button type="submit" form={formId} isLoading={saving} disabled={uploading} className="min-h-[44px] sm:px-6">
             {uploading ? 'Waiting for upload…' : doc ? 'Save changes' : 'Add document'}
           </Button>
         </>
       }
     >
-      <form id={formId} onSubmit={submit} className="space-y-4" noValidate>
-        {saveError && (
-          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700" role="alert">
-            {saveError} Your changes are still here — try again.
+      <form id={formId} onSubmit={submit} className="space-y-7" noValidate>
+        {(saveError || Object.values(errors).some(Boolean)) && (
+          <div className="space-y-2 -mb-2">
+            <SaveFailedNotice message={saveError} />
+            <FixFieldsNotice count={Object.values(errors).filter(Boolean).length} />
           </div>
         )}
 
-        <div role="radiogroup" aria-label="Document source" className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-100">
-          {(
-            [
-              { id: 'upload', label: 'Upload file', icon: Upload },
-              { id: 'link', label: 'External link', icon: Link2 },
-            ] as const
-          ).map((opt) => {
-            const Icon = opt.icon;
-            const active = form.mode === opt.id;
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => set('mode', opt.id)}
-                disabled={uploading}
-                className={`min-h-[40px] rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 ${
-                  active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Icon className="w-4 h-4" /> {opt.label}
-              </button>
-            );
-          })}
-        </div>
+        <FormSection title="Document">
+          <div role="radiogroup" aria-label="Where the file is" className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-paper-deep">
+            {(
+              [
+                { id: 'upload', label: 'Upload file', icon: Upload },
+                { id: 'link', label: 'Link to a file', icon: Link2 },
+              ] as const
+            ).map((opt) => {
+              const Icon = opt.icon;
+              const active = form.mode === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => set('mode', opt.id)}
+                  disabled={uploading}
+                  className={`min-h-[44px] rounded-lg text-[14px] font-medium inline-flex items-center justify-center gap-2 transition-colors duration-150 ${focusRing} ${
+                    active ? 'bg-white text-ink shadow-sm' : 'text-ink-soft hover:text-ink'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" aria-hidden="true" /> {opt.label}
+                </button>
+              );
+            })}
+          </div>
 
-        {form.mode === 'upload' ? (
-          <MediaUpload
-            label="File"
-            required
-            kind="file"
-            accept={DOC_ACCEPT}
-            allowUrl={false}
-            value={form.uploadUrl}
-            fileName={form.uploadFileName}
-            contain
-            aspectClass="aspect-[4/3]"
-            compact
-            error={errors.file}
-            onUploadingChange={setUploading}
-            onChange={(url, info) => {
-              setForm((f) => {
-                const name = info?.media?.fileName || info?.file?.name || null;
-                const autoTitle =
-                  !f.title.trim() && name ? name.replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ').trim() : f.title;
-                return {
-                  ...f,
-                  uploadUrl: url,
-                  uploadFileName: url ? name : null,
-                  uploadContentType: url ? info?.media?.contentType || info?.file?.type || null : null,
-                  title: autoTitle,
-                };
-              });
-              if (url) setErrors((x) => ({ ...x, file: undefined }));
-            }}
-          />
-        ) : (
-          <Field label="Link" htmlFor="doc-link" required error={errors.link} hint="e.g. a Google Drive share link. Must start with https://">
-            <input
-              id="doc-link"
-              type="url"
-              inputMode="url"
-              value={form.linkUrl}
-              onChange={(e) => {
-                set('linkUrl', e.target.value);
-                if (errors.link) setErrors((x) => ({ ...x, link: undefined }));
+          {form.mode === 'upload' ? (
+            <MediaUpload
+              label="File"
+              required
+              kind="file"
+              accept={DOC_ACCEPT}
+              allowUrl={false}
+              value={form.uploadUrl}
+              fileName={form.uploadFileName}
+              contain
+              aspectClass="aspect-[4/3]"
+              compact
+              error={errors.file}
+              onUploadingChange={setUploading}
+              onChange={(url, info) => {
+                setForm((f) => {
+                  const name = info?.media?.fileName || info?.file?.name || null;
+                  const autoTitle =
+                    !f.title.trim() && name ? name.replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ').trim() : f.title;
+                  return {
+                    ...f,
+                    uploadUrl: url,
+                    uploadFileName: url ? name : null,
+                    uploadContentType: url ? info?.media?.contentType || info?.file?.type || null : null,
+                    title: autoTitle,
+                  };
+                });
+                if (url) setErrors((x) => ({ ...x, file: undefined }));
               }}
-              placeholder="https://"
-              className={`${inputClass} ${errors.link ? inputErrorClass : ''}`}
+            />
+          ) : (
+            <Field label="Link" htmlFor="doc-link" required error={errors.link} hint="For example a Google Drive share link. It must start with https://">
+              <input
+                id="doc-link"
+                type="url"
+                inputMode="url"
+                value={form.linkUrl}
+                onChange={(e) => {
+                  set('linkUrl', e.target.value);
+                  if (errors.link) setErrors((x) => ({ ...x, link: undefined }));
+                }}
+                placeholder="https://"
+                className={`${inputClass} ${errors.link ? inputErrorClass : ''}`}
+              />
+            </Field>
+          )}
+        </FormSection>
+
+        <FormSection title="Details">
+          <Field label="Title" htmlFor="doc-title" required error={errors.title} hint="Customers see this name.">
+            <input
+              id="doc-title"
+              value={form.title}
+              onChange={(e) => {
+                set('title', e.target.value);
+                if (errors.title) setErrors((x) => ({ ...x, title: undefined }));
+              }}
+              className={`${inputClass} ${errors.title ? inputErrorClass : ''}`}
+              placeholder="e.g. Stringing price list 2026"
             />
           </Field>
-        )}
 
-        <Field label="Title" htmlFor="doc-title" required error={errors.title}>
-          <input
-            id="doc-title"
-            value={form.title}
-            onChange={(e) => {
-              set('title', e.target.value);
-              if (errors.title) setErrors((x) => ({ ...x, title: undefined }));
-            }}
-            className={`${inputClass} ${errors.title ? inputErrorClass : ''}`}
-            placeholder="e.g. Stringing price list 2026"
-          />
-        </Field>
+          <Field label="Category" htmlFor="doc-category">
+            <select
+              id="doc-category"
+              value={form.category}
+              onChange={(e) => {
+                const category = e.target.value as DocumentCategory;
+                setForm((f) => ({
+                  ...f,
+                  category,
+                  // New internal documents default to staff-only.
+                  isPublic: !doc && category === 'Internal' ? false : f.isPublic,
+                }));
+              }}
+              className={inputClass}
+            >
+              {DOCUMENT_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </Field>
 
-        <Field label="Category" htmlFor="doc-category">
-          <select
-            id="doc-category"
-            value={form.category}
-            onChange={(e) => {
-              const category = e.target.value as DocumentCategory;
-              setForm((f) => ({
-                ...f,
-                category,
-                // New internal documents default to staff-only.
-                isPublic: !doc && category === 'Internal' ? false : f.isPublic,
-              }));
-            }}
-            className={inputClass}
-          >
-            {DOCUMENT_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </Field>
+          <Field label="Description" htmlFor="doc-desc" optional>
+            <textarea
+              id="doc-desc"
+              rows={2}
+              value={form.description}
+              onChange={(e) => set('description', e.target.value)}
+              className={`${inputClass} resize-y`}
+            />
+          </Field>
+        </FormSection>
 
-        <Field label="Description" htmlFor="doc-desc">
-          <textarea
-            id="doc-desc"
-            rows={2}
-            value={form.description}
-            onChange={(e) => set('description', e.target.value)}
-            className={`${inputClass} resize-y`}
-          />
-        </Field>
-
-        <div className="rounded-2xl border border-line px-3">
-          <Switch
-            checked={form.isPublic}
-            onChange={(v) => set('isPublic', v)}
-            label="Visible on website"
-            description={form.isPublic ? 'Customers can open and download this.' : 'Staff only — hidden from customers.'}
-            onLabel="Website"
-            offLabel="Staff only"
-          />
-        </div>
+        <FormSection title="Who can see it">
+          <div className={switchGroupClass}>
+            <Switch
+              checked={form.isPublic}
+              onChange={(v) => set('isPublic', v)}
+              label="Show on the website"
+              description={form.isPublic ? 'Customers can open and download it.' : 'Staff only: hidden from customers.'}
+              onLabel="Website"
+              offLabel="Staff only"
+            />
+          </div>
+        </FormSection>
       </form>
     </Modal>
   );
@@ -381,13 +400,13 @@ export const DocumentsManager: React.FC = () => {
     <div className="space-y-4">
       <SectionHeader
         title="Documents"
-        description="Price lists, terms, warranty and guides for customers — or staff-only files. Upload a PDF/image or link to a file hosted elsewhere."
+        description="Price lists, terms, warranty and guides customers can download, plus staff-only files."
         actions={
           <Button
             type="button"
             onClick={() => setEditing('new')}
             leftIcon={<Plus className="w-4 h-4" />}
-            className="min-h-[42px]"
+            className="min-h-[44px] px-5"
             disabled={loading && docs.length === 0 && !loadError}
           >
             Add document
@@ -407,15 +426,14 @@ export const DocumentsManager: React.FC = () => {
           onAction={() => setEditing('new')}
         />
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-6">
           {grouped.map((group) => (
             <section key={group.category} aria-labelledby={`doc-cat-${group.category}`}>
-              <h4
-                id={`doc-cat-${group.category}`}
-                className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-2"
-              >
+              <h4 id={`doc-cat-${group.category}`} className="mb-2.5 flex items-center gap-2 text-[15px] font-semibold text-ink">
                 {group.category}
-                <span className="text-xs font-bold bg-slate-200 text-slate-600 rounded-full px-1.5">{group.items.length}</span>
+                <span className="text-[12px] leading-none font-semibold tabular-nums bg-paper-deep text-ink-soft rounded-full px-2 py-1">
+                  {group.items.length}
+                </span>
               </h4>
               <ul className="space-y-2">
                 {group.items.map((d) => {
@@ -424,38 +442,34 @@ export const DocumentsManager: React.FC = () => {
                     <li key={d.id} className={`${cardClass} p-3 sm:p-4`}>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <div
-                            className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border ${
-                              isPdfDoc(d) ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-paper border-line text-ink'
-                            }`}
-                          >
-                            <Icon className="w-5 h-5" />
+                          <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border bg-paper border-line text-ink-soft">
+                            <Icon className="w-5 h-5" aria-hidden="true" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="font-bold text-sm text-slate-900 break-words">{d.title}</span>
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <span className="text-[15px] font-semibold leading-snug text-ink break-words">{d.title}</span>
                               {d.isPublic ? (
-                                <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                  <Globe className="w-3 h-3" /> Visible on website
+                                <span className={`${chipClass} bg-emerald-50 text-emerald-800 border-emerald-200`}>
+                                  <Globe className="w-3 h-3" aria-hidden="true" /> On the website
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-line">
-                                  <Lock className="w-3 h-3" /> Staff only
+                                <span className={`${chipClass} bg-paper-deep text-ink-soft border-line`}>
+                                  <Lock className="w-3 h-3" aria-hidden="true" /> Staff only
                                 </span>
                               )}
                             </div>
-                            {d.description && <p className="text-xs text-slate-600 mt-0.5 break-words">{d.description}</p>}
-                            <p className="text-xs text-slate-400 mt-0.5 truncate">
+                            {d.description && <p className="mt-0.5 text-[14px] text-ink-soft break-words">{d.description}</p>}
+                            <p className="mt-0.5 text-[13px] text-ink-muted truncate">
                               {d.fileName || d.fileUrl} · Added {formatDate(d.createdAt)}
                             </p>
                           </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-1.5 sm:justify-end shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-line/70">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:justify-end shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-line">
                           <Switch
                             checked={d.isPublic}
                             onChange={() => toggleVisibility(d)}
                             disabled={busyIds.has(d.id)}
-                            label={`Show "${d.title}" on website`}
+                            label={`Show "${d.title}" on the website`}
                             hideLabel
                           />
                           <a
@@ -463,23 +477,20 @@ export const DocumentsManager: React.FC = () => {
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label={`Open "${d.title}" in a new tab`}
-                            className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-line text-slate-600 hover:bg-paper"
+                            title="Open"
+                            className={iconButtonClass}
                           >
                             <ExternalLink className="w-4 h-4" />
                           </a>
-                          <button
-                            type="button"
-                            onClick={() => setEditing(d)}
-                            aria-label={`Edit "${d.title}"`}
-                            className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-line text-ink hover:bg-paper"
-                          >
+                          <button type="button" onClick={() => setEditing(d)} aria-label={`Edit "${d.title}"`} title="Edit" className={iconButtonClass}>
                             <Pencil className="w-4 h-4" />
                           </button>
                           <button
                             type="button"
                             onClick={() => setToDelete(d)}
                             aria-label={`Delete "${d.title}"`}
-                            className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-line text-rose-600 hover:bg-rose-50"
+                            title="Delete"
+                            className={iconButtonDangerClass}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -511,7 +522,7 @@ export const DocumentsManager: React.FC = () => {
         title="Delete document?"
         message={
           <>
-            <b>"{toDelete?.title}"</b> will be removed{toDelete?.isPublic ? ' from the website' : ''}. This can't be undone.
+            <b className="font-semibold text-ink">“{toDelete?.title}”</b> will be removed{toDelete?.isPublic ? ' from the website' : ''}. This can’t be undone.
           </>
         }
         confirmLabel="Delete document"

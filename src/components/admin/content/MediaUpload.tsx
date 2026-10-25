@@ -8,7 +8,7 @@ import { FileText, ImagePlus, Link2, Loader2, RefreshCw, Trash2, Upload, Externa
 import { useApp } from '../../../context/AppContext';
 import { contentService, MAX_UPLOAD_BYTES } from '../../../services/contentService';
 import { UploadedMedia } from '../../../types/content';
-import { errorMessage, inputClass } from './shared';
+import { FieldError, errorMessage, focusRing, hintClass, inputClass } from './shared';
 
 export interface MediaUploadInfo {
   media?: UploadedMedia;
@@ -57,16 +57,18 @@ const matchesAccept = (file: File, accept?: string): boolean => {
   });
 };
 
+/** Short list of accepted formats, e.g. "JPG, PNG or WebP" or "PDF, JPG, PNG or WebP". */
 const describeAccept = (accept?: string): string => {
   if (!accept) return 'any file';
   const parts = accept.split(',').map((t) => t.trim().toLowerCase());
   const out: string[] = [];
   parts.forEach((p) => {
-    if (p === 'image/*') out.push('images (JPG, PNG, WebP)');
-    else if (p === 'application/pdf' || p === '.pdf') out.push('PDF');
+    if (p === 'application/pdf' || p === '.pdf') out.push('PDF');
+    else if (p === 'image/*') out.push('JPG', 'PNG', 'WebP');
     else out.push(p.replace(/^\./, '').toUpperCase());
   });
-  return Array.from(new Set(out)).join(' or ');
+  const list = Array.from(new Set(out));
+  return list.length > 1 ? `${list.slice(0, -1).join(', ')} or ${list[list.length - 1]}` : list[0];
 };
 
 const isValidUrl = (value: string): boolean => {
@@ -105,6 +107,7 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
   const [urlDraft, setUrlDraft] = useState('');
   const [lastFileName, setLastFileName] = useState<string | null>(null);
   const [lastContentType, setLastContentType] = useState<string | null>(null);
+  const [announce, setAnnounce] = useState('');
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -129,11 +132,11 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
     if (!file || disabled || uploading) return;
     setLocalError(null);
     if (!matchesAccept(file, accept)) {
-      setLocalError(`"${file.name}" isn't supported. Please choose ${describeAccept(accept)}.`);
+      setLocalError(`"${file.name}" can't be used here. Choose a ${describeAccept(accept)} file.`);
       return;
     }
     if (file.size > MAX_UPLOAD_BYTES) {
-      setLocalError(`"${file.name}" is ${(file.size / 1024 / 1024).toFixed(1)} MB. The limit is ${MAX_MB} MB.`);
+      setLocalError(`"${file.name}" is ${(file.size / 1024 / 1024).toFixed(1)} MB. Files can be up to ${MAX_MB} MB.`);
       return;
     }
     const isImage = file.type.startsWith('image/');
@@ -144,6 +147,7 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
       if (!mounted.current) return;
       setLastFileName(media.fileName || file.name);
       setLastContentType(media.contentType || file.type || null);
+      setAnnounce(`${file.name} uploaded.`);
       onChange(media.url, { media, file });
     } catch (err) {
       if (!mounted.current) return;
@@ -162,7 +166,7 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
   const applyUrl = () => {
     const v = urlDraft.trim();
     if (!isValidUrl(v)) {
-      setLocalError('Enter a full link starting with https:// (or a site path starting with /).');
+      setLocalError('Paste the full link, starting with https://');
       return;
     }
     setLocalError(null);
@@ -186,32 +190,35 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
 
   return (
     <div className="min-w-0">
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <span id={`${id}-label`} className="block text-xs font-semibold text-slate-700">
+      <div className="flex items-end justify-between gap-2 mb-1.5">
+        <span id={`${id}-label`} className="block text-[14px] font-medium leading-snug text-ink">
           {label}
           {required && <span className="text-rose-600 ml-0.5" aria-hidden="true">*</span>}
         </span>
-        {allowUrl && !disabled && (
+        {allowUrl && !disabled && !uploading && (
           <button
             type="button"
             onClick={() => {
               setUrlMode((m) => !m);
               setLocalError(null);
             }}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-ink hover:text-ink min-h-[32px] px-1"
+            className={`-my-2.5 -mr-1.5 shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-1.5 rounded-lg text-[13px] font-medium text-ink-soft underline decoration-ink/25 underline-offset-4 hover:text-ink hover:decoration-ink ${focusRing}`}
           >
             {urlMode ? (
               <>
-                <Upload className="w-3.5 h-3.5" /> Upload instead
+                <Upload className="w-3.5 h-3.5" aria-hidden="true" /> Upload instead
               </>
             ) : (
               <>
-                <Link2 className="w-3.5 h-3.5" /> Paste a link
+                <Link2 className="w-3.5 h-3.5" aria-hidden="true" /> Use a link
               </>
             )}
           </button>
         )}
       </div>
+      <span className="sr-only" aria-live="polite">
+        {uploading ? 'Uploading…' : announce}
+      </span>
 
       <input
         ref={inputRef}
@@ -241,67 +248,70 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
                 applyUrl();
               }
             }}
-            placeholder="https://… or /images/…"
+            placeholder="https://"
+            autoComplete="off"
             className={inputClass}
+            aria-invalid={localError ? true : undefined}
             aria-describedby={describedBy}
           />
           <button
             type="button"
             onClick={applyUrl}
-            className="shrink-0 min-h-[42px] px-4 rounded-xl bg-sportsBlue text-white text-sm font-semibold hover:bg-badmintonNavy"
+            className={`shrink-0 min-h-[44px] px-5 rounded-xl bg-ink text-white text-[15px] font-semibold transition-colors duration-150 hover:bg-ink-hover ${focusRing}`}
           >
-            Use link
+            Use this link
           </button>
         </div>
       ) : shownUrl ? (
         <div className="rounded-2xl border border-line overflow-hidden bg-white">
           {showsImage ? (
-            <div className={`relative ${aspectClass} ${compact ? 'max-h-40' : ''} w-full ${contain ? 'bg-white' : 'bg-slate-100'}`}>
+            <div className={`relative ${aspectClass} ${compact ? 'max-h-40' : ''} w-full ${contain ? 'bg-white' : 'bg-paper'}`}>
               <img
                 src={shownUrl}
                 alt={`${label} preview`}
                 loading="lazy"
-                className={`absolute inset-0 w-full h-full ${contain ? 'object-contain p-2' : 'object-cover'}`}
+                className={`absolute inset-0 w-full h-full ${contain ? 'object-contain p-2' : 'object-cover'} ${uploading ? 'opacity-50' : ''}`}
               />
               {uploading && (
-                <div className="absolute inset-0 bg-white/70 flex flex-col items-center justify-center gap-2" aria-live="polite">
-                  <Loader2 className="w-7 h-7 animate-spin text-ink" />
-                  <span className="text-xs font-semibold text-slate-700">Uploading…</span>
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/95 border border-line px-3.5 py-2 text-[13px] font-semibold text-ink shadow-sm">
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Uploading…
+                  </span>
                 </div>
               )}
             </div>
           ) : (
             <div className="flex items-center gap-3 p-3">
-              <div className="w-10 h-10 rounded-xl bg-paper border border-line flex items-center justify-center shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-paper border border-line flex items-center justify-center shrink-0">
                 {uploading ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-ink" />
+                  <Loader2 className="w-5 h-5 animate-spin text-ink" aria-hidden="true" />
                 ) : (
-                  <FileText className="w-5 h-5 text-ink" />
+                  <FileText className="w-5 h-5 text-ink" aria-hidden="true" />
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-slate-800 truncate">{uploading ? 'Uploading…' : displayName}</p>
+                <p className="text-[15px] font-medium text-ink truncate">{uploading ? 'Uploading…' : displayName}</p>
                 {!uploading && value && (
                   <a
                     href={value}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-ink hover:underline"
+                    className={`inline-flex items-center gap-1 text-[13px] text-ink-soft underline decoration-ink/25 underline-offset-4 hover:text-ink rounded ${focusRing}`}
                   >
-                    Open <ExternalLink className="w-3 h-3" />
+                    Open file <ExternalLink className="w-3 h-3" aria-hidden="true" />
                   </a>
                 )}
               </div>
             </div>
           )}
           {!uploading && !disabled && (
-            <div className="flex border-t border-line/70 divide-x divide-line/70">
+            <div className="flex border-t border-line divide-x divide-line">
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-[40px] text-xs font-semibold text-slate-700 hover:bg-paper"
+                className={`flex-1 inline-flex items-center justify-center gap-1.5 min-h-[44px] text-[14px] font-medium text-ink-soft transition-colors duration-150 hover:bg-paper hover:text-ink ${focusRing} focus-visible:outline-offset-[-2px]`}
               >
-                <RefreshCw className="w-3.5 h-3.5" /> Replace
+                <RefreshCw className="w-4 h-4" aria-hidden="true" /> Replace
               </button>
               {!required && (
                 <button
@@ -309,11 +319,12 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
                   onClick={() => {
                     setLastFileName(null);
                     setLastContentType(null);
+                    setAnnounce('Removed.');
                     onChange(null);
                   }}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-[40px] text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                  className={`flex-1 inline-flex items-center justify-center gap-1.5 min-h-[44px] text-[14px] font-medium text-rose-700 transition-colors duration-150 hover:bg-rose-50 ${focusRing} focus-visible:outline-offset-[-2px]`}
                 >
-                  <Trash2 className="w-3.5 h-3.5" /> Remove
+                  <Trash2 className="w-4 h-4" aria-hidden="true" /> Remove
                 </button>
               )}
             </div>
@@ -336,43 +347,43 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
           }}
           aria-labelledby={`${id}-label`}
           aria-describedby={describedBy}
-          className={`w-full ${compact ? 'py-5' : 'py-8'} px-4 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-1.5 text-center transition-colors disabled:opacity-60 ${
+          aria-busy={uploading || undefined}
+          aria-invalid={shownError ? true : undefined}
+          className={`w-full ${compact ? 'py-6' : 'py-9'} px-4 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-1 text-center transition-colors duration-150 disabled:cursor-wait ${focusRing} ${
             dragOver
-              ? 'border-ink bg-paper'
+              ? 'border-ink bg-paper-deep'
               : shownError
-                ? 'border-rose-300 bg-rose-50/40 hover:bg-rose-50'
-                : 'border-slate-300 bg-paper/60 hover:bg-paper hover:border-slate-400'
+                ? 'border-rose-300 bg-rose-50/50 hover:bg-rose-50'
+                : 'border-slate-300 bg-paper/70 hover:bg-paper hover:border-ink/40'
           }`}
         >
-          {uploading ? (
-            <Loader2 className="w-7 h-7 animate-spin text-ink" />
-          ) : kind === 'image' ? (
-            <ImagePlus className="w-7 h-7 text-slate-400" />
-          ) : (
-            <Upload className="w-7 h-7 text-slate-400" />
-          )}
-          <span className="text-sm font-semibold text-slate-700">
-            {uploading ? 'Uploading…' : (
+          <span className="mb-1.5 w-11 h-11 rounded-full bg-white border border-line inline-flex items-center justify-center">
+            {uploading ? (
+              <Loader2 className="w-5 h-5 animate-spin text-ink" aria-hidden="true" />
+            ) : kind === 'image' ? (
+              <ImagePlus className="w-5 h-5 text-ink-soft" aria-hidden="true" />
+            ) : (
+              <Upload className="w-5 h-5 text-ink-soft" aria-hidden="true" />
+            )}
+          </span>
+          <span className="text-[15px] font-semibold text-ink">
+            {uploading ? (
+              'Uploading…'
+            ) : (
               <>
-                <span className="text-ink">Tap to choose</span>
-                <span className="hidden sm:inline"> or drag a file here</span>
+                {kind === 'image' ? 'Choose a photo' : 'Choose a file'}
+                <span className="hidden sm:inline font-normal text-ink-muted"> or drop it here</span>
               </>
             )}
           </span>
-          <span className="text-xs text-slate-500">
-            {describeAccept(accept)} · max {MAX_MB} MB
+          <span className="text-[13px] text-ink-muted">
+            {describeAccept(accept)} · up to {MAX_MB} MB
           </span>
         </button>
       )}
 
       <div id={describedBy}>
-        {shownError ? (
-          <p className="text-xs text-rose-600 mt-1 font-medium" role="alert">
-            {shownError}
-          </p>
-        ) : hint ? (
-          <p className="text-xs text-slate-500 mt-1 leading-snug">{hint}</p>
-        ) : null}
+        {shownError ? <FieldError>{shownError}</FieldError> : hint ? <p className={hintClass}>{hint}</p> : null}
       </div>
     </div>
   );

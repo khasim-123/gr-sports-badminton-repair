@@ -6,10 +6,8 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  AlertTriangle,
   ChevronLeft,
   ChevronRight,
-  Eye,
   EyeOff,
   ImageOff,
   Layers,
@@ -17,7 +15,6 @@ import {
   Minus,
   Pencil,
   Plus,
-  Search,
   Shirt,
   Star,
   Trash2,
@@ -33,16 +30,33 @@ import {
   ConfirmDialog,
   ErrorState,
   Field,
+  FieldError,
+  FixFieldsNotice,
+  FormSection,
   ListSkeleton,
   Modal,
+  NoMatches,
+  Notice,
   Pills,
+  RefreshFailed,
+  SaveFailedNotice,
+  SearchField,
   SectionHeader,
+  StatGrid,
+  StatTile,
   Switch,
   cardClass,
+  chipClass,
   errorMessage,
+  focusFirstInvalid,
+  focusRing,
+  iconButtonDangerClass,
   inputClass,
   inputErrorClass,
+  labelClass,
+  hintClass,
   nullIfEmpty,
+  switchGroupClass,
 } from './shared';
 
 export const MAX_APPAREL_PHOTOS = 6;
@@ -113,14 +127,14 @@ const PhotoTile: React.FC<{
   const [broken, setBroken] = useState(false);
   const isMain = index === 0;
   const btn =
-    'flex-1 min-w-[40px] min-h-[40px] inline-flex items-center justify-center text-slate-600 hover:bg-paper disabled:opacity-30 disabled:hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink/40';
+    'flex-1 min-w-[40px] min-h-[44px] inline-flex items-center justify-center text-ink-soft transition-colors duration-150 hover:bg-paper hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink';
   return (
-    <li className={`rounded-2xl border bg-white overflow-hidden flex flex-col ${isMain ? 'border-amber-300 ring-2 ring-brandYellow' : 'border-line'}`}>
+    <li className={`rounded-2xl border bg-white overflow-hidden flex flex-col ${isMain ? 'border-ink' : 'border-line'}`}>
       <div className="relative aspect-square bg-white">
         {broken ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-slate-400 p-2 text-center">
-            <ImageOff className="w-6 h-6" />
-            <span className="text-xs font-semibold">Can't load this photo</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-ink-muted p-2 text-center">
+            <ImageOff className="w-6 h-6" aria-hidden="true" />
+            <span className="text-[13px] font-medium">Can’t load this photo</span>
           </div>
         ) : (
           <img
@@ -132,20 +146,20 @@ const PhotoTile: React.FC<{
           />
         )}
         <span
-          className={`absolute top-1.5 left-1.5 text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${
-            isMain ? 'bg-brandYellow text-sportsBlue' : 'bg-white/90 border border-line text-slate-600'
+          className={`absolute top-1.5 left-1.5 text-[12px] font-semibold leading-none px-2 py-1 rounded-full ${
+            isMain ? 'bg-ink text-white' : 'bg-white/95 border border-line text-ink-soft tabular-nums'
           }`}
         >
-          {isMain ? 'Main photo' : `#${index + 1}`}
+          {isMain ? 'Main photo' : index + 1}
         </span>
       </div>
-      <div className="flex border-t border-line/70 divide-x divide-line/70">
+      <div className="flex border-t border-line divide-x divide-line">
         <button type="button" className={btn} disabled={index === 0} onClick={() => onMove(index, index - 1)} aria-label={`Move photo ${index + 1} left`} title="Move left">
           <ChevronLeft className="w-4 h-4" />
         </button>
         <button
           type="button"
-          className={`${btn} ${isMain ? 'text-amber-500' : ''}`}
+          className={`${btn} ${isMain ? '!text-ink' : ''}`}
           disabled={isMain}
           onClick={() => onMove(index, 0)}
           aria-label={isMain ? 'This is the main photo' : `Set photo ${index + 1} as main photo`}
@@ -165,7 +179,7 @@ const PhotoTile: React.FC<{
         </button>
         <button
           type="button"
-          className={`${btn} text-rose-600 hover:bg-rose-50`}
+          className={`${btn} !text-rose-700 hover:!bg-rose-50`}
           onClick={() => onRemove(index)}
           aria-label={`Remove photo ${index + 1}`}
           title="Remove photo"
@@ -203,8 +217,8 @@ const PhotosEditor: React.FC<{
         'error',
         'Photo not added',
         uploaded
-          ? 'The upload worked, but the server returned a non-secure (http) link. Ask your developer to set PUBLIC_API_URL to the https address.'
-          : 'Use a secure link starting with https:// (or a site path starting with /).'
+          ? 'The photo uploaded, but the server gave back a link the website can’t show safely. Please tell your website developer.'
+          : 'Paste a secure link that starts with https://'
       );
       return;
     }
@@ -220,15 +234,14 @@ const PhotosEditor: React.FC<{
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="block text-xs font-semibold text-slate-700">Photos</span>
-        <span className={`text-xs font-bold ${full ? 'text-amber-700' : 'text-slate-500'}`}>
-          {images.length}/{MAX_APPAREL_PHOTOS}
-        </span>
-      </div>
+    <div className="space-y-3">
+      {images.length > 0 && (
+        <p className={`text-[13px] ${full ? 'font-medium text-amber-800' : 'text-ink-muted'}`}>
+          {images.length} of {MAX_APPAREL_PHOTOS} photos{images.length > 1 ? ' · the first one is the main photo' : ''}
+        </p>
+      )}
       {images.length > 0 ? (
-        <ul className="grid grid-cols-2 min-[480px]:grid-cols-3 gap-2">
+        <ul className="grid grid-cols-2 min-[480px]:grid-cols-3 gap-3">
           {images.map((url, i) => (
             <PhotoTile
               key={url}
@@ -242,7 +255,7 @@ const PhotosEditor: React.FC<{
           ))}
         </ul>
       ) : (
-        <p className="text-xs text-slate-500">No photos yet — add at least one real photo of the garment before showing it on the website.</p>
+        <p className="text-[14px] text-ink-soft">No photos yet. Add at least one real photo before showing it on the website.</p>
       )}
       {/* Kept mounted (only hidden) when full, so an in-flight upload can still report it finished. */}
       <div hidden={full}>
@@ -252,12 +265,13 @@ const PhotosEditor: React.FC<{
           onChange={(url, info) => add(url, !!info?.media)}
           aspectClass="aspect-square"
           compact
-          hint="Front view first, then back, close-up of the fabric or print, and someone wearing it."
+          hint="JPG, PNG or WebP. Square photos look best."
           onUploadingChange={onUploadingChange}
           error={error}
         />
       </div>
-      {full && <p className="text-xs text-amber-700 font-medium">Maximum of {MAX_APPAREL_PHOTOS} photos reached — remove one to add another.</p>}
+      {full && <p className="text-[13px] text-ink-muted">That’s the most photos an item can have. Remove one to add another.</p>}
+      {full && error && <FieldError>{error}</FieldError>}
     </div>
   );
 };
@@ -315,15 +329,18 @@ const ApparelFormModal: React.FC<{
     e.preventDefault();
     if (uploading || saving) return;
     const errs: typeof errors = {};
-    if (!form.name.trim()) errs.name = 'Product name is required.';
+    if (!form.name.trim()) errs.name = 'Add the item name.';
     else if (form.name.trim().length > 120) errs.name = 'Keep the name under 120 characters.';
     const price = Number(form.price.trim());
-    if (!form.price.trim()) errs.price = 'Price is required for items sold online.';
+    if (!form.price.trim()) errs.price = 'Add the price. Items sold online need one.';
     else if (!Number.isFinite(price) || price <= 0) errs.price = 'Enter a price above ₹0.';
-    if (form.images.length > MAX_APPAREL_PHOTOS) errs.images = `Up to ${MAX_APPAREL_PHOTOS} photos.`;
-    else if (form.images.some((u) => !isAllowedPhotoUrl(u))) errs.images = 'Every photo must be an https:// link or a site path.';
+    if (form.images.length > MAX_APPAREL_PHOTOS) errs.images = `An item can have up to ${MAX_APPAREL_PHOTOS} photos.`;
+    else if (form.images.some((u) => !isAllowedPhotoUrl(u))) errs.images = 'One of the photos has a link the website can’t use. Remove it and upload the photo instead.';
     setErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) {
+      focusFirstInvalid(formId);
+      return;
+    }
 
     const input: ApparelProductInput = {
       name: form.name.trim(),
@@ -363,122 +380,132 @@ const ApparelFormModal: React.FC<{
         busy={saving}
         footer={
           <>
-            <Button type="button" variant="outline" onClick={onClose} disabled={saving} className="min-h-[42px]">
+            <Button type="button" variant="secondary" onClick={onClose} disabled={saving} className="min-h-[44px] sm:px-5">
               Cancel
             </Button>
-            <Button type="submit" form={formId} isLoading={saving} disabled={uploading} className="min-h-[42px]">
+            <Button type="submit" form={formId} isLoading={saving} disabled={uploading} className="min-h-[44px] sm:px-6">
               {uploading ? 'Waiting for upload…' : product ? 'Save changes' : 'Save & add sizes'}
             </Button>
           </>
         }
       >
-        <form id={formId} onSubmit={submit} className="space-y-5" noValidate>
-          {saveError && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700" role="alert">
-              {saveError} Your changes are still here — try again.
+        <form id={formId} onSubmit={submit} className="space-y-7" noValidate>
+          {(saveError || Object.values(errors).some(Boolean)) && (
+            <div className="space-y-2 -mb-2">
+              <SaveFailedNotice message={saveError} />
+              <FixFieldsNotice count={Object.values(errors).filter(Boolean).length} />
             </div>
           )}
 
-          <PhotosEditor
-            images={form.images}
-            label={form.name}
-            onChange={(imgs) => set('images', imgs)}
-            onUploadingChange={setUploading}
-            error={errors.images}
-          />
-
-          <Field label="Product name" htmlFor={`${uid}-name`} required error={errors.name}>
-            <input
-              id={`${uid}-name`}
-              value={form.name}
-              onChange={(e) => set('name', e.target.value)}
-              placeholder="e.g. Dry-fit round neck T-shirt"
-              maxLength={140}
-              className={`${inputClass} ${errors.name ? inputErrorClass : ''}`}
+          <FormSection title="Photos" description="Front view first, then the back, a close-up of the fabric or print, and someone wearing it.">
+            <PhotosEditor
+              images={form.images}
+              label={form.name}
+              onChange={(imgs) => set('images', imgs)}
+              onUploadingChange={setUploading}
+              error={errors.images}
             />
-          </Field>
+          </FormSection>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Category" htmlFor={`${uid}-cat`}>
-              <select id={`${uid}-cat`} value={form.category} onChange={(e) => set('category', e.target.value as ApparelCategory)} className={inputClass}>
-                {CATEGORIES.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Price per piece (₹)" htmlFor={`${uid}-price`} required error={errors.price}>
+          <FormSection title="Details">
+            <Field label="Item name" htmlFor={`${uid}-name`} required error={errors.name}>
               <input
-                id={`${uid}-price`}
-                type="number"
-                inputMode="decimal"
-                min={1}
-                step="any"
-                value={form.price}
-                onChange={(e) => set('price', e.target.value)}
-                placeholder="e.g. 499"
-                className={`${inputClass} ${errors.price ? inputErrorClass : ''}`}
+                id={`${uid}-name`}
+                value={form.name}
+                onChange={(e) => set('name', e.target.value)}
+                placeholder="e.g. Dry-fit round neck T-shirt"
+                maxLength={140}
+                className={`${inputClass} ${errors.name ? inputErrorClass : ''}`}
               />
             </Field>
-            <Field label="Fabric" htmlFor={`${uid}-fabric`} hint='e.g. "100% polyester dry-fit, 160 GSM"'>
-              <input id={`${uid}-fabric`} value={form.fabric} onChange={(e) => set('fabric', e.target.value)} maxLength={120} className={inputClass} />
-            </Field>
-            <Field label="Fit" htmlFor={`${uid}-fit`}>
-              <input
-                id={`${uid}-fit`}
-                list={`${uid}-fits`}
-                value={form.fit}
-                onChange={(e) => set('fit', e.target.value)}
-                placeholder="Regular fit"
-                maxLength={60}
-                autoComplete="off"
-                className={inputClass}
+
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Category" htmlFor={`${uid}-cat`}>
+                <select id={`${uid}-cat`} value={form.category} onChange={(e) => set('category', e.target.value as ApparelCategory)} className={inputClass}>
+                  {CATEGORIES.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Price per piece (₹)" htmlFor={`${uid}-price`} required error={errors.price}>
+                <input
+                  id={`${uid}-price`}
+                  type="number"
+                  inputMode="decimal"
+                  min={1}
+                  step="any"
+                  value={form.price}
+                  onChange={(e) => set('price', e.target.value)}
+                  placeholder="e.g. 499"
+                  className={`${inputClass} ${errors.price ? inputErrorClass : ''}`}
+                />
+              </Field>
+              <Field label="Fabric" htmlFor={`${uid}-fabric`} optional hint='e.g. "100% polyester dry-fit, 160 GSM"'>
+                <input id={`${uid}-fabric`} value={form.fabric} onChange={(e) => set('fabric', e.target.value)} maxLength={120} className={inputClass} />
+              </Field>
+              <Field label="Fit" htmlFor={`${uid}-fit`} optional>
+                <input
+                  id={`${uid}-fit`}
+                  list={`${uid}-fits`}
+                  value={form.fit}
+                  onChange={(e) => set('fit', e.target.value)}
+                  placeholder="Regular fit"
+                  maxLength={60}
+                  autoComplete="off"
+                  className={inputClass}
+                />
+                <datalist id={`${uid}-fits`}>
+                  {FIT_SUGGESTIONS.map((f) => (
+                    <option key={f} value={f} />
+                  ))}
+                </datalist>
+              </Field>
+            </div>
+
+            <Field label="Description" htmlFor={`${uid}-desc`} optional>
+              <textarea
+                id={`${uid}-desc`}
+                rows={3}
+                value={form.description}
+                onChange={(e) => set('description', e.target.value)}
+                className={`${inputClass} resize-y`}
+                placeholder="Feel, care instructions, what it's good for…"
               />
-              <datalist id={`${uid}-fits`}>
-                {FIT_SUGGESTIONS.map((f) => (
-                  <option key={f} value={f} />
-                ))}
-              </datalist>
             </Field>
-          </div>
+          </FormSection>
 
-          <Field label="Description" htmlFor={`${uid}-desc`}>
-            <textarea
-              id={`${uid}-desc`}
-              rows={3}
-              value={form.description}
-              onChange={(e) => set('description', e.target.value)}
-              className={`${inputClass} resize-y`}
-              placeholder="Feel, care instructions, what it's good for…"
-            />
-          </Field>
-
-          <div className="divide-y divide-line/70 rounded-2xl border border-line px-3">
-            <Switch
-              checked={form.customisable}
-              onChange={(v) => set('customisable', v)}
-              label="Name / number printing"
-              description="Shows that team names or numbers can be printed on request."
-            />
-            <Switch checked={form.isFeatured} onChange={(v) => set('isFeatured', v)} label="Featured" description="Shown first in the shop." />
-            <Switch
-              checked={form.isActive}
-              onChange={(v) => set('isActive', v)}
-              label="Visible on website"
-              description="Turn off to hide this item from customers."
-            />
-          </div>
+          <FormSection title="On the website">
+            <div className={switchGroupClass}>
+              <Switch
+                checked={form.isActive}
+                onChange={(v) => set('isActive', v)}
+                label="Show on the website"
+                description="Turn off to hide this item from customers."
+              />
+              <Switch checked={form.isFeatured} onChange={(v) => set('isFeatured', v)} label="Featured" description="Shown first in the shop." />
+              <Switch
+                checked={form.customisable}
+                onChange={(v) => set('customisable', v)}
+                label="Name / number printing"
+                description="Tells customers that team names or numbers can be printed on request."
+              />
+            </div>
+          </FormSection>
 
           {product && onEditStock && (
-            <button
-              type="button"
-              onClick={onEditStock}
-              disabled={saving}
-              className="w-full min-h-[44px] rounded-xl border border-line bg-paper text-ink font-bold text-xs hover:bg-paper-deep inline-flex items-center justify-center gap-1.5"
-            >
-              <Layers className="w-4 h-4" /> Edit sizes, colours & stock ({variantsOf(product).length} variants)
-            </button>
+            <FormSection title="Sizes, colours & stock">
+              <button
+                type="button"
+                onClick={onEditStock}
+                disabled={saving}
+                className={`w-full min-h-[44px] rounded-xl border border-line bg-white text-ink font-medium text-[14px] transition-colors duration-150 hover:bg-paper inline-flex items-center justify-center gap-2 ${focusRing}`}
+              >
+                <Layers className="w-4 h-4" aria-hidden="true" /> Edit sizes, colours & stock ({variantsOf(product).length}{' '}
+                {variantsOf(product).length === 1 ? 'option' : 'options'})
+              </button>
+            </FormSection>
           )}
         </form>
       </Modal>
@@ -579,10 +606,10 @@ const StockCell: React.FC<{
   const tone =
     shown <= 0 ? 'border-rose-300 bg-rose-50' : shown <= LOW_STOCK ? 'border-amber-300 bg-amber-50' : 'border-line bg-white';
   const stepBtn =
-    'w-9 h-10 shrink-0 inline-flex items-center justify-center text-slate-600 hover:bg-white/80 disabled:opacity-30 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink/40';
+    'w-11 h-11 shrink-0 inline-flex items-center justify-center text-ink-soft transition-colors duration-150 hover:bg-white/80 hover:text-ink disabled:opacity-30 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink';
 
   return (
-    <div className="min-w-[8.5rem]">
+    <div className="min-w-[9.5rem]">
       <div className={`flex items-stretch rounded-xl border overflow-hidden ${tone}`}>
         <button type="button" className={stepBtn} onClick={() => bump(-1)} disabled={shown <= 0} aria-label={`One less ${label}`}>
           <Minus className="w-4 h-4" />
@@ -608,20 +635,20 @@ const StockCell: React.FC<{
               commitTyped();
             }
           }}
-          className="w-full min-w-0 text-center text-sm font-bold text-slate-900 bg-transparent focus:outline-none focus:bg-white"
+          className="w-full min-w-0 text-center text-[15px] font-semibold tabular-nums text-ink bg-transparent focus:outline-none focus:bg-white"
         />
         <button type="button" className={stepBtn} onClick={() => bump(1)} aria-label={`One more ${label}`}>
           <Plus className="w-4 h-4" />
         </button>
       </div>
-      <div className="flex items-center justify-between gap-1 mt-0.5 min-h-[24px]">
+      <div className="flex items-center justify-between gap-1 mt-0.5">
         <span
-          className={`text-xs font-bold ${error ? 'text-rose-700' : shown <= 0 ? 'text-rose-700' : shown <= LOW_STOCK ? 'text-amber-700' : 'text-slate-400'}`}
+          className={`text-[12px] font-semibold ${error ? 'text-rose-700' : shown <= 0 ? 'text-rose-700' : shown <= LOW_STOCK ? 'text-amber-800' : 'text-ink-muted'}`}
           role={error ? 'alert' : undefined}
         >
           {saving ? (
-            <span className="inline-flex items-center gap-1 text-slate-500">
-              <Loader2 className="w-3 h-3 animate-spin" /> Saving
+            <span className="inline-flex items-center gap-1 text-ink-muted">
+              <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" /> Saving
             </span>
           ) : error ? (
             error
@@ -639,9 +666,9 @@ const StockCell: React.FC<{
           disabled={saving}
           aria-label={`Delete ${label}`}
           title="Delete this size & colour"
-          className="w-6 h-6 inline-flex items-center justify-center rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40"
+          className={`-mr-1 w-11 h-11 sm:w-10 sm:h-10 inline-flex items-center justify-center rounded-lg text-ink-muted transition-colors duration-150 hover:text-rose-700 hover:bg-rose-50 disabled:opacity-40 ${focusRing}`}
         >
-          <Trash2 className="w-3.5 h-3.5" />
+          <Trash2 className="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -664,9 +691,9 @@ type PendingConfirm =
 
 const Swatch: React.FC<{ hex?: string | null; className?: string }> = ({ hex, className = 'w-4 h-4' }) =>
   hex ? (
-    <span className={`${className} rounded-full border border-slate-300 shrink-0`} style={{ backgroundColor: hex }} aria-hidden="true" />
+    <span className={`${className} inline-block rounded-full border border-slate-300 shrink-0`} style={{ backgroundColor: hex }} aria-hidden="true" />
   ) : (
-    <span className={`${className} rounded-full border border-dashed border-slate-300 shrink-0`} aria-hidden="true" />
+    <span className={`${className} inline-block rounded-full border border-dashed border-slate-300 shrink-0`} aria-hidden="true" />
   );
 
 const VariantsDialog: React.FC<{
@@ -906,7 +933,7 @@ const VariantsDialog: React.FC<{
         type="button"
         onClick={() => addCell(size, colour)}
         disabled={!!busy}
-        className="w-full min-w-[8.5rem] min-h-[40px] rounded-xl border border-dashed border-slate-300 text-xs font-bold text-slate-500 hover:bg-paper hover:text-ink inline-flex items-center justify-center gap-1 disabled:opacity-50"
+        className={`w-full min-w-[9.5rem] min-h-[44px] rounded-xl border border-dashed border-slate-300 text-[13px] font-medium text-ink-muted transition-colors duration-150 hover:bg-paper hover:text-ink inline-flex items-center justify-center gap-1 disabled:opacity-50 ${focusRing}`}
         aria-label={`Add ${colour.colour} / ${size}`}
       >
         {busy === key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Add
@@ -936,32 +963,34 @@ const VariantsDialog: React.FC<{
       disabled={!!busy}
       aria-label={label}
       title={label}
-      className="w-7 h-7 shrink-0 inline-flex items-center justify-center rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40"
+      className={`w-11 h-11 sm:w-10 sm:h-10 shrink-0 inline-flex items-center justify-center rounded-lg text-ink-muted transition-colors duration-150 hover:text-rose-700 hover:bg-rose-50 disabled:opacity-40 ${focusRing}`}
     >
-      <X className="w-3.5 h-3.5" />
+      <X className="w-4 h-4" />
     </button>
   );
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-slate-900/70 backdrop-blur-xs">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-slate-900/60">
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby={`${uid}-title`}
-          className="bg-white w-full sm:max-w-5xl rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] sm:max-h-[calc(100dvh-2rem)] animate-fadeIn"
+          className="bg-white w-full sm:max-w-5xl rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[calc(100dvh-0.75rem)] sm:max-h-[calc(100dvh-2rem)] motion-safe:animate-fadeIn"
         >
-          <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 border-b border-line/70 shrink-0">
-            <div className="min-w-0">
-              <h3 id={`${uid}-title`} className="font-bold text-base text-slate-900 break-words">
-                Sizes, colours & stock — {product.name}
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+          <div className="flex items-start justify-between gap-3 px-5 sm:px-6 pt-4 pb-3 border-b border-line shrink-0">
+            <div className="min-w-0 pt-1">
+              <h2 id={`${uid}-title`} className="font-display tracking-[0.01em] text-[22px] sm:text-[24px] leading-tight font-bold text-ink break-words">
+                Sizes, colours & stock
+              </h2>
+              <p className="mt-0.5 text-[13px] leading-snug text-ink-muted">
+                <span className="font-medium text-ink-soft">{product.name}</span>
+                {' · '}
                 {variants.length === 0
                   ? isNew
                     ? 'Saved. Now add the sizes and colours you have, then enter the stock for each.'
                     : 'Add the sizes and colours you have, then enter the stock for each.'
-                  : `${total} pieces in stock · ${variants.length} ${variants.length === 1 ? 'variant' : 'variants'}${low ? ` · ${low} low` : ''}${
+                  : `${total} pieces in stock · ${variants.length} ${variants.length === 1 ? 'option' : 'options'}${low ? ` · ${low} low` : ''}${
                       out ? ` · ${out} out of stock` : ''
                     }`}
               </p>
@@ -971,23 +1000,19 @@ const VariantsDialog: React.FC<{
               onClick={close}
               disabled={anyPending}
               aria-label="Close"
-              className="shrink-0 w-10 h-10 -mr-2 -mt-1 inline-flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-40"
+              className={`shrink-0 w-11 h-11 -mr-2 inline-flex items-center justify-center rounded-xl text-ink-muted transition-colors duration-150 hover:bg-paper hover:text-ink disabled:opacity-40 ${focusRing}`}
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="px-5 py-4 overflow-y-auto overscroll-contain flex-1 min-h-0 space-y-4">
-            {error && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-1.5" role="alert">
-                <AlertTriangle className="w-4 h-4 shrink-0" /> {error}
-              </div>
-            )}
+          <div className="px-5 sm:px-6 py-5 overflow-y-auto overscroll-contain flex-1 min-h-0 space-y-5">
+            {error && <Notice tone="error">{error}</Notice>}
 
             {/* Add size / colour */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="p-3 rounded-2xl border border-line bg-paper/60 space-y-2">
-                <label htmlFor={`${uid}-size`} className="block text-xs font-semibold text-slate-700">
+              <div className="p-4 rounded-2xl border border-line bg-paper/60 space-y-2.5">
+                <label htmlFor={`${uid}-size`} className={labelClass + ' !mb-0'}>
                   Add a size
                 </label>
                 <div className="flex gap-2">
@@ -1008,34 +1033,31 @@ const VariantsDialog: React.FC<{
                     maxLength={20}
                     className={`${inputClass} ${inputError.size ? inputErrorClass : ''}`}
                   />
-                  <Button type="button" variant="outline" className="min-h-[42px] shrink-0" onClick={() => addSize(sizeInput)} disabled={!!busy}>
+                  <Button type="button" variant="secondary" className="min-h-[44px] px-5 shrink-0" onClick={() => addSize(sizeInput)} disabled={!!busy}>
                     Add
                   </Button>
                 </div>
-                {inputError.size && (
-                  <p className="text-xs text-rose-600 font-medium" role="alert">
-                    {inputError.size}
-                  </p>
-                )}
+                {inputError.size && <FieldError className="!mt-0">{inputError.size}</FieldError>}
                 {quickSizes.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5" aria-label="Common sizes">
+                  <div className="flex flex-wrap gap-2" aria-label="Common sizes">
                     {quickSizes.map((s) => (
                       <button
                         key={s}
                         type="button"
                         onClick={() => addSize(s)}
                         disabled={!!busy}
-                        className="min-h-[34px] px-2.5 rounded-lg border border-line bg-white text-xs font-bold text-slate-700 hover:bg-paper disabled:opacity-50 inline-flex items-center gap-1"
+                        aria-label={`Add size ${s}`}
+                        className={`min-h-[44px] sm:min-h-[40px] px-3 rounded-full border border-line bg-white text-[13px] font-medium text-ink-soft transition-colors duration-150 hover:border-ink/30 hover:text-ink disabled:opacity-50 inline-flex items-center gap-1 ${focusRing}`}
                       >
-                        {busy === `size:${s}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} {s}
+                        {busy === `size:${s}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Plus className="w-3.5 h-3.5" aria-hidden="true" />} {s}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
 
-              <div className="p-3 rounded-2xl border border-line bg-paper/60 space-y-2">
-                <label htmlFor={`${uid}-colour`} className="block text-xs font-semibold text-slate-700">
+              <div className="p-4 rounded-2xl border border-line bg-paper/60 space-y-2.5">
+                <label htmlFor={`${uid}-colour`} className={labelClass + ' !mb-0'}>
                   Add a colour
                 </label>
                 <div className="flex gap-2">
@@ -1045,7 +1067,7 @@ const VariantsDialog: React.FC<{
                     title="Swatch colour (optional)"
                     value={HEX_RE.test(hexInput) ? hexInput : '#cccccc'}
                     onChange={(e) => setHexInput(e.target.value.toUpperCase())}
-                    className="w-12 h-[42px] rounded-xl border border-slate-300 bg-white p-1 cursor-pointer shrink-0"
+                    className={`w-12 h-11 rounded-xl border border-line bg-white p-1 cursor-pointer shrink-0 ${focusRing}`}
                   />
                   <input
                     id={`${uid}-colour`}
@@ -1064,25 +1086,27 @@ const VariantsDialog: React.FC<{
                     maxLength={30}
                     className={`${inputClass} ${inputError.colour ? inputErrorClass : ''}`}
                   />
-                  <Button type="button" variant="outline" className="min-h-[42px] shrink-0" onClick={addColour} disabled={!!busy}>
-                    {busy?.startsWith('colour:') ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}
+                  <Button type="button" variant="secondary" className="min-h-[44px] px-5 shrink-0" onClick={addColour} disabled={!!busy}>
+                    {busy?.startsWith('colour:') ? <Loader2 className="w-4 h-4 animate-spin" aria-label="Adding" /> : 'Add'}
                   </Button>
                 </div>
                 {inputError.colour ? (
-                  <p className="text-xs text-rose-600 font-medium" role="alert">
-                    {inputError.colour}
-                  </p>
+                  <FieldError className="!mt-0">{inputError.colour}</FieldError>
                 ) : (
-                  <p className="text-xs text-slate-500 leading-snug">
+                  <p className={`${hintClass} !mt-0`}>
                     {hexInput ? (
                       <span className="inline-flex items-center gap-1">
                         Swatch {hexInput}
-                        <button type="button" onClick={() => setHexInput('')} className="font-bold text-ink hover:underline px-1">
-                          clear
+                        <button
+                          type="button"
+                          onClick={() => setHexInput('')}
+                          className={`-my-3 min-h-[44px] px-2 rounded-lg font-medium text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink ${focusRing}`}
+                        >
+                          Clear
                         </button>
                       </span>
                     ) : (
-                      'Pick a swatch colour (optional) — shown as a dot on the website.'
+                      'Optional: pick a swatch colour with the square button. It shows as a dot on the website.'
                     )}
                   </p>
                 )}
@@ -1090,23 +1114,25 @@ const VariantsDialog: React.FC<{
             </div>
 
             {(pendingSizes.length > 0 || pendingColours.length > 0) && (
-              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+              <Notice tone="warning">
                 {pendingSizes.length > 0
-                  ? `Now add a colour — sizes ${pendingSizes.join(', ')} are saved once there is at least one colour.`
-                  : `Now add a size — ${pendingColours.map((c) => c.colour).join(', ')} is saved once there is at least one size.`}
-              </p>
+                  ? `Now add a colour. Sizes ${pendingSizes.join(', ')} are saved once there is at least one colour.`
+                  : `Now add a size. ${pendingColours.map((c) => c.colour).join(', ')} is saved once there is at least one size.`}
+              </Notice>
             )}
 
             {sizes.length > 0 && colours.length > 0 ? (
               <>
                 {/* Desktop: colour rows × size columns */}
                 <div className="hidden md:block overflow-x-auto rounded-2xl border border-line">
-                  <table className="w-full text-left border-collapse text-xs">
+                  <table className="w-full text-left border-collapse text-[13px]">
                     <thead>
-                      <tr className="bg-paper border-b border-line text-slate-600">
-                        <th className="py-2 px-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap">Colour \ Size</th>
+                      <tr className="bg-paper border-b border-line text-ink-soft">
+                        <th scope="col" className="py-1.5 px-3 text-[13px] font-semibold whitespace-nowrap">
+                          Colour <span className="font-normal text-ink-muted">/ size</span>
+                        </th>
                         {sizes.map((s) => (
-                          <th key={s} className="py-2 px-2 font-bold text-slate-900 text-sm whitespace-nowrap">
+                          <th key={s} scope="col" className="py-1.5 px-2 font-semibold text-ink text-[15px] whitespace-nowrap">
                             <span className="inline-flex items-center gap-1">
                               {s}
                               {removeBtn(() => removeSize(s), `Remove size ${s}`)}
@@ -1118,8 +1144,8 @@ const VariantsDialog: React.FC<{
                     <tbody className="divide-y divide-line/70">
                       {colours.map((c) => (
                         <tr key={c.colour}>
-                          <th scope="row" className="py-2 px-3 align-top font-semibold text-slate-900 whitespace-nowrap">
-                            <span className="inline-flex items-center gap-2 min-h-[40px]">
+                          <th scope="row" className="py-2 px-3 align-top font-semibold text-[14px] text-ink whitespace-nowrap">
+                            <span className="inline-flex items-center gap-2 min-h-[44px]">
                               <Swatch hex={c.colourHex} />
                               {c.colour}
                               {removeBtn(() => removeColour(c.colour), `Remove colour ${c.colour}`)}
@@ -1140,8 +1166,8 @@ const VariantsDialog: React.FC<{
                 <div className="md:hidden space-y-3">
                   {colours.map((c) => (
                     <div key={c.colour} className="rounded-2xl border border-line">
-                      <div className="flex items-center justify-between gap-2 px-3 py-2 bg-paper rounded-t-2xl border-b border-line">
-                        <span className="inline-flex items-center gap-2 font-bold text-sm text-slate-900 min-w-0">
+                      <div className="flex items-center justify-between gap-2 pl-3 pr-1 py-1 bg-paper rounded-t-2xl border-b border-line">
+                        <span className="inline-flex items-center gap-2 font-semibold text-[15px] text-ink min-w-0">
                           <Swatch hex={c.colourHex} />
                           <span className="truncate">{c.colour}</span>
                         </span>
@@ -1150,7 +1176,7 @@ const VariantsDialog: React.FC<{
                       <ul className="divide-y divide-line/70">
                         {sizes.map((s) => (
                           <li key={s} className="flex items-start gap-3 px-3 py-2">
-                            <span className="w-16 shrink-0 pt-2.5 text-sm font-bold text-slate-900 break-words">{s}</span>
+                            <span className="w-16 shrink-0 pt-3 text-[15px] font-semibold text-ink break-words">{s}</span>
                             <div className="flex-1 min-w-0">{cell(s, c)}</div>
                           </li>
                         ))}
@@ -1158,7 +1184,7 @@ const VariantsDialog: React.FC<{
                     </div>
                   ))}
                   {sizes.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 text-xs text-slate-500 items-center">
+                    <div className="flex flex-wrap gap-2 text-[13px] text-ink-muted items-center">
                       Remove a size:
                       {sizes.map((s) => (
                         <button
@@ -1166,35 +1192,39 @@ const VariantsDialog: React.FC<{
                           type="button"
                           onClick={() => removeSize(s)}
                           disabled={!!busy}
-                          className="min-h-[32px] px-2 rounded-lg border border-line bg-white font-bold text-slate-600 hover:text-rose-600 hover:border-rose-200 inline-flex items-center gap-1"
+                          aria-label={`Remove size ${s}`}
+                          className={`min-h-[44px] px-3 rounded-full border border-line bg-white font-medium text-ink-soft transition-colors duration-150 hover:text-rose-700 hover:border-rose-200 inline-flex items-center gap-1 ${focusRing}`}
                         >
-                          {s} <X className="w-3 h-3" />
+                          {s} <X className="w-3.5 h-3.5" aria-hidden="true" />
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-slate-500">
-                  Tap − / + or type a number; it saves on its own. <span className="text-amber-700 font-semibold">Amber</span> = {LOW_STOCK} or
-                  fewer left, <span className="text-rose-700 font-semibold">red</span> = out of stock (customers can't order it).
+                <p className="text-[13px] text-ink-muted">
+                  Tap − / + or type a number; it saves on its own. <span className="text-amber-800 font-semibold">Amber</span> = {LOW_STOCK} or
+                  fewer left, <span className="text-rose-700 font-semibold">red</span> = out of stock (customers can’t order it).
                 </p>
               </>
             ) : (
-              <div className="rounded-2xl border border-dashed border-line p-6 text-center">
-                <Layers className="w-6 h-6 text-slate-400 mx-auto" />
-                <p className="text-sm font-semibold text-slate-700 mt-2">No sizes or colours yet</p>
-                <p className="text-xs text-slate-500 mt-1">Add at least one size and one colour. Customers can only order sizes you add here.</p>
+              <div className="rounded-2xl border border-dashed border-slate-300 px-6 py-8 text-center">
+                <p className="text-[15px] font-semibold text-ink">No sizes or colours yet</p>
+                <p className="mt-1 text-[14px] text-ink-muted">Add at least one size and one colour. Customers can only order what you add here.</p>
               </div>
             )}
           </div>
 
-          <div className="px-5 py-3 border-t border-line/70 shrink-0 flex flex-col-reverse sm:flex-row sm:justify-end sm:items-center gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            {anyPending && (
-              <span className="text-xs text-slate-500 inline-flex items-center gap-1 sm:mr-auto" role="status">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving stock…
-              </span>
-            )}
-            <Button type="button" onClick={close} disabled={anyPending} className="min-h-[42px] sm:min-w-[8rem]">
+          <div className="px-5 sm:px-6 pt-3 border-t border-line shrink-0 flex items-center justify-end gap-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <span className="text-[13px] text-ink-muted inline-flex items-center gap-1.5 mr-auto" role="status">
+              {anyPending ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> Saving stock…
+                </>
+              ) : variants.length > 0 ? (
+                'All changes saved'
+              ) : null}
+            </span>
+            <Button type="button" onClick={close} disabled={anyPending} className="min-h-[44px] px-6 sm:min-w-[8rem]">
               Done
             </Button>
           </div>
@@ -1219,7 +1249,7 @@ const VariantsDialog: React.FC<{
               </>
             ) : (
               <>
-                This deletes {confirm.variants.length} {confirm.variants.length === 1 ? 'variant' : 'variants'} (
+                This deletes {confirm.variants.length} size & colour {confirm.variants.length === 1 ? 'option' : 'options'} (
                 {confirm.variants.reduce((a, v) => a + v.stock, 0)} pieces in stock). Orders already placed are not affected.
               </>
             )
@@ -1250,10 +1280,15 @@ const ProductThumb: React.FC<{ product: ApparelProduct }> = ({ product }) => {
           className={`w-full h-full object-cover ${soldOut ? 'grayscale opacity-60' : ''}`}
         />
       ) : (
-        <Shirt className="w-8 h-8 text-slate-300" aria-hidden="true" />
+        <span className="flex flex-col items-center gap-1 text-ink-muted" aria-hidden="true">
+          <Shirt className="w-5 h-5" />
+          <span className="text-[12px] font-medium">No photo</span>
+        </span>
       )}
       {photos.length > 1 && (
-        <span className="absolute bottom-1 right-1 text-xs font-bold bg-slate-900/75 text-white px-1 rounded">{photos.length} photos</span>
+        <span className="absolute bottom-1 right-1 text-[12px] font-medium leading-none bg-ink/75 text-white px-1.5 py-1 rounded-md tabular-nums">
+          {photos.length} photos
+        </span>
       )}
     </div>
   );
@@ -1276,48 +1311,38 @@ const ProductRow: React.FC<{
   const noPhoto = photosOf(p).length === 0;
 
   return (
-    <li className={`${cardClass} p-3 sm:p-4 flex flex-col lg:flex-row lg:items-center gap-3 ${p.isActive ? '' : 'bg-paper/80'}`}>
-      <div className="flex gap-3 min-w-0 flex-1">
+    <li className={`${cardClass} p-3 sm:p-4 flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-5 ${p.isActive ? '' : 'bg-paper/70'}`}>
+      <div className="flex gap-3 sm:gap-4 min-w-0 flex-1">
         <ProductThumb product={p} />
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-paper text-sportsBlue border border-line">
-              {categoryLabel(p.category)}
-            </span>
+          <p className="text-[13px] font-medium text-ink-muted">{categoryLabel(p.category)}</p>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-[16px] font-semibold leading-snug text-ink break-words">{p.name}</span>
             {p.isFeatured && (
-              <span className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded bg-brandYellow text-sportsBlue">
-                <Star className="w-3 h-3" /> Featured
+              <span className={`${chipClass} bg-accent/25 border-accent/60 text-ink`}>
+                <Star className="w-3 h-3" aria-hidden="true" /> Featured
               </span>
             )}
-            {p.isActive ? (
-              <span className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">
-                <Eye className="w-3 h-3" /> On website
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-600">
-                <EyeOff className="w-3 h-3" /> Hidden
+            {!p.isActive && (
+              <span className={`${chipClass} bg-paper-deep border-line text-ink-soft`}>
+                <EyeOff className="w-3 h-3" aria-hidden="true" /> Hidden from website
               </span>
             )}
-            {p.customisable && (
-              <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-white border border-line text-slate-600">Name / number printing</span>
-            )}
+            {p.customisable && <span className={`${chipClass} bg-white border-line text-ink-soft`}>Name / number printing</span>}
           </div>
-          <p className="font-bold text-sm text-slate-900 mt-1 break-words">{p.name}</p>
-          <p className="text-xs text-slate-500 break-words">
-            <span className="font-bold text-slate-900 text-xs">₹{Number(p.price || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+          <p className="mt-0.5 text-[13px] text-ink-muted break-words">
+            <span className="font-semibold text-ink tabular-nums">₹{Number(p.price || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
             {[p.fabric, p.fit].filter((s) => s && s.trim()).map((s) => ` · ${s}`)}
           </p>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[13px]">
             {vs.length === 0 ? (
-              <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-800">
-                <Layers className="w-3 h-3" /> No sizes yet — customers can't order it
-              </span>
+              <span className="font-medium text-amber-800">No sizes yet, so customers can’t order it</span>
             ) : (
               <>
-                <span className={`text-xs font-bold ${total === 0 ? 'text-rose-700' : 'text-slate-700'}`}>
-                  {total} in stock · {vs.length} {vs.length === 1 ? 'variant' : 'variants'}
+                <span className={`font-medium ${total === 0 ? 'text-rose-700' : 'text-ink-soft'}`}>
+                  {total} in stock · {vs.length} {vs.length === 1 ? 'option' : 'options'}
                 </span>
-                {sizes.length > 0 && <span className="text-xs text-slate-500">Sizes {sizes.join(', ')}</span>}
+                {sizes.length > 0 && <span className="text-ink-muted">Sizes {sizes.join(', ')}</span>}
                 {colours.length > 0 && (
                   <span className="inline-flex items-center gap-0.5" aria-label={`Colours: ${colours.map((c) => c.colour).join(', ')}`}>
                     {colours.slice(0, 8).map((c) => (
@@ -1327,37 +1352,29 @@ const ProductRow: React.FC<{
                     ))}
                   </span>
                 )}
-                {low > 0 && (
-                  <span className="text-xs font-bold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-800">{low} low</span>
-                )}
-                {out > 0 && (
-                  <span className="text-xs font-bold px-1.5 py-0.5 rounded border border-rose-200 bg-rose-50 text-rose-700">{out} out of stock</span>
-                )}
+                {low > 0 && <span className={`${chipClass} border-amber-200 bg-amber-50 text-amber-900`}>{low} low</span>}
+                {out > 0 && <span className={`${chipClass} border-rose-200 bg-rose-50 text-rose-700`}>{out} out of stock</span>}
               </>
             )}
-            {noPhoto && (
-              <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded border border-slate-300 bg-paper text-slate-600">
-                <ImageOff className="w-3 h-3" /> No photo yet
-              </span>
-            )}
+            {noPhoto && <span className="font-medium text-amber-800">No photo yet</span>}
           </div>
         </div>
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-2 lg:shrink-0">
-        <div className="flex items-center gap-3 px-1 sm:pr-2 sm:border-r border-line/70">
+        <div className="flex items-center gap-4 px-1 sm:pr-3 sm:border-r border-line">
           {(['isActive', 'isFeatured'] as const).map((key) => (
-            <label key={key} className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 cursor-pointer min-h-[44px]">
+            <label key={key} className="inline-flex items-center gap-2 text-[14px] font-medium text-ink-soft cursor-pointer min-h-[44px]">
               <button
                 type="button"
                 role="switch"
                 aria-checked={p[key]}
-                aria-label={`${key === 'isActive' ? 'Visible on website' : 'Featured'}: ${p.name}`}
+                aria-label={`${key === 'isActive' ? 'Show on the website' : 'Featured'}: ${p.name}`}
                 disabled={!!pending}
                 onClick={() => onToggle(key)}
-                className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 disabled:cursor-wait"
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-150 disabled:cursor-wait ${focusRing}`}
               >
-                <span className={`absolute inset-0 rounded-full ${p[key] ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                <span className={`absolute inset-0 rounded-full transition-colors duration-150 ${p[key] ? 'bg-emerald-600' : 'bg-slate-300'}`} />
                 <span
                   className={`relative inline-flex items-center justify-center h-5 w-5 rounded-full bg-white shadow transition-transform ${
                     p[key] ? 'translate-x-[22px]' : 'translate-x-0.5'
@@ -1366,17 +1383,16 @@ const ProductRow: React.FC<{
                   {pending === key && <Loader2 className="w-3 h-3 animate-spin text-slate-500" />}
                 </span>
               </button>
-              {key === 'isActive' ? 'On website' : 'Featured'}
+              {key === 'isActive' ? 'On the website' : 'Featured'}
             </label>
           ))}
         </div>
         <div className="flex items-center gap-2">
           <Button
             type="button"
-            variant="outline"
-            size="sm"
-            className="min-h-[44px] flex-1 sm:flex-none"
-            leftIcon={<Layers className="w-3.5 h-3.5" />}
+            variant="secondary"
+            className="min-h-[44px] px-4 flex-1 sm:flex-none"
+            leftIcon={<Layers className="w-4 h-4" />}
             onClick={onStock}
             aria-label={`Sizes and stock for ${p.name}`}
           >
@@ -1384,10 +1400,9 @@ const ProductRow: React.FC<{
           </Button>
           <Button
             type="button"
-            variant="outline"
-            size="sm"
-            className="min-h-[44px]"
-            leftIcon={<Pencil className="w-3.5 h-3.5" />}
+            variant="secondary"
+            className="min-h-[44px] px-4"
+            leftIcon={<Pencil className="w-4 h-4" />}
             onClick={onEdit}
             aria-label={`Edit ${p.name}`}
           >
@@ -1397,8 +1412,8 @@ const ProductRow: React.FC<{
             type="button"
             onClick={onDelete}
             aria-label={`Delete ${p.name}`}
-            title="Delete product"
-            className="shrink-0 w-11 h-11 inline-flex items-center justify-center rounded-xl border border-line bg-white text-slate-500 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50"
+            title="Delete item"
+            className={`${iconButtonDangerClass} sm:w-11 sm:h-11`}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -1526,13 +1541,13 @@ export const ApparelManager: React.FC = () => {
     <div className="space-y-4 min-w-0">
       <SectionHeader
         title="T-shirts & apparel"
-        description="T-shirts, jerseys and other clothing sold online. Add real photos and a price, then the sizes and colours you have with the stock for each — customers can only order what is in stock."
+        description="T-shirts, jerseys and other clothing sold online. Customers can only order the sizes and colours that are in stock."
         actions={
           <Button
             type="button"
             onClick={() => setEditing('new')}
             leftIcon={<Plus className="w-4 h-4" />}
-            className="min-h-[42px]"
+            className="min-h-[44px] px-5"
             disabled={(loading && products.length === 0) || unavailable}
           >
             Add item
@@ -1544,15 +1559,15 @@ export const ApparelManager: React.FC = () => {
         <ListSkeleton rows={4} />
       ) : loadError && products.length === 0 ? (
         unavailable ? (
-          <div className={`${cardClass} p-6 sm:p-8 text-center flex flex-col items-center`} role="status">
-            <div className="w-12 h-12 rounded-2xl bg-paper border border-line flex items-center justify-center mb-3">
-              <Shirt className="w-6 h-6 text-slate-500" />
+          <div className={`${cardClass} px-6 py-10 sm:py-12 text-center flex flex-col items-center`} role="status">
+            <div className="w-12 h-12 rounded-full bg-paper flex items-center justify-center">
+              <Shirt className="w-6 h-6 text-ink-soft" aria-hidden="true" />
             </div>
-            <h3 className="text-sm font-bold text-slate-900">The online shop isn't switched on yet</h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm">
-              The server doesn't have the apparel catalogue yet. Once it is updated you can add T-shirts and stock here.
+            <h3 className="mt-4 text-[17px] font-semibold text-ink">The online shop isn’t set up yet</h3>
+            <p className="mt-1 text-[14px] leading-relaxed text-ink-muted max-w-sm">
+              Once your website developer switches on the T-shirt shop, you can add items and stock here.
             </p>
-            <Button type="button" variant="outline" size="sm" className="mt-4 min-h-[40px]" onClick={() => load()} isLoading={loading}>
+            <Button type="button" variant="secondary" className="mt-5 min-h-[44px] px-5" onClick={() => load()} isLoading={loading}>
               Try again
             </Button>
           </div>
@@ -1568,50 +1583,21 @@ export const ApparelManager: React.FC = () => {
         />
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className={`${cardClass} p-3`}>
-              <p className="text-xs font-semibold text-slate-500">Items</p>
-              <p className="text-xl font-bold text-slate-900">{products.length}</p>
-            </div>
-            <div className={`${cardClass} p-3`}>
-              <p className="text-xs font-semibold text-slate-500">Pieces in stock</p>
-              <p className="text-xl font-bold text-slate-900">{stats.units}</p>
-            </div>
-            <div className={`${cardClass} p-3`}>
-              <p className="text-xs font-semibold text-slate-500">Low stock (≤ {LOW_STOCK})</p>
-              <p className={`text-xl font-bold ${stats.lowVariants ? 'text-amber-600' : 'text-emerald-600'}`}>{stats.lowVariants}</p>
-            </div>
-            <div className={`${cardClass} p-3`}>
-              <p className="text-xs font-semibold text-slate-500">Out of stock</p>
-              <p className={`text-xl font-bold ${stats.outVariants ? 'text-rose-600' : 'text-emerald-600'}`}>{stats.outVariants}</p>
-            </div>
-          </div>
+          <StatGrid>
+            <StatTile label="Items" value={products.length} />
+            <StatTile label="Pieces in stock" value={stats.units} />
+            <StatTile label={`Low stock (${LOW_STOCK} or fewer)`} value={stats.lowVariants} tone={stats.lowVariants ? 'warn' : 'default'} />
+            <StatTile label="Sizes out of stock" value={stats.outVariants} tone={stats.outVariants ? 'bad' : 'default'} />
+          </StatGrid>
 
-          <div className="space-y-2">
-            <div className="relative">
-              <label htmlFor="apparel-search" className="sr-only">
-                Search apparel
-              </label>
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                id="apparel-search"
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search name, fabric, size or colour"
-                className={`${inputClass} pl-9 pr-10`}
-              />
-              {query && (
-                <button
-                  type="button"
-                  onClick={() => setQuery('')}
-                  aria-label="Clear search"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 inline-flex items-center justify-center text-slate-400 hover:text-slate-700"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+          <div className="space-y-3">
+            <SearchField
+              id="apparel-search"
+              label="Search T-shirts and apparel"
+              value={query}
+              onChange={setQuery}
+              placeholder="Search by name, fabric, size or colour"
+            />
             <Pills<FilterId>
               ariaLabel="Filter apparel"
               value={filter}
@@ -1627,32 +1613,16 @@ export const ApparelManager: React.FC = () => {
             />
           </div>
 
-          {loadError && (
-            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-center justify-between gap-2">
-              <span>Refresh failed: {loadError}</span>
-              <Button type="button" size="sm" variant="outline" onClick={() => load()} className="min-h-[36px]">
-                Retry
-              </Button>
-            </div>
-          )}
+          {loadError && <RefreshFailed message={loadError} onRetry={() => load()} retrying={loading} />}
 
           {visible.length === 0 ? (
-            <div className={`${cardClass} p-8 text-center`}>
-              <p className="text-sm font-semibold text-slate-700">Nothing matches</p>
-              <p className="text-xs text-slate-500 mt-1">Try a different search or filter.</p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-3 min-h-[40px]"
-                onClick={() => {
-                  setQuery('');
-                  setFilter('all');
-                }}
-              >
-                Clear search & filters
-              </Button>
-            </div>
+            <NoMatches
+              title="Nothing matches"
+              onClear={() => {
+                setQuery('');
+                setFilter('all');
+              }}
+            />
           ) : (
             <ul className="space-y-2.5">
               {visible.map((p) => (
@@ -1717,9 +1687,9 @@ export const ApparelManager: React.FC = () => {
           message={
             deleting ? (
               <>
-                <b>{deleting.name}</b> and its {variantsOf(deleting).length} sizes/colours will be removed from the website. Orders already placed
-                are not affected. This can't be undone.
-                <span className="block mt-2 text-xs text-slate-500">Tip: turn off “On website” instead to hide it temporarily.</span>
+                <b className="font-semibold text-ink">{deleting.name}</b> and its {variantsOf(deleting).length} size & colour options will be removed
+                from the website. Orders already placed are not affected. This can’t be undone.
+                <span className="block mt-2 text-[13px] text-ink-muted">Tip: turn off “On the website” instead to hide it for now.</span>
               </>
             ) : null
           }

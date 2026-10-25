@@ -32,7 +32,6 @@ import {
   Plus,
   RefreshCw,
   RotateCcw,
-  Tag,
   Trash2,
   UserX,
   Users,
@@ -56,17 +55,31 @@ import {
   ConfirmDialog,
   ErrorState,
   Field,
+  FieldError,
+  FixFieldsNotice,
+  FormSection,
   ListSkeleton,
   Modal,
+  Notice,
   Pills,
+  RefreshFailed,
+  SaveFailedNotice,
   SectionHeader,
+  StatGrid,
+  StatTile,
   Switch,
   cardClass,
+  chipClass,
   errorMessage,
+  focusRing,
+  hintClass,
+  iconButtonDangerClass,
   inputClass,
   inputErrorClass,
   isHttpsUrl,
+  labelClass,
   nullIfEmpty,
+  switchGroupClass,
   todayISO,
 } from './shared';
 
@@ -74,9 +87,8 @@ import {
 // Constants & helpers
 // =====================================================================
 
-/** shared inputErrorClass loses to inputClass's border-slate-300 in the generated CSS order,
- * so force the red border here. */
-const inputErrorCls = `${inputErrorClass} !border-rose-400`;
+/** Red border for a field with an error (the shared class is !important, so it wins over inputClass). */
+const inputErrorCls = inputErrorClass;
 
 const SHOP_PHONE = '+91 76758 31496'; // non-breaking spaces: never split across lines
 
@@ -182,9 +194,9 @@ export const formatEventFee = (e: Pick<SiteEvent, 'entryFee' | 'feeNote'>): stri
 const inHomepageBanner = (e: SiteEvent) => e.isActive && e.showAsBanner && e.status !== 'past';
 
 const STATUS_META: Record<SiteEvent['status'], { label: string; cls: string }> = {
-  upcoming: { label: 'Upcoming', cls: 'bg-paper text-ink border-line' },
-  ongoing: { label: 'Happening now', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  past: { label: 'Past', cls: 'bg-slate-100 text-slate-600 border-line' },
+  upcoming: { label: 'Upcoming', cls: 'bg-white text-ink border-line' },
+  ongoing: { label: 'Happening now', cls: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  past: { label: 'Past', cls: 'bg-paper-deep text-ink-soft border-line' },
 };
 
 const byStartAsc = (a: SiteEvent, b: SiteEvent) =>
@@ -277,9 +289,9 @@ const EventThumb: React.FC<{ event: SiteEvent; className?: string }> = ({ event,
   return (
     <div className={`relative aspect-[16/6] rounded-xl overflow-hidden bg-slate-100 border border-line ${className}`}>
       {broken || !event.bannerImageUrl ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-slate-400">
-          <ImageOff className="w-5 h-5" />
-          <span className="text-xs font-semibold">Photo not found</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-ink-muted">
+          <ImageOff className="w-5 h-5" aria-hidden="true" />
+          <span className="text-[13px] font-medium">Photo not found</span>
         </div>
       ) : (
         <img
@@ -337,7 +349,7 @@ const BannerPreview: React.FC<{ data: PreviewData }> = ({ data }) => {
   );
   return (
     <div className="space-y-2">
-      <p className="text-xs font-semibold text-slate-700">How the banner crops</p>
+      <p className="text-[14px] font-medium text-ink">How the banner will look</p>
       <div className="flex flex-col sm:flex-row gap-3 sm:items-start">
         <figure className="flex-1 min-w-0">
           <div className="relative aspect-[16/6] rounded-xl overflow-hidden bg-ink-hover border border-line">
@@ -355,9 +367,9 @@ const BannerPreview: React.FC<{ data: PreviewData }> = ({ data }) => {
               </span>
             </div>
           </div>
-          <figcaption className="text-[10px] text-slate-500 mt-1">Wide screens · about 16:6</figcaption>
+          <figcaption className="text-[12px] text-ink-muted mt-1">Laptops and tablets</figcaption>
         </figure>
-        <figure className="w-[136px] shrink-0">
+        <figure className="w-[150px] shrink-0">
           <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-ink-hover border border-line">
             {phoneImage && <img src={phoneImage} alt="" className="absolute inset-0 w-full h-full object-cover" />}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
@@ -367,14 +379,14 @@ const BannerPreview: React.FC<{ data: PreviewData }> = ({ data }) => {
               <p className="text-[9px] text-white/85 line-clamp-2">{dates}</p>
             </div>
           </div>
-          <figcaption className="text-[10px] text-slate-500 mt-1">
-            Phones · about 4:5{data.mobileImageUrl ? '' : ' (from the wide photo)'}
+          <figcaption className="text-[12px] text-ink-muted mt-1 leading-snug">
+            Phones{data.mobileImageUrl ? '' : ' (cropped from the wide photo)'}
           </figcaption>
         </figure>
       </div>
-      <p className="text-[11px] text-slate-500 leading-snug">
-        Approximate preview. The homepage writes the event details over the photo, so choose a photo without words in it and
-        keep the main subject near the centre. Fee shown on the site: <b className="text-slate-700">{data.feeLabel}</b>.
+      <p className="text-[13px] text-ink-muted leading-snug">
+        A close preview. The homepage writes the event details over the photo, so choose a photo without words in it and keep the
+        main subject near the centre. Fee shown on the site: <b className="font-semibold text-ink">{data.feeLabel}</b>.
       </p>
     </div>
   );
@@ -429,14 +441,15 @@ const CategoryChips: React.FC<{
           {value.map((c) => (
             <li
               key={c}
-              className="inline-flex items-center min-h-[40px] pl-3 rounded-xl border border-line bg-paper text-sportsBlue text-xs font-semibold max-w-full"
+              className="inline-flex items-center pl-3.5 rounded-full border border-line bg-paper text-ink text-[14px] font-medium max-w-full"
             >
               <span className="truncate">{c}</span>
               <button
                 type="button"
                 onClick={() => remove(c)}
                 aria-label={`Remove ${c}`}
-                className="shrink-0 w-10 h-10 inline-flex items-center justify-center rounded-xl text-ink hover:bg-paper-deep hover:text-rose-600"
+                title="Remove"
+                className={`shrink-0 w-11 h-11 inline-flex items-center justify-center rounded-full text-ink-muted transition-colors duration-150 hover:bg-rose-50 hover:text-rose-700 ${focusRing}`}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -444,8 +457,8 @@ const CategoryChips: React.FC<{
           ))}
         </ul>
       ) : (
-        <p className="text-xs text-slate-500">
-          No categories — players won’t be asked to pick one. Add them for tournaments (e.g. Men’s Doubles).
+        <p className="text-[14px] text-ink-soft">
+          No categories yet, so players won’t be asked to pick one. Add them for tournaments, e.g. Men’s Doubles.
         </p>
       )}
       {!full && (
@@ -470,10 +483,10 @@ const CategoryChips: React.FC<{
           />
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={() => add(draft)}
             disabled={!draft.trim()}
-            className="min-h-[42px] shrink-0"
+            className="min-h-[44px] px-4 shrink-0"
             leftIcon={<Plus className="w-4 h-4" />}
           >
             Add
@@ -482,27 +495,29 @@ const CategoryChips: React.FC<{
       )}
       <div id={`${inputId}-help`}>
         {shownError ? (
-          <p className="text-xs text-rose-600 font-medium" role="alert">
-            {shownError}
-          </p>
+          <FieldError className="!mt-0">{shownError}</FieldError>
         ) : (
-          <p className="text-xs text-slate-500">
-            {value.length}/{LIMITS.categories} · Players choose one when they register on the website.
+          <p className={`${hintClass} !mt-0`}>
+            {value.length} of {LIMITS.categories} · Players choose one when they register on the website.
           </p>
         )}
       </div>
       {!full && suggestions.length > 0 && (
-        <div className="flex flex-wrap gap-1.5" aria-label="Suggested categories">
-          {suggestions.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => add(s)}
-              className="inline-flex items-center gap-1 min-h-[40px] px-3 rounded-xl border border-dashed border-slate-300 text-xs font-semibold text-slate-600 hover:bg-paper hover:border-slate-400"
-            >
-              <Plus className="w-3.5 h-3.5" /> {s}
-            </button>
-          ))}
+        <div className="space-y-2">
+          <p className="text-[13px] text-ink-muted">Quick add:</p>
+          <div className="flex flex-wrap gap-2" aria-label="Suggested categories">
+            {suggestions.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => add(s)}
+                aria-label={`Add ${s}`}
+                className={`inline-flex items-center gap-1 min-h-[44px] sm:min-h-[40px] px-3 rounded-full border border-dashed border-slate-300 text-[13px] font-medium text-ink-soft transition-colors duration-150 hover:bg-paper hover:border-ink/40 hover:text-ink ${focusRing}`}
+              >
+                <Plus className="w-3.5 h-3.5" aria-hidden="true" /> {s}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -669,16 +684,6 @@ const FIELD_ORDER: (keyof EventFormState)[] = [
   'mobileImageUrl',
 ];
 
-const FormSection: React.FC<{ title: string; children: React.ReactNode; icon?: React.ReactNode }> = ({ title, icon, children }) => (
-  <section className="space-y-3">
-    <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 border-b border-line/70 pb-1.5">
-      {icon}
-      {title}
-    </h4>
-    {children}
-  </section>
-);
-
 const EventFormModal: React.FC<{
   event: SiteEvent | null; // null = new
   onClose: () => void;
@@ -761,30 +766,26 @@ const EventFormModal: React.FC<{
         size="lg"
         footer={
           <>
-            <Button type="button" variant="outline" onClick={onClose} disabled={saving} className="min-h-[42px]">
+            <Button type="button" variant="secondary" onClick={onClose} disabled={saving} className="min-h-[44px] sm:px-5">
               Cancel
             </Button>
-            <Button type="submit" form={formId} isLoading={saving} disabled={uploading} className="min-h-[42px]">
+            <Button type="submit" form={formId} isLoading={saving} disabled={uploading} className="min-h-[44px] sm:px-6">
               {uploading ? 'Waiting for upload…' : event ? 'Save changes' : 'Add event'}
             </Button>
           </>
         }
       >
-        <form id={formId} onSubmit={submit} className="space-y-6" noValidate>
-          {saveError && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700" role="alert">
-              {saveError} Your changes are still here — try again.
-            </div>
-          )}
-          {Object.keys(errors).length > 0 && (
-            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800" role="status">
-              Please fix the {Object.keys(errors).length === 1 ? 'highlighted field' : `${Object.keys(errors).length} highlighted fields`}.
+        <form id={formId} onSubmit={submit} className="space-y-8" noValidate>
+          {(saveError || Object.keys(errors).length > 0) && (
+            <div className="space-y-2 -mb-3">
+              <SaveFailedNotice message={saveError} />
+              <FixFieldsNotice count={Object.keys(errors).length} />
             </div>
           )}
 
           {/* ---- Basics ---- */}
-          <FormSection title="Basics" icon={<Tag className="w-3.5 h-3.5" />}>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <FormSection title="Basics">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Field label="Event name" htmlFor={fid('title')} required error={errors.title} className="sm:col-span-2">
                 <input
                   id={fid('title')}
@@ -814,7 +815,8 @@ const EventFormModal: React.FC<{
               label="Short summary"
               htmlFor={fid('summary')}
               error={errors.summary}
-              hint={`One or two lines shown on the banner · ${form.summary.trim().length}/${LIMITS.summary}`}
+              optional
+              hint={`One or two lines shown on the banner · ${form.summary.trim().length} of ${LIMITS.summary} characters`}
             >
               <textarea
                 id={fid('summary')}
@@ -829,6 +831,7 @@ const EventFormModal: React.FC<{
               label="Full details"
               htmlFor={fid('description')}
               error={errors.description}
+              optional
               hint="Format, rules, what to bring, prizes, contact. Line breaks are kept."
             >
               <textarea
@@ -842,8 +845,8 @@ const EventFormModal: React.FC<{
           </FormSection>
 
           {/* ---- When & where ---- */}
-          <FormSection title="When & where" icon={<CalendarDays className="w-3.5 h-3.5" />}>
-            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3 gap-3">
+          <FormSection title="When & where">
+            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3 gap-4">
               <Field
                 label="Start date"
                 htmlFor={fid('startDate')}
@@ -859,7 +862,7 @@ const EventFormModal: React.FC<{
                   className={`${inputClass} ${errors.startDate ? inputErrorCls : ''}`}
                 />
               </Field>
-              <Field label="Last day" htmlFor={fid('endDate')} error={errors.endDate} hint="Only for events over several days">
+              <Field label="Last day" htmlFor={fid('endDate')} error={errors.endDate} optional hint="Only for events over several days">
                 <input
                   id={fid('endDate')}
                   type="date"
@@ -869,7 +872,7 @@ const EventFormModal: React.FC<{
                   className={`${inputClass} ${errors.endDate ? inputErrorCls : ''}`}
                 />
               </Field>
-              <Field label="Time" htmlFor={fid('timeText')} error={errors.timeText} hint='e.g. "7:00 AM onwards"'>
+              <Field label="Time" htmlFor={fid('timeText')} error={errors.timeText} optional hint='e.g. "7:00 AM onwards"'>
                 <input
                   id={fid('timeText')}
                   value={form.timeText}
@@ -880,11 +883,12 @@ const EventFormModal: React.FC<{
               </Field>
             </div>
             {form.startDate && (
-              <p className="text-xs text-slate-600 -mt-1">
-                Shown as <b>{formatEventDates(form.startDate, form.endDate && form.endDate >= form.startDate ? form.endDate : null)}</b>
+              <p className="text-[13px] text-ink-muted -mt-1">
+                Shown on the website as{' '}
+                <b className="font-semibold text-ink">{formatEventDates(form.startDate, form.endDate && form.endDate >= form.startDate ? form.endDate : null)}</b>
               </p>
             )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Venue" htmlFor={fid('venue')} required error={errors.venue}>
                 <input
                   id={fid('venue')}
@@ -894,7 +898,7 @@ const EventFormModal: React.FC<{
                   placeholder="e.g. Indoor courts, MVP Colony"
                 />
               </Field>
-              <Field label="Google Maps link" htmlFor={fid('venueMapUrl')} error={errors.venueMapUrl} hint="Optional · must start with https://">
+              <Field label="Google Maps link" htmlFor={fid('venueMapUrl')} error={errors.venueMapUrl} optional hint="It must start with https://">
                 <input
                   id={fid('venueMapUrl')}
                   type="url"
@@ -909,13 +913,13 @@ const EventFormModal: React.FC<{
           </FormSection>
 
           {/* ---- Fee & categories ---- */}
-          <FormSection title="Fee & play categories" icon={<IndianRupee className="w-3.5 h-3.5" />}>
-            <div className="grid grid-cols-2 gap-3">
+          <FormSection title="Fee & play categories">
+            <div className="grid grid-cols-2 gap-4">
               <Field
                 label="Entry fee (₹)"
                 htmlFor={fid('entryFee')}
                 error={errors.entryFee}
-                hint={feeLabel === 'Free' ? 'Empty or 0 = Free' : `Shown as ${feeLabel}`}
+                hint={feeLabel === 'Free' ? 'Empty or 0 = free entry' : `Shown as ${feeLabel}`}
               >
                 <input
                   id={fid('entryFee')}
@@ -941,8 +945,8 @@ const EventFormModal: React.FC<{
               </Field>
             </div>
             <div>
-              <label htmlFor={fid('categories')} className="block text-xs font-semibold text-slate-700 mb-1">
-                Play categories
+              <label htmlFor={fid('categories')} className={labelClass}>
+                Play categories <span className="font-normal text-ink-muted">(optional)</span>
               </label>
               <CategoryChips
                 value={form.categories}
@@ -954,16 +958,16 @@ const EventFormModal: React.FC<{
           </FormSection>
 
           {/* ---- Registration ---- */}
-          <FormSection title="Registration" icon={<ClipboardList className="w-3.5 h-3.5" />}>
-            <div role="radiogroup" aria-label="How players register" className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <FormSection title="Registration" description="How players sign up for this event.">
+            <div role="radiogroup" aria-label="How players register" className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {MODE_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
                 const checked = form.registrationMode === opt.id;
                 return (
                   <label
                     key={opt.id}
-                    className={`flex items-start gap-2.5 min-h-[56px] p-3 rounded-xl border cursor-pointer transition-colors ${
-                      checked ? 'border-ink bg-paper ring-1 ring-ink/40' : 'border-line bg-white hover:bg-paper'
+                    className={`flex items-start gap-3 min-h-[56px] p-3.5 rounded-xl border cursor-pointer transition-colors duration-150 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ink ${
+                      checked ? 'border-ink bg-paper ring-1 ring-ink' : 'border-line bg-white hover:border-ink/30'
                     }`}
                   >
                     <input
@@ -972,14 +976,14 @@ const EventFormModal: React.FC<{
                       value={opt.id}
                       checked={checked}
                       onChange={() => set('registrationMode', opt.id)}
-                      className="mt-0.5 w-4 h-4 shrink-0 accent-ink"
+                      className="mt-0.5 w-4 h-4 shrink-0 accent-ink focus:outline-none"
                     />
                     <span className="min-w-0">
-                      <span className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-                        <Icon className={`w-3.5 h-3.5 shrink-0 ${checked ? 'text-ink' : 'text-slate-400'}`} />
+                      <span className="flex items-center gap-1.5 text-[14px] font-semibold text-ink">
+                        <Icon className={`w-4 h-4 shrink-0 ${checked ? 'text-ink' : 'text-ink-muted'}`} aria-hidden="true" />
                         {opt.label}
                       </span>
-                      <span className="block text-xs text-slate-500 leading-snug mt-0.5">{opt.description}</span>
+                      <span className="block text-[13px] text-ink-muted leading-snug mt-0.5">{opt.description}</span>
                     </span>
                   </label>
                 );
@@ -987,7 +991,7 @@ const EventFormModal: React.FC<{
             </div>
 
             {form.registrationMode !== 'none' && (
-              <div className="p-3 rounded-2xl bg-paper border border-line grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="p-4 rounded-2xl bg-paper border border-line grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {form.registrationMode === 'url' && (
                   <Field
                     label="Registration link"
@@ -1015,7 +1019,7 @@ const EventFormModal: React.FC<{
                     error={errors.capacity}
                     hint={
                       overCapacity
-                        ? `${registered} are already registered — the event will show as full.`
+                        ? `${registered} are already registered, so the event will show as full.`
                         : `Empty = no limit. Registration closes by itself when full.${registered ? ` ${registered} registered so far.` : ''}`
                     }
                   >
@@ -1058,7 +1062,7 @@ const EventFormModal: React.FC<{
           </FormSection>
 
           {/* ---- Banner photo ---- */}
-          <FormSection title="Banner photo" icon={<Images className="w-3.5 h-3.5" />}>
+          <FormSection title="Banner photo" description="Real photos only. The event details are written over the photo on the homepage.">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div id={fid('bannerImageUrl')} tabIndex={-1} className="sm:col-span-2 outline-none">
                 <MediaUpload
@@ -1075,12 +1079,12 @@ const EventFormModal: React.FC<{
               </div>
               <div id={fid('mobileImageUrl')} tabIndex={-1} className="outline-none">
                 <MediaUpload
-                  label="Phone photo"
+                  label="Phone photo (optional)"
                   value={form.mobileImageUrl}
                   onChange={(url) => set('mobileImageUrl', url)}
                   aspectClass="aspect-[4/5]"
                   contain={false}
-                  hint="Optional. Portrait, about 800 × 1000 px. If empty, the wide photo is cropped."
+                  hint="Portrait, about 800 × 1000 px. If empty, the wide photo is cropped."
                   error={errors.mobileImageUrl}
                   onUploadingChange={setUploadingPhone}
                 />
@@ -1104,14 +1108,8 @@ const EventFormModal: React.FC<{
           </FormSection>
 
           {/* ---- Visibility ---- */}
-          <FormSection title="Visibility" icon={<Eye className="w-3.5 h-3.5" />}>
-            <div className="divide-y divide-line/70 rounded-2xl border border-line px-3">
-              <Switch
-                checked={form.showAsBanner}
-                onChange={(v) => set('showAsBanner', v)}
-                label="Show in homepage banner"
-                description="Adds the event to the photo slider at the top of the homepage until it ends."
-              />
+          <FormSection title="On the website">
+            <div className={switchGroupClass}>
               <Switch
                 checked={form.isActive}
                 onChange={(v) => set('isActive', v)}
@@ -1119,6 +1117,12 @@ const EventFormModal: React.FC<{
                 description="Turn off to keep it as a draft, hidden from the website."
                 onLabel="Published"
                 offLabel="Draft"
+              />
+              <Switch
+                checked={form.showAsBanner}
+                onChange={(v) => set('showAsBanner', v)}
+                label="Show in homepage banner"
+                description="Adds the event to the photo slider at the top of the homepage until it ends."
               />
             </div>
           </FormSection>
@@ -1147,41 +1151,39 @@ const EventRow: React.FC<{
   const full = isForm && e.spotsLeft === 0;
 
   let regText: string = MODE_SHORT[e.registrationMode];
-  let regTone = 'text-slate-500';
+  let regTone = 'text-ink-muted';
   if (e.registrationMode !== 'none' && e.isActive) {
     if (full) {
       regText += ' · full';
       regTone = 'text-rose-700';
     } else if (e.registrationOpen) {
       regText += ` · open until ${shortDate(e.registrationDeadline || e.startDate)}`;
-      regTone = 'text-emerald-700';
+      regTone = 'text-emerald-800';
     } else {
       regText += ' · closed';
     }
   }
 
   return (
-    <li id={domId} className={`${cardClass} p-3 sm:p-4 scroll-mt-4 ${e.isActive ? '' : 'bg-paper/80'}`}>
-      <div className="flex flex-col md:flex-row gap-3 md:gap-4">
+    <li id={domId} className={`${cardClass} p-3 sm:p-4 scroll-mt-4 ${e.isActive ? '' : 'bg-paper/70'}`}>
+      <div className="flex flex-col md:flex-row gap-3 md:gap-5">
         <EventThumb event={e} className="w-full md:w-[240px] shrink-0 self-start" />
 
-        <div className="flex-1 min-w-0 space-y-2">
+        <div className="flex-1 min-w-0 space-y-2.5">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${status.cls}`}>{status.label}</span>
+            <span className={`${chipClass} ${status.cls}`}>{status.label}</span>
             {!e.isActive && (
-              <span className="inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full border border-slate-300 bg-slate-200 text-slate-700">
-                <EyeOff className="w-3 h-3" /> Hidden · draft
+              <span className={`${chipClass} bg-paper-deep border-line text-ink-soft`}>
+                <EyeOff className="w-3 h-3" aria-hidden="true" /> Draft, hidden from website
               </span>
             )}
-            <span className="text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-paper text-sportsBlue border border-line">
-              {EVENT_CATEGORY_LABELS[e.category]}
-            </span>
+            <span className={`${chipClass} bg-white border-line text-ink-soft`}>{EVENT_CATEGORY_LABELS[e.category]}</span>
             {inHomepageBanner(e) ? (
-              <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-brandYellow text-sportsBlue">
-                <Images className="w-3 h-3" /> Shown in homepage banner
+              <span className={`${chipClass} bg-accent/25 border-accent/60 text-ink`}>
+                <Images className="w-3 h-3" aria-hidden="true" /> In homepage banner
               </span>
             ) : (
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full border border-line text-slate-500">
+              <span className={`${chipClass} bg-white border-line text-ink-muted`}>
                 {!e.showAsBanner
                   ? 'Not in homepage banner'
                   : e.status === 'past'
@@ -1191,94 +1193,88 @@ const EventRow: React.FC<{
             )}
           </div>
 
-          <h4 className="font-bold text-sm sm:text-[15px] text-slate-900 break-words leading-snug">{e.title}</h4>
+          <h4 className="text-[16px] sm:text-[17px] font-semibold text-ink break-words leading-snug">{e.title}</h4>
 
-          <dl className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600">
-            <div className="flex items-start gap-1.5 min-w-0">
+          <dl className="grid grid-cols-1 lg:grid-cols-2 gap-x-5 gap-y-1.5 text-[14px] text-ink-soft">
+            <div className="flex items-start gap-2 min-w-0">
               <dt className="sr-only">Dates</dt>
-              <CalendarDays className="w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-400" aria-hidden="true" />
+              <CalendarDays className="w-4 h-4 mt-0.5 shrink-0 text-ink-muted" aria-hidden="true" />
               <dd className="min-w-0">
-                <span className="font-semibold text-slate-800">{formatEventDates(e.startDate, e.endDate)}</span>
-                {e.timeText && <span className="text-slate-500"> · {e.timeText}</span>}
+                <span className="font-medium text-ink">{formatEventDates(e.startDate, e.endDate)}</span>
+                {e.timeText && <span className="text-ink-muted"> · {e.timeText}</span>}
               </dd>
             </div>
-            <div className="flex items-start gap-1.5 min-w-0">
+            <div className="flex items-start gap-2 min-w-0">
               <dt className="sr-only">Venue</dt>
-              <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-400" aria-hidden="true" />
+              <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-ink-muted" aria-hidden="true" />
               <dd className="min-w-0 break-words line-clamp-2">{e.venue}</dd>
             </div>
-            <div className="flex items-start gap-1.5 min-w-0">
+            <div className="flex items-start gap-2 min-w-0">
               <dt className="sr-only">Entry fee</dt>
-              <IndianRupee className="w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-400" aria-hidden="true" />
-              <dd className="font-semibold text-slate-800">{formatEventFee(e)}</dd>
+              <IndianRupee className="w-4 h-4 mt-0.5 shrink-0 text-ink-muted" aria-hidden="true" />
+              <dd className="font-medium text-ink tabular-nums">{formatEventFee(e)}</dd>
             </div>
-            <div className="flex items-start gap-1.5 min-w-0">
+            <div className="flex items-start gap-2 min-w-0">
               <dt className="sr-only">Registration</dt>
-              <ClipboardList className="w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-400" aria-hidden="true" />
+              <ClipboardList className="w-4 h-4 mt-0.5 shrink-0 text-ink-muted" aria-hidden="true" />
               <dd className={`min-w-0 font-medium ${regTone}`}>{regText}</dd>
             </div>
           </dl>
 
           {isForm && (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-900">
-                <Users className="w-3.5 h-3.5 text-slate-400" />
-                {e.capacity ? `${e.registrationCount} / ${e.capacity} registered` : `${e.registrationCount} registered`}
+              <span className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-ink tabular-nums">
+                <Users className="w-4 h-4 text-ink-muted" aria-hidden="true" />
+                {e.capacity ? `${e.registrationCount} of ${e.capacity} registered` : `${e.registrationCount} registered`}
               </span>
               {e.capacity ? <CapacityBar count={e.registrationCount} capacity={e.capacity} /> : null}
               {e.registrationOpen && e.capacity && e.spotsLeft ? (
-                <span className="text-xs text-slate-500">{e.spotsLeft} places left</span>
+                <span className="text-[13px] text-ink-muted tabular-nums">{e.spotsLeft} places left</span>
               ) : null}
             </div>
           )}
 
-          <div className="grid grid-cols-[1fr_1fr_auto] gap-2 pt-1 sm:flex sm:flex-wrap sm:justify-end">
+          <div className="grid grid-cols-[1fr_1fr_auto] gap-2 pt-1 sm:flex sm:flex-wrap sm:justify-end [&>button]:min-h-[44px] sm:[&>button]:min-h-[40px]">
             {showRegistrations && (
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 onClick={onRegistrations}
-                className="col-span-3 min-h-[42px] text-sportsBlue border-line hover:bg-paper"
+                className="col-span-3 px-4"
                 leftIcon={<Users className="w-4 h-4" />}
               >
                 Registrations
-                <span className="ml-0.5 text-xs min-w-[20px] px-1.5 py-0.5 rounded-full font-bold bg-paper-deep text-sportsBlue">
+                <span className="ml-0.5 text-[12px] leading-none min-w-[22px] text-center px-1.5 py-1 rounded-full font-semibold bg-paper-deep text-ink tabular-nums">
                   {e.registrationCount}
                 </span>
               </Button>
             )}
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={onEdit}
-              className="min-h-[42px] sm:min-w-[84px]"
-              leftIcon={<Pencil className="w-3.5 h-3.5" />}
+              className="px-4 sm:min-w-[88px]"
+              leftIcon={<Pencil className="w-4 h-4" />}
               aria-label={`Edit ${e.title}`}
             >
               Edit
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={onToggleActive}
               disabled={busy}
               isLoading={busy}
-              className="min-h-[42px] sm:min-w-[96px]"
-              leftIcon={e.isActive ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              className="px-4 sm:min-w-[100px]"
+              leftIcon={e.isActive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               aria-label={e.isActive ? `Hide ${e.title} from the website` : `Publish ${e.title} on the website`}
             >
               {e.isActive ? 'Hide' : 'Publish'}
             </Button>
-            <button
-              type="button"
-              onClick={onDelete}
-              aria-label={`Delete ${e.title}`}
-              title="Delete event"
-              className="shrink-0 w-[42px] h-[42px] inline-flex items-center justify-center rounded-xl border border-line bg-white text-slate-500 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50"
-            >
+            <button type="button" onClick={onDelete} aria-label={`Delete ${e.title}`} title="Delete event" className={iconButtonDangerClass}>
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -1394,13 +1390,9 @@ const RegistrationsView: React.FC<{
 
   const statusPill = (reg: EventRegistration) =>
     reg.status === 'registered' ? (
-      <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
-        Registered
-      </span>
+      <span className={`${chipClass} bg-emerald-50 text-emerald-800 border-emerald-200`}>Registered</span>
     ) : (
-      <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-slate-100 text-slate-600 border-line">
-        Cancelled
-      </span>
+      <span className={`${chipClass} bg-paper-deep text-ink-soft border-line`}>Cancelled</span>
     );
 
   const actionButton = (reg: EventRegistration, className = '') =>
@@ -1410,7 +1402,7 @@ const RegistrationsView: React.FC<{
         variant="outline"
         size="sm"
         onClick={() => setPending({ reg, to: 'cancelled' })}
-        className={`min-h-[40px] text-rose-700 border-rose-200 hover:bg-rose-50 ${className}`}
+        className={`min-h-[44px] sm:min-h-[40px] text-rose-700 border-rose-200 hover:bg-rose-50 ${className}`}
         leftIcon={<UserX className="w-3.5 h-3.5" />}
         aria-label={`Cancel registration of ${reg.name}`}
       >
@@ -1422,7 +1414,7 @@ const RegistrationsView: React.FC<{
         variant="outline"
         size="sm"
         onClick={() => setPending({ reg, to: 'registered' })}
-        className={`min-h-[40px] ${className}`}
+        className={`min-h-[44px] sm:min-h-[40px] ${className}`}
         leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
         aria-label={`Restore registration of ${reg.name}`}
       >
@@ -1436,7 +1428,7 @@ const RegistrationsView: React.FC<{
       <span className="inline-flex items-center gap-1">
         <a
           href={mobileTelHref(reg.mobile)}
-          className="inline-flex items-center min-h-[40px] font-semibold text-ink hover:underline whitespace-nowrap"
+          className="inline-flex items-center min-h-[44px] sm:min-h-[40px] font-semibold text-ink tabular-nums underline decoration-ink/20 underline-offset-4 hover:decoration-ink whitespace-nowrap rounded"
         >
           {formatMobile(reg.mobile)}
         </a>
@@ -1447,7 +1439,7 @@ const RegistrationsView: React.FC<{
             rel="noopener noreferrer"
             aria-label={`WhatsApp ${reg.name}`}
             title="Open WhatsApp chat"
-            className="shrink-0 w-10 h-10 inline-flex items-center justify-center rounded-xl text-emerald-600 hover:bg-emerald-50"
+            className={`shrink-0 w-11 h-11 sm:w-10 sm:h-10 inline-flex items-center justify-center rounded-xl text-emerald-700 hover:bg-emerald-50 ${focusRing}`}
           >
             <MessageCircle className="w-4 h-4" />
           </a>
@@ -1463,21 +1455,21 @@ const RegistrationsView: React.FC<{
         variant="ghost"
         size="sm"
         onClick={onBack}
-        className="min-h-[42px] -ml-2"
+        className="min-h-[44px] -ml-2 px-3"
         leftIcon={<ArrowLeft className="w-4 h-4" />}
       >
         All events
       </Button>
 
-      <div className={`${cardClass} p-3 sm:p-4 flex flex-col sm:flex-row gap-3 sm:items-center`}>
+      <div className={`${cardClass} p-3 sm:p-4 flex flex-col sm:flex-row gap-3 sm:gap-5 sm:items-center`}>
         <EventThumb event={event} className="hidden sm:block sm:w-[180px] shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Registrations</p>
-          <h3 className="text-base sm:text-lg font-bold text-slate-900 break-words leading-snug">{event.title}</h3>
-          <p className="text-xs text-slate-600 mt-0.5 break-words">
+          <p className="text-[13px] font-medium text-ink-muted">Registrations</p>
+          <h3 className="font-display tracking-[0.01em] text-[22px] sm:text-[24px] font-semibold text-ink break-words leading-tight">{event.title}</h3>
+          <p className="text-[14px] text-ink-soft mt-1 break-words">
             {formatEventDates(event.startDate, event.endDate)} · {event.venue}
           </p>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-[13px] text-ink-muted mt-0.5">
             {MODE_SHORT[event.registrationMode]}
             {event.registrationMode === 'form' &&
               (event.registrationOpen
@@ -1490,10 +1482,10 @@ const RegistrationsView: React.FC<{
         <div className="flex gap-2 shrink-0">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={load}
             isLoading={loading && regs.length > 0}
-            className="min-h-[42px]"
+            className="min-h-[44px] px-4"
             leftIcon={<RefreshCw className="w-4 h-4" />}
             aria-label="Refresh registrations"
           >
@@ -1503,7 +1495,7 @@ const RegistrationsView: React.FC<{
             type="button"
             onClick={exportCsv}
             disabled={regs.length === 0}
-            className="min-h-[42px] flex-1 sm:flex-none"
+            className="min-h-[44px] px-5 flex-1 sm:flex-none"
             leftIcon={<Download className="w-4 h-4" />}
           >
             Export {filtered && regs.length ? `${visible.length} shown` : 'CSV'}
@@ -1512,12 +1504,12 @@ const RegistrationsView: React.FC<{
       </div>
 
       {event.registrationMode !== 'form' && (
-        <div className="p-3 rounded-xl bg-paper border border-line text-xs text-ink">
+        <Notice tone="info">
           {event.registrationMode === 'none'
             ? 'This event no longer takes registrations'
             : `This event now takes registrations ${MODE_HOW[event.registrationMode]}`}
           , so new players won’t appear here. Registrations made on the website earlier are kept below.
-        </div>
+        </Notice>
       )}
 
       {loading && regs.length === 0 ? (
@@ -1535,27 +1527,17 @@ const RegistrationsView: React.FC<{
         />
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-2">
-            <div className={`${cardClass} p-3`}>
-              <p className="text-xs font-semibold text-slate-500">Registered</p>
-              <p className="text-xl font-bold text-slate-900">
-                {active.length}
-                {event.capacity ? <span className="text-sm font-bold text-slate-400"> / {event.capacity}</span> : null}
-              </p>
-            </div>
-            <div className={`${cardClass} p-3`}>
-              <p className="text-xs font-semibold text-slate-500">Places left</p>
-              <p className={`text-xl font-bold ${capacityFull ? 'text-rose-600' : 'text-emerald-600'}`}>
-                {event.capacity ? Math.max(event.capacity - active.length, 0) : '—'}
-              </p>
-            </div>
-            <div className={`${cardClass} p-3`}>
-              <p className="text-xs font-semibold text-slate-500">Cancelled</p>
-              <p className="text-xl font-bold text-slate-500">{cancelledCount}</p>
-            </div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3" role="group" aria-label="Summary">
+            <StatTile label="Registered" value={active.length} suffix={event.capacity ? `/ ${event.capacity}` : undefined} />
+            <StatTile
+              label="Places left"
+              value={event.capacity ? Math.max(event.capacity - active.length, 0) : '—'}
+              tone={event.capacity ? (capacityFull ? 'bad' : 'good') : 'muted'}
+            />
+            <StatTile label="Cancelled" value={cancelledCount} tone="muted" />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             {categoryOptions.length > 1 && (
               <Pills<string> ariaLabel="Filter by category" value={category} onChange={setCategory} options={categoryOptions} />
             )}
@@ -1570,23 +1552,15 @@ const RegistrationsView: React.FC<{
             )}
           </div>
 
-          {loadError && (
-            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-center justify-between gap-2">
-              <span>Refresh failed: {loadError}</span>
-              <Button type="button" size="sm" variant="outline" onClick={load} className="min-h-[36px]">
-                Retry
-              </Button>
-            </div>
-          )}
+          {loadError && <RefreshFailed message={loadError} onRetry={load} retrying={loading} />}
 
           {visible.length === 0 ? (
-            <div className={`${cardClass} p-8 text-center`}>
-              <p className="text-sm font-semibold text-slate-700">No registrations in this category</p>
+            <div className={`${cardClass} px-6 py-10 text-center`} role="status">
+              <p className="text-[16px] font-semibold text-ink">No registrations in this category</p>
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
-                className="mt-3 min-h-[40px]"
+                variant="secondary"
+                className="mt-4 min-h-[44px] px-5"
                 onClick={() => {
                   setCategory(ALL);
                   setShowCancelled(true);
@@ -1599,44 +1573,44 @@ const RegistrationsView: React.FC<{
             <>
               {/* Table (wide screens: the client's 1280px laptop and up) */}
               <div className={`${cardClass} hidden xl:block overflow-x-auto`}>
-                <table className="w-full min-w-[880px] text-xs text-left">
-                  <thead className="bg-paper text-xs font-bold text-slate-500 uppercase tracking-wide">
+                <table className="w-full min-w-[880px] text-[13px] text-left">
+                  <thead className="bg-paper text-[13px] font-semibold text-ink-soft border-b border-line">
                     <tr>
-                      <th scope="col" className="py-2.5 pl-3 pr-1.5 w-10">#</th>
-                      <th scope="col" className="py-2.5 px-2.5">Name &amp; partner</th>
-                      <th scope="col" className="py-2.5 px-2.5">Mobile</th>
-                      <th scope="col" className="py-2.5 px-2.5">Category</th>
-                      <th scope="col" className="py-2.5 px-2.5">Notes</th>
-                      <th scope="col" className="py-2.5 px-2.5">Registered</th>
-                      <th scope="col" className="py-2.5 px-2.5 pr-3">Status</th>
+                      <th scope="col" className="py-2.5 pl-4 pr-1.5 w-10 text-right tabular-nums">#</th>
+                      <th scope="col" className="py-2.5 px-3">Name &amp; partner</th>
+                      <th scope="col" className="py-2.5 px-3">Mobile</th>
+                      <th scope="col" className="py-2.5 px-3">Category</th>
+                      <th scope="col" className="py-2.5 px-3">Notes</th>
+                      <th scope="col" className="py-2.5 px-3">Registered</th>
+                      <th scope="col" className="py-2.5 px-3 pr-4">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-line/70">
+                  <tbody className="divide-y divide-line">
                     {visible.map(({ reg, n }) => {
                       const cancelled = reg.status === 'cancelled';
                       const when = parseDate(reg.createdAt);
                       return (
-                        <tr key={reg.id} className={cancelled ? 'bg-paper/70 text-slate-400' : 'text-slate-700'}>
-                          <td className="py-2 pl-3 pr-1.5 align-middle font-bold text-slate-400">{n}</td>
-                          <td className="py-2 px-2.5 align-middle min-w-[150px] max-w-[220px]">
-                            <span className={`block font-semibold break-words text-[13px] ${cancelled ? 'line-through' : 'text-slate-900'}`}>
+                        <tr key={reg.id} className={`transition-colors duration-150 ${cancelled ? 'bg-paper/70 text-ink-muted' : 'text-ink-soft hover:bg-paper/50'}`}>
+                          <td className="py-2 pl-4 pr-1.5 align-middle text-right font-semibold text-ink-muted tabular-nums">{n}</td>
+                          <td className="py-2 px-3 align-middle min-w-[150px] max-w-[220px]">
+                            <span className={`block font-semibold break-words text-[14px] ${cancelled ? 'line-through' : 'text-ink'}`}>
                               {reg.name}
                             </span>
                             {reg.partnerName && (
-                              <span className="block text-xs text-slate-500 break-words">with {reg.partnerName}</span>
+                              <span className="block text-[13px] text-ink-muted break-words">with {reg.partnerName}</span>
                             )}
                           </td>
-                          <td className="py-0.5 px-2.5 align-middle">{phoneLinks(reg)}</td>
-                          <td className="py-2 px-2.5 align-middle">
+                          <td className="py-0.5 px-3 align-middle">{phoneLinks(reg)}</td>
+                          <td className="py-2 px-3 align-middle">
                             {reg.playCategory ? (
-                              <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-lg bg-paper text-sportsBlue whitespace-nowrap">
+                              <span className={`${chipClass} bg-paper border-line text-ink whitespace-nowrap`}>
                                 {reg.playCategory}
                               </span>
                             ) : (
                               <span className="text-slate-300">—</span>
                             )}
                           </td>
-                          <td className="py-2 px-2.5 align-middle min-w-[140px]">
+                          <td className="py-2 px-3 align-middle min-w-[140px]">
                             {reg.notes ? (
                               <span className="block whitespace-pre-line break-words line-clamp-3" title={reg.notes}>
                                 {reg.notes}
@@ -1645,17 +1619,17 @@ const RegistrationsView: React.FC<{
                               <span className="text-slate-300">—</span>
                             )}
                           </td>
-                          <td className="py-2 px-2.5 align-middle whitespace-nowrap text-slate-500">
+                          <td className="py-2 px-3 align-middle whitespace-nowrap text-ink-muted tabular-nums">
                             {when ? (
                               <>
                                 <span className="block">{formatDate(when)}</span>
-                                <span className="block text-xs text-slate-400">{formatTime(when)}</span>
+                                <span className="block text-[12px] text-ink-muted">{formatTime(when)}</span>
                               </>
                             ) : (
                               reg.createdAt
                             )}
                           </td>
-                          <td className="py-1.5 px-2.5 pr-3 align-middle">
+                          <td className="py-1.5 px-3 pr-4 align-middle">
                             <div className="flex items-center gap-2 whitespace-nowrap">
                               {statusPill(reg)}
                               {actionButton(reg)}
@@ -1673,29 +1647,27 @@ const RegistrationsView: React.FC<{
                 {visible.map(({ reg, n }) => {
                   const cancelled = reg.status === 'cancelled';
                   return (
-                    <li key={reg.id} className={`${cardClass} p-3 ${cancelled ? 'bg-paper/80' : ''}`}>
+                    <li key={reg.id} className={`${cardClass} p-3.5 ${cancelled ? 'bg-paper/80' : ''}`}>
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className={`text-sm font-bold break-words ${cancelled ? 'line-through text-slate-400' : 'text-slate-900'}`}>
-                            <span className="text-slate-400 font-semibold mr-1">#{n}</span>
+                          <p className={`text-[15px] font-semibold break-words ${cancelled ? 'line-through text-ink-muted' : 'text-ink'}`}>
+                            <span className="text-ink-muted font-medium mr-1.5 tabular-nums">{n}.</span>
                             {reg.name}
                           </p>
-                          {reg.partnerName && <p className="text-xs text-slate-600 break-words">Partner: {reg.partnerName}</p>}
+                          {reg.partnerName && <p className="text-[13px] text-ink-soft break-words">Partner: {reg.partnerName}</p>}
                         </div>
                         {statusPill(reg)}
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-x-2">
                         {phoneLinks(reg)}
                         {reg.playCategory && (
-                          <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-paper text-sportsBlue">
-                            {reg.playCategory}
-                          </span>
+                          <span className={`${chipClass} bg-paper border-line text-ink`}>{reg.playCategory}</span>
                         )}
                       </div>
-                      {reg.notes && <p className="text-xs text-slate-600 whitespace-pre-line break-words mt-1">{reg.notes}</p>}
-                      <div className="mt-2 pt-2 border-t border-line/70 flex items-center justify-between gap-2">
-                        <span className="text-xs text-slate-500 inline-flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> {formatDateTime(reg.createdAt)}
+                      {reg.notes && <p className="text-[13px] text-ink-soft whitespace-pre-line break-words mt-1">{reg.notes}</p>}
+                      <div className="mt-2 pt-2 border-t border-line flex items-center justify-between gap-2">
+                        <span className="text-[13px] text-ink-muted inline-flex items-center gap-1.5 tabular-nums">
+                          <Clock className="w-3.5 h-3.5" aria-hidden="true" /> {formatDateTime(reg.createdAt)}
                         </span>
                         {actionButton(reg)}
                       </div>
@@ -1719,7 +1691,7 @@ const RegistrationsView: React.FC<{
           role="alertdialog"
           footer={
             <>
-              <Button type="button" variant="outline" onClick={() => setPending(null)} disabled={busy} className="min-h-[42px]">
+              <Button type="button" variant="secondary" onClick={() => setPending(null)} disabled={busy} autoFocus className="min-h-[44px] sm:px-5">
                 {pending?.to === 'cancelled' ? 'Keep registration' : 'Not now'}
               </Button>
               <Button
@@ -1727,7 +1699,7 @@ const RegistrationsView: React.FC<{
                 variant={pending?.to === 'cancelled' ? 'danger' : 'primary'}
                 onClick={runStatusChange}
                 isLoading={busy}
-                className="min-h-[42px]"
+                className="min-h-[44px] sm:px-5"
               >
                 {pending?.to === 'cancelled' ? 'Cancel registration' : 'Restore registration'}
               </Button>
@@ -1735,19 +1707,19 @@ const RegistrationsView: React.FC<{
           }
         >
           {pending && (
-            <div className="text-sm text-slate-600 leading-relaxed">
-              <b>{pending.reg.name}</b> ({formatMobile(pending.reg.mobile)})
+            <div className="text-[15px] text-ink-soft leading-relaxed">
+              <b className="font-semibold text-ink">{pending.reg.name}</b> ({formatMobile(pending.reg.mobile)})
               {pending.reg.playCategory ? ` · ${pending.reg.playCategory}` : ''}
               {pending.to === 'cancelled'
                 ? ' will be marked as cancelled and their place freed. You can restore it later.'
                 : ' will be registered again.'}
               {restoringOverCapacity && (
-                <span className="block mt-2 text-xs font-semibold text-amber-700">
+                <span className="block mt-2 text-[13px] font-medium text-amber-800">
                   The event is already full ({event.capacity}). Restoring takes it over the limit.
                 </span>
               )}
               {pending.to === 'cancelled' && (
-                <span className="block mt-2 text-xs text-slate-500">The player isn’t told automatically. Let them know if needed.</span>
+                <span className="block mt-2 text-[13px] text-ink-muted">The player isn’t told automatically. Let them know if needed.</span>
               )}
             </div>
           )}
@@ -1922,13 +1894,13 @@ export const EventsManager: React.FC = () => {
         <>
           <SectionHeader
             title="Events"
-            description="Tournaments, coaching camps, clinics and store events. Events with “Show in homepage banner” appear in the photo slider at the top of the homepage until they end. Players can register on the website, on WhatsApp, by phone or through a link."
+            description="Tournaments, coaching camps, clinics and store events. Events marked “Show in homepage banner” lead the photo slider at the top of the homepage until they end."
             actions={
               <Button
                 type="button"
                 onClick={() => setEditing('new')}
                 leftIcon={<Plus className="w-4 h-4" />}
-                className="min-h-[42px]"
+                className="min-h-[44px] px-5"
                 disabled={loading && events.length === 0 && !loadError}
               >
                 Add event
@@ -1949,42 +1921,22 @@ export const EventsManager: React.FC = () => {
             />
           ) : (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <div className={`${cardClass} p-3`}>
-                  <p className="text-xs font-semibold text-slate-500">Upcoming & ongoing</p>
-                  <p className="text-xl font-bold text-slate-900">{stats.live}</p>
-                </div>
-                <div className={`${cardClass} p-3`}>
-                  <p className="text-xs font-semibold text-slate-500">In homepage banner</p>
-                  <p className={`text-xl font-bold ${stats.banners ? 'text-slate-900' : 'text-amber-600'}`}>{stats.banners}</p>
-                </div>
-                <div className={`${cardClass} p-3`}>
-                  <p className="text-xs font-semibold text-slate-500">Registration open</p>
-                  <p className="text-xl font-bold text-emerald-600">{stats.open}</p>
-                </div>
-                <div className={`${cardClass} p-3`}>
-                  <p className="text-xs font-semibold text-slate-500">Website registrations</p>
-                  <p className="text-xl font-bold text-slate-900">{stats.registrations}</p>
-                </div>
-              </div>
+              <StatGrid>
+                <StatTile label="Upcoming & ongoing" value={stats.live} />
+                <StatTile label="In homepage banner" value={stats.banners} tone={stats.banners ? 'default' : 'warn'} />
+                <StatTile label="Registration open" value={stats.open} />
+                <StatTile label="Website registrations" value={stats.registrations} />
+              </StatGrid>
 
-              {loadError && (
-                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-center justify-between gap-2">
-                  <span>Refresh failed: {loadError}</span>
-                  <Button type="button" size="sm" variant="outline" onClick={() => load()} className="min-h-[36px]">
-                    Retry
-                  </Button>
-                </div>
-              )}
+              {loadError && <RefreshFailed message={loadError} onRetry={() => load()} retrying={loading} />}
 
               {current.length === 0 ? (
-                <div className={`${cardClass} p-6 text-center`}>
-                  <p className="text-sm font-semibold text-slate-700">No upcoming events</p>
-                  <p className="text-xs text-slate-500 mt-1">Add the next tournament or camp so it shows on the homepage.</p>
+                <div className={`${cardClass} px-6 py-10 text-center`}>
+                  <p className="text-[16px] font-semibold text-ink">No upcoming events</p>
+                  <p className="mt-1 text-[14px] text-ink-muted">Add the next tournament or camp so it shows on the homepage.</p>
                   <Button
                     type="button"
-                    size="sm"
-                    className="mt-3 min-h-[40px]"
+                    className="mt-4 min-h-[44px] px-5"
                     onClick={() => setEditing('new')}
                     leftIcon={<Plus className="w-4 h-4" />}
                   >
@@ -2004,12 +1956,15 @@ export const EventsManager: React.FC = () => {
                     onClick={() => setShowPast((v) => !v)}
                     aria-expanded={showPast}
                     aria-controls="past-events"
-                    className="w-full flex items-center justify-between gap-2 min-h-[44px] px-4 rounded-2xl border border-line bg-white text-sm font-bold text-slate-700 hover:bg-paper"
+                    className={`w-full flex items-center justify-between gap-2 min-h-[48px] px-4 rounded-2xl border border-line bg-white text-[15px] font-semibold text-ink transition-colors duration-150 hover:bg-paper ${focusRing}`}
                   >
                     <span>
-                      Past events <span className="text-slate-400 font-semibold">({past.length})</span>
+                      Past events <span className="text-ink-muted font-medium tabular-nums">({past.length})</span>
                     </span>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${showPast ? 'rotate-180' : ''}`} />
+                    <ChevronDown
+                      className={`w-4 h-4 text-ink-muted transition-transform duration-200 motion-reduce:transition-none ${showPast ? 'rotate-180' : ''}`}
+                      aria-hidden="true"
+                    />
                   </button>
                   {showPast && (
                     <ul id="past-events" className="space-y-3" aria-label="Past events">
@@ -2047,11 +2002,11 @@ export const EventsManager: React.FC = () => {
           message={
             toDelete ? (
               <>
-                <b>“{toDelete.title}”</b> will be removed from the website. This can’t be undone.
+                <b className="font-semibold text-ink">“{toDelete.title}”</b> will be removed from the website. This can’t be undone.
                 {deleteRegsLoading ? (
-                  <span className="block mt-2 text-xs text-slate-500">Checking registrations…</span>
+                  <span className="block mt-2 text-[13px] text-ink-muted">Checking registrations…</span>
                 ) : deleteCounts.total > 0 ? (
-                  <span className="block mt-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800">
+                  <span className="block mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-[14px] text-rose-800">
                     <b>
                       {deleteCounts.total} registration{deleteCounts.total === 1 ? '' : 's'}
                     </b>
@@ -2061,14 +2016,14 @@ export const EventsManager: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => registrationsCsv(toDelete, deleteRegs.map((reg, i) => ({ reg, n: i + 1 })))}
-                        className="mt-1.5 flex items-center gap-1.5 min-h-[40px] font-bold text-rose-800 underline underline-offset-2"
+                        className={`mt-1 flex items-center gap-1.5 min-h-[44px] font-semibold text-rose-800 underline underline-offset-4 rounded ${focusRing}`}
                       >
                         <Download className="w-3.5 h-3.5" /> Download them as CSV first
                       </button>
                     )}
                   </span>
                 ) : null}
-                <span className="block mt-2 text-xs text-slate-500">Tip: use “Hide” instead if you may reuse it.</span>
+                <span className="block mt-2 text-[13px] text-ink-muted">Tip: use “Hide” instead if you may use it again.</span>
               </>
             ) : null
           }

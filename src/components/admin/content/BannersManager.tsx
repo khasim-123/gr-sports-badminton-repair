@@ -2,17 +2,7 @@
  * Admin: homepage banner carousel management.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  ArrowDown,
-  ArrowUp,
-  CalendarClock,
-  ExternalLink,
-
-  MousePointerClick,
-  Pencil,
-  Plus,
-  Trash2,
-} from 'lucide-react';
+import { ArrowDown, ArrowUp, CalendarClock, ExternalLink, MousePointerClick, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
 import { contentService } from '../../../services/contentService';
 import { Banner, BannerCtaTarget, BannerInput } from '../../../types/content';
@@ -23,17 +13,25 @@ import {
   ConfirmDialog,
   ErrorState,
   Field,
+  FixFieldsNotice,
+  FormSection,
   ListSkeleton,
   Modal,
+  SaveFailedNotice,
   SectionHeader,
   Switch,
   cardClass,
+  chipClass,
   errorMessage,
+  focusFirstInvalid,
   formatDate,
+  iconButtonClass,
+  iconButtonDangerClass,
   inputClass,
   inputErrorClass,
   isHttpsUrl,
   nullIfEmpty,
+  switchGroupClass,
   todayISO,
 } from './shared';
 
@@ -64,10 +62,10 @@ const scheduleState = (b: Banner): ScheduleState => {
 };
 
 const toneClass: Record<ScheduleState['tone'], string> = {
-  live: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  live: 'bg-emerald-50 text-emerald-800 border-emerald-200',
   scheduled: 'bg-paper text-ink border-line',
-  expired: 'bg-amber-50 text-amber-800 border-amber-200',
-  off: 'bg-slate-100 text-slate-600 border-line',
+  expired: 'bg-amber-50 text-amber-900 border-amber-200',
+  off: 'bg-paper-deep text-ink-soft border-line',
 };
 
 // ---------- Form ----------
@@ -118,14 +116,14 @@ type FormErrors = Partial<Record<keyof BannerFormState, string>>;
 
 const validate = (f: BannerFormState): FormErrors => {
   const e: FormErrors = {};
-  if (!f.title.trim()) e.title = 'Title is required.';
-  if (!f.desktopImageUrl) e.desktopImageUrl = 'A desktop image is required.';
-  if (f.ctaTarget !== 'none' && !f.ctaLabel.trim()) e.ctaLabel = 'Button text is required (or choose "No button").';
+  if (!f.title.trim()) e.title = 'Add a title.';
+  if (!f.desktopImageUrl) e.desktopImageUrl = 'Add the wide image.';
+  if (f.ctaTarget !== 'none' && !f.ctaLabel.trim()) e.ctaLabel = 'Add the button text, or choose "No button".';
   if (f.ctaTarget === 'url') {
-    if (!f.ctaUrl.trim()) e.ctaUrl = 'Enter the link the button should open.';
-    else if (!isHttpsUrl(f.ctaUrl)) e.ctaUrl = 'Link must start with https://';
+    if (!f.ctaUrl.trim()) e.ctaUrl = 'Paste the link the button should open.';
+    else if (!isHttpsUrl(f.ctaUrl)) e.ctaUrl = 'The link must start with https://';
   }
-  if (f.startsAt && f.endsAt && f.endsAt < f.startsAt) e.endsAt = 'End date must be on or after the start date.';
+  if (f.startsAt && f.endsAt && f.endsAt < f.startsAt) e.endsAt = 'Choose a day on or after the start date.';
   return e;
 };
 
@@ -168,7 +166,10 @@ const BannerFormModal: React.FC<BannerFormModalProps> = ({ banner, open, onClose
     e?.preventDefault();
     const errs = validate(form);
     setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
+    if (Object.keys(errs).length > 0) {
+      focusFirstInvalid(formId);
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     try {
@@ -194,94 +195,96 @@ const BannerFormModal: React.FC<BannerFormModalProps> = ({ banner, open, onClose
     <Modal
       open={open}
       title={banner ? 'Edit banner' : 'New banner'}
-      subtitle="Shown in the homepage carousel"
+      subtitle="A photo slide at the top of the homepage"
       onClose={onClose}
       busy={saving}
       size="lg"
       footer={
         <>
-          <Button type="button" variant="outline" onClick={onClose} disabled={saving} className="min-h-[42px]">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={saving} className="min-h-[44px] sm:px-5">
             Cancel
           </Button>
-          <Button type="submit" form={formId} isLoading={saving} disabled={uploading} className="min-h-[42px]">
+          <Button type="submit" form={formId} isLoading={saving} disabled={uploading} className="min-h-[44px] sm:px-6">
             {uploading ? 'Waiting for upload…' : banner ? 'Save changes' : 'Add banner'}
           </Button>
         </>
       }
     >
-      <form id={formId} onSubmit={submit} className="space-y-4" noValidate>
-        {saveError && (
-          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700" role="alert">
-            {saveError} Your changes are still here — try again.
+      <form id={formId} onSubmit={submit} className="space-y-7" noValidate>
+        {(saveError || Object.keys(errors).some((k) => errors[k as keyof FormErrors])) && (
+          <div className="space-y-2 -mb-2">
+            <SaveFailedNotice message={saveError} />
+            <FixFieldsNotice count={Object.values(errors).filter(Boolean).length} />
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="sm:col-span-2">
-            <MediaUpload
-              label="Desktop image"
-              required
-              value={form.desktopImageUrl}
-              onChange={(url) => set('desktopImageUrl', url)}
-              aspectClass="aspect-[16/5]"
-              contain={false}
-              hint="Recommended 1600 × 500 px (wide). Keep text away from the edges."
-              error={errors.desktopImageUrl}
-              onUploadingChange={setUploadingDesktop}
-            />
+        <FormSection title="Images" description="Real photos only. Keep words and faces away from the edges.">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="sm:col-span-2">
+              <MediaUpload
+                label="Wide image"
+                required
+                value={form.desktopImageUrl}
+                onChange={(url) => set('desktopImageUrl', url)}
+                aspectClass="aspect-[16/5]"
+                contain={false}
+                hint="For laptops and tablets. 1600 × 500 px works best."
+                error={errors.desktopImageUrl}
+                onUploadingChange={setUploadingDesktop}
+              />
+            </div>
+            <div>
+              <MediaUpload
+                label="Phone image (optional)"
+                value={form.mobileImageUrl}
+                onChange={(url) => set('mobileImageUrl', url)}
+                aspectClass="aspect-square"
+                contain={false}
+                compact
+                hint="Square, 800 × 800 px. If empty, the wide image is used."
+                onUploadingChange={setUploadingMobile}
+              />
+            </div>
           </div>
-          <div>
-            <MediaUpload
-              label="Mobile image (optional)"
-              value={form.mobileImageUrl}
-              onChange={(url) => set('mobileImageUrl', url)}
-              aspectClass="aspect-square"
-              contain={false}
-              compact
-              hint="Recommended 800 × 800 px. Falls back to the desktop image."
-              onUploadingChange={setUploadingMobile}
-            />
-          </div>
-        </div>
+        </FormSection>
 
-        <Field label="Title" htmlFor="banner-title" required error={errors.title}>
-          <input
-            id="banner-title"
-            value={form.title}
-            onChange={(e) => set('title', e.target.value)}
-            className={`${inputClass} ${errors.title ? inputErrorClass : ''}`}
-            placeholder="e.g. Pro stringing in 24 hours"
-            maxLength={120}
-          />
-        </Field>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Field label="Subtitle" htmlFor="banner-subtitle" className="sm:col-span-2">
+        <FormSection title="Text on the banner">
+          <Field label="Title" htmlFor="banner-title" required error={errors.title}>
             <input
-              id="banner-subtitle"
-              value={form.subtitle}
-              onChange={(e) => set('subtitle', e.target.value)}
-              className={inputClass}
-              placeholder="e.g. Free pickup within 5 km"
-              maxLength={200}
+              id="banner-title"
+              value={form.title}
+              onChange={(e) => set('title', e.target.value)}
+              className={`${inputClass} ${errors.title ? inputErrorClass : ''}`}
+              placeholder="e.g. Pro stringing in 24 hours"
+              maxLength={120}
             />
           </Field>
-          <Field label="Badge" htmlFor="banner-badge" hint="Small tag, e.g. NEW or 20% OFF">
-            <input
-              id="banner-badge"
-              value={form.badge}
-              onChange={(e) => set('badge', e.target.value)}
-              className={inputClass}
-              maxLength={30}
-            />
-          </Field>
-        </div>
 
-        <div className="p-3.5 rounded-2xl bg-paper border border-line space-y-3">
-          <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-            <MousePointerClick className="w-4 h-4 text-ink" /> Button
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Field label="Subtitle" htmlFor="banner-subtitle" optional className="sm:col-span-2">
+              <input
+                id="banner-subtitle"
+                value={form.subtitle}
+                onChange={(e) => set('subtitle', e.target.value)}
+                className={inputClass}
+                placeholder="e.g. Free pickup within 5 km"
+                maxLength={200}
+              />
+            </Field>
+            <Field label="Badge" htmlFor="banner-badge" optional hint="A short tag, e.g. NEW">
+              <input
+                id="banner-badge"
+                value={form.badge}
+                onChange={(e) => set('badge', e.target.value)}
+                className={inputClass}
+                maxLength={30}
+              />
+            </Field>
+          </div>
+        </FormSection>
+
+        <FormSection title="Button" description="What happens when a customer taps the banner's button.">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Button goes to" htmlFor="banner-target">
               <select
                 id="banner-target"
@@ -322,36 +325,42 @@ const BannerFormModal: React.FC<BannerFormModalProps> = ({ banner, open, onClose
               />
             </Field>
           )}
-        </div>
+        </FormSection>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Show from" htmlFor="banner-start" hint="Leave empty to show immediately">
-            <input
-              id="banner-start"
-              type="date"
-              value={form.startsAt}
-              onChange={(e) => set('startsAt', e.target.value)}
-              className={inputClass}
-            />
-          </Field>
-          <Field label="Show until" htmlFor="banner-end" hint="Inclusive. Leave empty for no end" error={errors.endsAt}>
-            <input
-              id="banner-end"
-              type="date"
-              value={form.endsAt}
-              min={form.startsAt || undefined}
-              onChange={(e) => set('endsAt', e.target.value)}
-              className={`${inputClass} ${errors.endsAt ? inputErrorClass : ''}`}
-            />
-          </Field>
-        </div>
+        <FormSection title="When to show it">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Show from" htmlFor="banner-start" optional hint="Empty = starts straight away">
+              <input
+                id="banner-start"
+                type="date"
+                value={form.startsAt}
+                onChange={(e) => set('startsAt', e.target.value)}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Show until" htmlFor="banner-end" optional hint="Shown on this day too. Empty = no end date" error={errors.endsAt}>
+              <input
+                id="banner-end"
+                type="date"
+                value={form.endsAt}
+                min={form.startsAt || undefined}
+                onChange={(e) => set('endsAt', e.target.value)}
+                className={`${inputClass} ${errors.endsAt ? inputErrorClass : ''}`}
+              />
+            </Field>
+          </div>
 
-        <Switch
-          checked={form.isActive}
-          onChange={(v) => set('isActive', v)}
-          label="Active"
-          description="Inactive banners are never shown, regardless of dates."
-        />
+          <div className={switchGroupClass}>
+            <Switch
+              checked={form.isActive}
+              onChange={(v) => set('isActive', v)}
+              label="Show on the homepage"
+              description="When off, the banner stays hidden whatever the dates."
+              onLabel="On"
+              offLabel="Hidden"
+            />
+          </div>
+        </FormSection>
       </form>
     </Modal>
   );
@@ -454,13 +463,13 @@ export const BannersManager: React.FC = () => {
     <div className="space-y-4">
       <SectionHeader
         title="Homepage banners"
-        description="Slides in the homepage carousel, shown in the order below. Desktop images 1600 × 500 px, mobile 800 × 800 px."
+        description="Photo slides at the top of the homepage, shown in this order, after any events marked “Show in homepage banner”."
         actions={
           <Button
             type="button"
             onClick={() => setEditing('new')}
             leftIcon={<Plus className="w-4 h-4" />}
-            className="min-h-[42px]"
+            className="min-h-[44px] px-5"
             disabled={loading && banners.length === 0 && !loadError}
           >
             Add banner
@@ -481,8 +490,9 @@ export const BannersManager: React.FC = () => {
         />
       ) : (
         <>
-          <p className="text-xs text-slate-500" aria-live="polite">
-            {banners.length} banner{banners.length === 1 ? '' : 's'} · <b className="text-emerald-700">{liveCount} live now</b>
+          <p className="text-[14px] text-ink-muted" aria-live="polite">
+            {banners.length} banner{banners.length === 1 ? '' : 's'} ·{' '}
+            <span className={liveCount ? 'font-semibold text-emerald-800' : 'text-ink-muted'}>{liveCount} showing now</span>
           </p>
           <ol className="space-y-3">
             {banners.map((b, i) => {
@@ -490,96 +500,93 @@ export const BannersManager: React.FC = () => {
               const busy = busyIds.has(b.id);
               return (
                 <li key={b.id} className={`${cardClass} p-3 sm:p-4`}>
-                  <div className="flex flex-col md:flex-row gap-3 md:gap-4">
+                  <div className="flex flex-col md:flex-row gap-3 md:gap-5">
                     {/* Previews */}
-                    <div className="flex gap-2 md:w-[340px] shrink-0">
-                      <div className="relative flex-1 min-w-0 aspect-[16/5] rounded-xl overflow-hidden bg-slate-100 border border-line">
+                    <div className="flex gap-2 md:w-[320px] shrink-0">
+                      <figure className="relative flex-1 min-w-0 aspect-[16/5] rounded-xl overflow-hidden bg-paper border border-line">
                         <img
                           src={b.desktopImageUrl}
-                          alt={`${b.title} — desktop`}
+                          alt={`${b.title}, wide image`}
                           loading="lazy"
                           className={`absolute inset-0 w-full h-full object-cover ${b.isActive ? '' : 'grayscale opacity-60'}`}
                         />
-                        <span className="absolute bottom-1 left-1 text-xs font-bold bg-black/60 text-white px-1.5 py-0.5 rounded">
-                          Desktop
-                        </span>
-                      </div>
-                      <div className="relative w-[4.5rem] sm:w-20 shrink-0 aspect-square rounded-xl overflow-hidden bg-slate-100 border border-line self-start">
+                        <figcaption className="absolute bottom-1.5 left-1.5 text-[12px] font-medium leading-none bg-ink/75 text-white px-1.5 py-1 rounded-md">
+                          Wide
+                        </figcaption>
+                      </figure>
+                      <figure className="relative w-[4.5rem] sm:w-20 shrink-0 aspect-square rounded-xl overflow-hidden bg-paper border border-line self-start">
                         <img
                           src={b.mobileImageUrl || b.desktopImageUrl}
-                          alt={`${b.title} — mobile`}
+                          alt={`${b.title}, phone image`}
                           loading="lazy"
                           className={`absolute inset-0 w-full h-full object-cover ${b.isActive ? '' : 'grayscale opacity-60'}`}
                         />
-                        <span className="absolute bottom-1 left-1 text-xs font-bold bg-black/60 text-white px-1.5 py-0.5 rounded">
-                          {b.mobileImageUrl ? 'Mobile' : 'Auto'}
-                        </span>
-                      </div>
+                        <figcaption className="absolute bottom-1.5 left-1.5 text-[12px] font-medium leading-none bg-ink/75 text-white px-1.5 py-1 rounded-md">
+                          Phone
+                        </figcaption>
+                      </figure>
                     </div>
 
                     {/* Details */}
-                    <div className="flex-1 min-w-0 space-y-1.5">
+                    <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-xs font-bold text-slate-400">#{i + 1}</span>
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${toneClass[state.tone]}`}>
-                          {state.label}
+                        <span className="text-[13px] font-semibold text-ink-muted tabular-nums" aria-label={`Slide ${i + 1}`}>
+                          {i + 1}.
                         </span>
-                        {b.badge && (
-                          <span className="text-xs font-bold px-2 py-0.5 rounded bg-brandYellow text-sportsBlue">
-                            {b.badge}
-                          </span>
-                        )}
+                        <span className={`${chipClass} ${toneClass[state.tone]}`}>{state.label}</span>
+                        {b.badge && <span className={`${chipClass} bg-accent/30 border-accent/60 text-ink`}>{b.badge}</span>}
                       </div>
-                      <h4 className="font-bold text-sm text-slate-900 break-words">{b.title}</h4>
-                      {b.subtitle && <p className="text-xs text-slate-600 break-words">{b.subtitle}</p>}
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                        <span className="inline-flex items-center gap-1 min-w-0">
-                          <MousePointerClick className="w-3.5 h-3.5 shrink-0" />
+                      <h4 className="mt-1.5 text-[16px] font-semibold leading-snug text-ink break-words">{b.title}</h4>
+                      {b.subtitle && <p className="mt-0.5 text-[14px] text-ink-soft break-words">{b.subtitle}</p>}
+                      <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-ink-muted">
+                        <span className="inline-flex items-center gap-1.5 min-w-0">
+                          <MousePointerClick className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                           {b.ctaTarget === 'none' ? (
                             'No button'
                           ) : (
                             <span className="truncate">
-                              "{b.ctaLabel}" → {CTA_TARGET_LABELS[b.ctaTarget]}
+                              “{b.ctaLabel}” goes to {CTA_TARGET_LABELS[b.ctaTarget]}
                               {b.ctaTarget === 'url' && b.ctaUrl && (
                                 <a
                                   href={b.ctaUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="ml-1 text-ink hover:underline inline-flex items-center gap-0.5"
+                                  className="ml-1.5 text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink inline-flex items-center gap-0.5"
                                 >
-                                  open <ExternalLink className="w-3 h-3" />
+                                  Open <ExternalLink className="w-3 h-3" aria-hidden="true" />
                                 </a>
                               )}
                             </span>
                           )}
                         </span>
-                        <span className="inline-flex items-center gap-1">
-                          <CalendarClock className="w-3.5 h-3.5 shrink-0" />
+                        <span className="inline-flex items-center gap-1.5">
+                          <CalendarClock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                           {b.startsAt || b.endsAt
-                            ? `${b.startsAt ? formatDate(b.startsAt) : 'Now'} – ${b.endsAt ? formatDate(b.endsAt) : 'No end'}`
+                            ? `${b.startsAt ? formatDate(b.startsAt) : 'Now'} – ${b.endsAt ? formatDate(b.endsAt) : 'no end date'}`
                             : 'Always'}
                         </span>
                       </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex md:flex-col items-center md:items-end justify-between gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-line/70 shrink-0">
+                    <div className="flex md:flex-col items-center md:items-end justify-between gap-2 pt-3 md:pt-0 border-t md:border-t-0 border-line shrink-0">
                       <Switch
                         checked={b.isActive}
                         onChange={() => toggleActive(b)}
                         disabled={busy}
-                        label={`Show "${b.title}"`}
+                        label={`Show "${b.title}" on the homepage`}
                         hideLabel
-                        onLabel="Active"
+                        onLabel="On"
                         offLabel="Hidden"
                       />
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => move(i, -1)}
                           disabled={i === 0 || reordering}
                           aria-label={`Move "${b.title}" up`}
-                          className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-line text-slate-600 hover:bg-paper disabled:opacity-30"
+                          title="Move up"
+                          className={iconButtonClass}
                         >
                           <ArrowUp className="w-4 h-4" />
                         </button>
@@ -588,23 +595,20 @@ export const BannersManager: React.FC = () => {
                           onClick={() => move(i, 1)}
                           disabled={i === banners.length - 1 || reordering}
                           aria-label={`Move "${b.title}" down`}
-                          className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-line text-slate-600 hover:bg-paper disabled:opacity-30"
+                          title="Move down"
+                          className={iconButtonClass}
                         >
                           <ArrowDown className="w-4 h-4" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditing(b)}
-                          aria-label={`Edit "${b.title}"`}
-                          className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-line text-ink hover:bg-paper"
-                        >
+                        <button type="button" onClick={() => setEditing(b)} aria-label={`Edit "${b.title}"`} title="Edit" className={iconButtonClass}>
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           type="button"
                           onClick={() => setToDelete(b)}
                           aria-label={`Delete "${b.title}"`}
-                          className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-line text-rose-600 hover:bg-rose-50"
+                          title="Delete"
+                          className={iconButtonDangerClass}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -633,8 +637,8 @@ export const BannersManager: React.FC = () => {
         title="Delete banner?"
         message={
           <>
-            <b>"{toDelete?.title}"</b> will be removed from the homepage carousel. This can't be undone.
-            <span className="block mt-2 text-xs text-slate-500">Tip: switch it to Hidden instead if you may reuse it.</span>
+            <b className="font-semibold text-ink">“{toDelete?.title}”</b> will be removed from the homepage slider. This can’t be undone.
+            <span className="block mt-2 text-[13px] text-ink-muted">Tip: switch it to Hidden instead if you may use it again.</span>
           </>
         }
         confirmLabel="Delete banner"

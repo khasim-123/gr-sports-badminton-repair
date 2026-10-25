@@ -2,27 +2,29 @@
  * Admin: customer review moderation (approve / hide / feature / reply / delete).
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  BadgeCheck,
-  Check,
-  EyeOff,
-  MapPin,
-  MessageSquareReply,
-  RefreshCw,
-  Star,
-  Trash2,
-  Wrench,
-  Hash,
-} from 'lucide-react';
+import { BadgeCheck, Check, EyeOff, MapPin, MessageSquareReply, RefreshCw, Star, Trash2, Wrench } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
 import { contentService } from '../../../services/contentService';
 import { CustomerReview, ReviewModerationUpdate, ReviewStatus } from '../../../types/content';
 import { Button } from '../../common/Button';
 import { EmptyState } from '../../common/EmptyStates';
-import { ConfirmDialog, ErrorState, ListSkeleton, Pills, SectionHeader, cardClass, errorMessage, formatDate, inputClass } from './shared';
+import {
+  ConfirmDialog,
+  ErrorState,
+  ListSkeleton,
+  Pills,
+  RefreshFailed,
+  SectionHeader,
+  cardClass,
+  chipClass,
+  errorMessage,
+  formatDate,
+  inputClass,
+  labelClass,
+} from './shared';
 
 const STATUS_LABEL: Record<ReviewStatus, string> = {
-  pending: 'Pending',
+  pending: 'Waiting for approval',
   approved: 'Approved',
   hidden: 'Hidden',
 };
@@ -34,7 +36,7 @@ const Stars: React.FC<{ rating: number }> = ({ rating }) => {
       {[1, 2, 3, 4, 5].map((i) => (
         <Star
           key={i}
-          className={`w-4 h-4 ${i <= r ? 'fill-brandYellow text-amber-500' : 'fill-slate-100 text-slate-300'}`}
+          className={`w-4 h-4 ${i <= r ? 'fill-[#E3A008] text-[#E3A008]' : 'fill-line text-line'}`}
           aria-hidden="true"
         />
       ))}
@@ -62,68 +64,51 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review: r, busyAction, onModera
   };
 
   return (
-    <li className={`${cardClass} p-4 space-y-3`}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <Stars rating={r.rating} />
-            <span className="font-bold text-sm text-slate-900 break-words">{r.authorName}</span>
-            {r.isVerified && (
-              <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <BadgeCheck className="w-3 h-3" /> Verified customer
-              </span>
-            )}
-            {r.isFeatured && r.status === 'approved' && (
-              <span className="inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded bg-brandYellow text-sportsBlue">
-                <Star className="w-3 h-3" /> Featured
-              </span>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-slate-500">
-            <span>{formatDate(r.createdAt)}</span>
-            {r.location && (
-              <span className="inline-flex items-center gap-0.5">
-                <MapPin className="w-3 h-3" /> {r.location}
-              </span>
-            )}
-            {r.serviceType && (
-              <span className="inline-flex items-center gap-0.5">
-                <Wrench className="w-3 h-3" /> {r.serviceType}
-              </span>
-            )}
-            {r.requestId && (
-              <span className="inline-flex items-center gap-0.5 font-mono">
-                <Hash className="w-3 h-3" /> {r.requestId}
-              </span>
-            )}
-          </div>
+    <li className={`${cardClass} p-4 sm:p-5 space-y-3`}>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <Stars rating={r.rating} />
+          <span className="text-[16px] font-semibold leading-snug text-ink break-words">{r.authorName}</span>
+          {r.isVerified && (
+            <span className={`${chipClass} bg-emerald-50 text-emerald-800 border-emerald-200`}>
+              <BadgeCheck className="w-3 h-3" aria-hidden="true" /> Verified customer
+            </span>
+          )}
+          {r.isFeatured && r.status === 'approved' && (
+            <span className={`${chipClass} bg-accent/25 border-accent/60 text-ink`}>
+              <Star className="w-3 h-3" aria-hidden="true" /> Featured
+            </span>
+          )}
         </div>
-        <span
-          className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
-            r.status === 'pending'
-              ? 'bg-amber-50 text-amber-800 border-amber-200'
-              : r.status === 'approved'
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-slate-100 text-slate-600 border-line'
-          }`}
-        >
-          {STATUS_LABEL[r.status]}
-        </span>
+        <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1 text-[13px] text-ink-muted">
+          <span>{formatDate(r.createdAt)}</span>
+          {r.location && (
+            <span className="inline-flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5" aria-hidden="true" /> {r.location}
+            </span>
+          )}
+          {r.serviceType && (
+            <span className="inline-flex items-center gap-1">
+              <Wrench className="w-3.5 h-3.5" aria-hidden="true" /> {r.serviceType}
+            </span>
+          )}
+          {r.requestId && <span>Booking {r.requestId}</span>}
+        </div>
       </div>
 
-      <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line break-words">{r.comment}</p>
+      <p className="text-[15px] text-ink-soft leading-relaxed whitespace-pre-line break-words max-w-3xl">{r.comment}</p>
 
       {r.adminReply && !replyOpen && (
-        <div className="ml-3 pl-3 border-l-2 border-line">
-          <p className="text-xs font-bold text-ink">Reply from GR Sports</p>
-          <p className="text-xs text-slate-600 whitespace-pre-line break-words">{r.adminReply}</p>
+        <div className="pl-3.5 border-l-2 border-line max-w-3xl">
+          <p className="text-[13px] font-semibold text-ink">Your reply</p>
+          <p className="mt-0.5 text-[14px] text-ink-soft whitespace-pre-line break-words">{r.adminReply}</p>
         </div>
       )}
 
       {replyOpen && (
-        <div className="space-y-2">
-          <label htmlFor={replyId} className="block text-xs font-semibold text-slate-700">
-            Public reply
+        <div className="space-y-2 max-w-3xl">
+          <label htmlFor={replyId} className={labelClass}>
+            Your reply <span className="font-normal text-ink-muted">(shown under the review on the website)</span>
           </label>
           <textarea
             id={replyId}
@@ -134,12 +119,12 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review: r, busyAction, onModera
             placeholder="Thank you for choosing GR Sports!"
             disabled={busyAction === 'reply'}
           />
-          <div className="flex flex-wrap gap-2 justify-end">
+          <div className="flex flex-wrap gap-2 justify-end [&>button]:min-h-[44px] sm:[&>button]:min-h-[40px]">
             <Button
               type="button"
               size="sm"
-              variant="outline"
-              className="min-h-[40px]"
+              variant="secondary"
+              className="px-4"
               disabled={busyAction === 'reply'}
               onClick={() => {
                 setReplyOpen(false);
@@ -148,20 +133,20 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review: r, busyAction, onModera
             >
               Cancel
             </Button>
-            <Button type="button" size="sm" className="min-h-[40px]" isLoading={busyAction === 'reply'} disabled={busy} onClick={saveReply}>
+            <Button type="button" size="sm" className="px-4" isLoading={busyAction === 'reply'} disabled={busy} onClick={saveReply}>
               {replyDraft.trim() ? 'Save reply' : r.adminReply ? 'Remove reply' : 'Save reply'}
             </Button>
           </div>
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 pt-2 border-t border-line/70">
+      <div className="flex flex-wrap gap-2 pt-3 border-t border-line [&>button]:min-h-[44px] sm:[&>button]:min-h-[40px]">
         {r.status !== 'approved' && (
           <Button
             type="button"
             size="sm"
             variant="success"
-            className="min-h-[40px]"
+            className="px-4"
             leftIcon={<Check className="w-4 h-4" />}
             isLoading={busyAction === 'approve'}
             disabled={busy}
@@ -174,8 +159,8 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review: r, busyAction, onModera
           <Button
             type="button"
             size="sm"
-            variant="outline"
-            className="min-h-[40px]"
+            variant="secondary"
+            className="px-4"
             leftIcon={<EyeOff className="w-4 h-4" />}
             isLoading={busyAction === 'hide'}
             disabled={busy}
@@ -188,8 +173,8 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review: r, busyAction, onModera
           <Button
             type="button"
             size="sm"
-            variant="outline"
-            className={`min-h-[40px] ${r.isFeatured ? 'text-amber-700' : ''}`}
+            variant="secondary"
+            className="px-4"
             leftIcon={<Star className="w-4 h-4" />}
             isLoading={busyAction === 'feature'}
             disabled={busy}
@@ -198,15 +183,15 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review: r, busyAction, onModera
               onModerate({ isFeatured: !r.isFeatured }, 'feature', r.isFeatured ? 'Removed from featured' : 'Review featured')
             }
           >
-            {r.isFeatured ? 'Unfeature' : 'Feature'}
+            {r.isFeatured ? 'Remove from featured' : 'Feature'}
           </Button>
         )}
         {!replyOpen && (
           <Button
             type="button"
             size="sm"
-            variant="outline"
-            className="min-h-[40px]"
+            variant="secondary"
+            className="px-4"
             leftIcon={<MessageSquareReply className="w-4 h-4" />}
             disabled={busy}
             onClick={() => {
@@ -221,7 +206,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review: r, busyAction, onModera
           type="button"
           size="sm"
           variant="ghost"
-          className="min-h-[40px] text-rose-600 ml-auto"
+          className="px-3 text-rose-700 hover:bg-rose-50 ml-auto"
           leftIcon={<Trash2 className="w-4 h-4" />}
           disabled={busy}
           onClick={onDelete}
@@ -331,13 +316,12 @@ export const ReviewsManager: React.FC<{ onPendingCountChange?: (count: number) =
     <div className="space-y-4">
       <SectionHeader
         title="Customer reviews"
-        description="New reviews wait here until you approve them. Approved reviews appear on the website; featured ones are shown first."
+        description="New reviews wait here until you approve them. Approved reviews show on the website, featured ones first."
         actions={
           <Button
             type="button"
-            variant="outline"
-            size="sm"
-            className="min-h-[40px]"
+            variant="secondary"
+            className="min-h-[44px] px-4"
             leftIcon={<RefreshCw className="w-4 h-4" />}
             onClick={load}
             isLoading={loading && reviews.length > 0}
@@ -352,7 +336,7 @@ export const ReviewsManager: React.FC<{ onPendingCountChange?: (count: number) =
         value={status}
         onChange={setStatus}
         options={[
-          { id: 'pending', label: 'Pending', count: counts.pending, highlight: true },
+          { id: 'pending', label: 'Waiting for approval', count: counts.pending, highlight: true },
           { id: 'approved', label: 'Approved', count: counts.approved },
           { id: 'hidden', label: 'Hidden', count: counts.hidden },
         ]}
@@ -364,11 +348,7 @@ export const ReviewsManager: React.FC<{ onPendingCountChange?: (count: number) =
         <ErrorState message={loadError} onRetry={load} retrying={loading} />
       ) : (
         <>
-          {loadError && (
-            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
-              Refresh failed: {loadError}
-            </div>
-          )}
+          {loadError && <RefreshFailed message={loadError} onRetry={load} retrying={loading} />}
           {visible.length === 0 ? (
             <EmptyState title={emptyCopy[status].title} description={emptyCopy[status].description} />
           ) : (
@@ -392,8 +372,8 @@ export const ReviewsManager: React.FC<{ onPendingCountChange?: (count: number) =
         title="Delete review?"
         message={
           <>
-            {toDelete?.authorName}'s {toDelete?.rating}-star review will be permanently deleted.
-            <span className="block mt-2 text-xs text-slate-500">Tip: “Hide” removes it from the website but keeps it here.</span>
+            <b className="font-semibold text-ink">{toDelete?.authorName}</b>’s {toDelete?.rating}-star review will be deleted for good.
+            <span className="block mt-2 text-[13px] text-ink-muted">Tip: “Hide” takes it off the website but keeps it here.</span>
           </>
         }
         confirmLabel="Delete review"

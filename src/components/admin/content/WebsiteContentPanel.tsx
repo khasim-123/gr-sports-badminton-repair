@@ -83,16 +83,14 @@ export const WebsiteContentPanel: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5 min-w-0">
-      <PageHeader
-        title="Website content"
-        subtitle="What customers see on the GR Sports website — events, banners, string stock, rackets, T-shirts & apparel, reviews, documents and pickup days."
-      />
+    <div className="space-y-6 min-w-0">
+      <PageHeader title="Website content" subtitle="Everything customers see on the GR Sports website." />
 
+      {/* Phones: every section visible as wrapped pills. Wider screens: one row of underlined tabs. */}
       <div
         role="tablist"
         aria-label="Website content sections"
-        className="flex gap-1 border-b border-line overflow-x-auto no-scrollbar max-w-full"
+        className="flex flex-wrap gap-1.5 sm:flex-nowrap sm:gap-1 sm:border-b sm:border-line sm:overflow-x-auto no-scrollbar max-w-full"
       >
         {TABS.map((tab, i) => {
           const isActive = tab.id === active;
@@ -108,15 +106,17 @@ export const WebsiteContentPanel: React.FC = () => {
               tabIndex={isActive ? 0 : -1}
               onClick={() => select(tab.id)}
               onKeyDown={(e) => onTabKeyDown(e, i)}
-              className={`shrink-0 -mb-px inline-flex items-center gap-2 min-h-[44px] px-3 sm:px-3.5 border-b-2 text-sm font-semibold whitespace-nowrap transition-colors duration-150 ${
-                isActive ? 'border-ink text-ink' : 'border-transparent text-slate-500 hover:text-ink hover:border-line'
+              className={`shrink-0 inline-flex items-center gap-2 min-h-[44px] px-3 rounded-full border text-[14px] font-medium whitespace-nowrap transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink sm:-mb-px sm:rounded-none sm:border-0 sm:border-b-2 sm:bg-transparent sm:px-3.5 sm:text-[15px] ${
+                isActive
+                  ? 'bg-ink border-ink text-white sm:text-ink sm:border-ink sm:font-semibold'
+                  : 'bg-white border-line text-ink-soft hover:text-ink hover:border-ink/30 sm:border-transparent sm:text-ink-muted sm:hover:border-line'
               }`}
             >
               {tab.label}
               {badge !== null && (
                 <span
-                  className="text-xs leading-none min-w-[22px] text-center px-1.5 py-1 rounded-full font-semibold bg-accent text-ink tabular-nums"
-                  aria-label={`${badge} pending`}
+                  className="text-[12px] leading-none min-w-[22px] text-center px-1.5 py-1 rounded-full font-semibold bg-accent text-ink tabular-nums"
+                  aria-label={`${badge} waiting for approval`}
                 >
                   {badge}
                 </span>
