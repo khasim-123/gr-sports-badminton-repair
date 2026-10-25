@@ -556,7 +556,7 @@ const RegistrationForm: React.FC<{
                   type="tel"
                   inputMode="numeric"
                   autoComplete="tel-national"
-                  maxLength={14}
+                  maxLength={20}
                   placeholder="98765 43210"
                   value={mobile}
                   onChange={(ev) => setMobile(ev.target.value)}

@@ -122,19 +122,20 @@ export function orderDate(iso: string): string {
 
 /** One line on what happens next, for the order screens. */
 export function nextStepText(o: ShopOrder): string {
-  const pay = o.paymentStatus === 'Paid' ? 'Paid' : 'Pay in cash or by UPI';
+  // Orders the shop marked as paid in advance must not ask for payment again.
+  const pay = (when: string) => (o.paymentStatus === 'Paid' ? 'Already paid.' : `Pay in cash or by UPI ${when}.`);
   switch (o.status) {
     case 'Placed':
       return o.fulfilment === 'delivery'
-        ? `We'll check your order and call you before we deliver. ${pay} when it arrives.`
-        : `We'll check your order and message you when it's ready at the shop. ${pay} when you collect it.`;
+        ? `We'll check your order and call you before we deliver. ${pay('when it arrives')}`
+        : `We'll check your order and message you when it's ready at the shop. ${pay('when you collect it')}`;
     case 'Confirmed':
     case 'Packed':
-      return o.fulfilment === 'delivery' ? `Your order is being packed for delivery. ${pay} when it arrives.` : `Your order is being packed. We'll tell you when it's ready to collect.`;
+      return o.fulfilment === 'delivery' ? `Your order is being packed for delivery. ${pay('when it arrives')}` : `Your order is being packed. We'll tell you when it's ready to collect.`;
     case 'Out for Delivery':
-      return `On the way to you. ${pay} when it arrives.`;
+      return `On the way to you. ${pay('when it arrives')}`;
     case 'Ready for Pickup':
-      return `Ready at the shop. ${pay} when you collect it.`;
+      return `Ready at the shop. ${pay('when you collect it')}`;
     case 'Delivered':
       return 'Delivered. Thank you for shopping with us.';
     case 'Picked Up':

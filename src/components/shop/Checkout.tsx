@@ -240,7 +240,9 @@ export const Checkout: React.FC = () => {
   }
 
   // ------------------------------------------------------------------ checkout
-  const lines = quote ? quote.items : null;
+  // Items removed from the cart disappear at once, without waiting for the new price check.
+  const cartKeys = new Set(cart.items.map((i) => i.key));
+  const lines = quote ? quote.items.filter((l) => cartKeys.has(lineKey(l))) : null;
   const subtotal = quote ? quote.subtotal : cart.subtotal;
   const deliveryCharge = quote && fulfilment === 'delivery' && deliveryAddress ? quote.deliveryCharge : null;
   const total = quote ? (fulfilment === 'delivery' && !deliveryAddress ? quote.subtotal : quote.total) : cart.subtotal;
