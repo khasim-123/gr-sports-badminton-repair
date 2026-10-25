@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Shirt, Truck } from 'lucide-react';
+import { CalendarClock, MapPin, Shirt, Truck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { openStoreSection } from '../../utils/storeNavigation';
 import { fullAddress, localityOf, useShopSettings } from '../../hooks/useShopSettings';
@@ -56,6 +56,17 @@ export const TopAnnouncementBar: React.FC = () => {
           >
             <Shirt className="w-4 h-4 text-accent" aria-hidden="true" />
             T-shirts
+          </a>
+          <a
+            href="/courts"
+            onClick={(e) => {
+              e.preventDefault();
+              openStoreSection(setActiveView, 'courts');
+            }}
+            className="inline-flex min-h-[36px] shrink-0 items-center gap-1.5 font-semibold text-white hover:text-accent"
+          >
+            <CalendarClock className="w-4 h-4 text-accent" aria-hidden="true" />
+            Courts
           </a>
         </div>
       </div>

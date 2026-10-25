@@ -269,11 +269,20 @@ const errorMessage = (err: unknown, fallback: string): string => {
 /** 401s are handled globally (session-expired logout + toast). */
 const isSessionExpiredError = (err: unknown) => err instanceof ApiError && err.status === 401;
 
-/** The T-shirt store view and its URL path (the rest of the app lives at "/"). */
+/**
+ * Views with their own URL path (the rest of the app lives at "/"): the T-shirt store (/tshirts)
+ * and court booking (/courts). Both open from a direct link for anyone.
+ */
 const APPAREL_VIEW = 'apparel';
-const APPAREL_PATH = '/tshirts';
-const isApparelPath = () =>
-  typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '').toLowerCase() === APPAREL_PATH;
+const COURTS_VIEW = 'courts';
+const PATH_VIEWS: Record<string, string> = { [APPAREL_VIEW]: '/tshirts', [COURTS_VIEW]: '/courts' };
+const isPathView = (view: string | null | undefined) => !!view && Object.prototype.hasOwnProperty.call(PATH_VIEWS, view);
+/** The path-backed view for the current address, if any. */
+const viewForPath = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  const path = window.location.pathname.replace(/\/+$/, '').toLowerCase();
+  return Object.keys(PATH_VIEWS).find((v) => PATH_VIEWS[v] === path) || null;
+};
 
 const portalForRole = (role: UserRole) =>
   role === 'ADMIN' ? 'admin_portal' : role === 'EMPLOYEE' ? 'employee_portal' : 'customer_portal';
@@ -294,12 +303,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Navigation & Role
   const [currentRole, setCurrentRole] = useState<UserRole>(initialSession?.role || 'CUSTOMER');
   const [activeView, setActiveView] = useState<string>(() => {
-    // The T-shirt store has its own address (/tshirts) and opens from a direct link for anyone.
-    if (isApparelPath()) return 'apparel';
+    // The T-shirt store (/tshirts) and court booking (/courts) have their own addresses and open
+    // from a direct link for anyone.
+    const fromPath = viewForPath();
+    if (fromPath) return fromPath;
     if (!initialSession) return 'landing';
     const view = initialSession.activeView;
-    return view && view !== 'login' && view !== APPAREL_VIEW ? view : portalForRole(initialSession.role);
+    return view && view !== 'login' && !isPathView(view) ? view : portalForRole(initialSession.role);
   });
+  const activeViewRef = useRef(activeView);
+  activeViewRef.current = activeView;
   const [customerSubView, setCustomerSubView] = useState<string>(() => {
     const sub = initialSession?.customerSubView || 'dashboard';
     // The selected request id isn't persisted, so a restored detail view would be empty.
@@ -455,7 +468,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const role = session.role;
-    const portal = portalForRole(role);
+    // A customer who logs in on the court booking page stays there (to finish the booking).
+    const portal = role === 'CUSTOMER' && activeViewRef.current === COURTS_VIEW ? COURTS_VIEW : portalForRole(role);
     const launchWizard = role === 'CUSTOMER' && pendingWizardLaunch;
     const targetCustomerSubView = launchWizard ? 'wizard' : 'dashboard';
 
@@ -551,23 +565,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep the address bar in step with the T-shirt store view: entering it pushes /tshirts, leaving
-  // it pushes /, and the browser's back / forward buttons switch the view.
-  const activeViewRef = useRef(activeView);
-  activeViewRef.current = activeView;
-  const lastAppViewRef = useRef<string | null>(activeView === APPAREL_VIEW ? null : activeView);
+  // Keep the address bar in step with the T-shirt store and court booking views: entering one
+  // pushes its path (/tshirts, /courts), leaving it pushes /, and the browser's back / forward
+  // buttons switch the view.
+  const lastAppViewRef = useRef<string | null>(isPathView(activeView) ? null : activeView);
   const viewFromHistoryRef = useRef(false);
   useEffect(() => {
-    if (activeView !== APPAREL_VIEW) lastAppViewRef.current = activeView;
+    if (!isPathView(activeView)) lastAppViewRef.current = activeView;
     if (viewFromHistoryRef.current) {
       viewFromHistoryRef.current = false;
       return;
     }
-    const onApparelPath = isApparelPath();
+    const pathView = viewForPath();
     try {
-      if (activeView === APPAREL_VIEW && !onApparelPath) {
-        window.history.pushState({ grView: APPAREL_VIEW }, '', APPAREL_PATH);
-      } else if (activeView !== APPAREL_VIEW && onApparelPath) {
+      if (isPathView(activeView) && pathView !== activeView) {
+        window.history.pushState({ grView: activeView }, '', PATH_VIEWS[activeView]);
+      } else if (!isPathView(activeView) && pathView) {
         window.history.pushState({ grView: activeView }, '', '/');
       }
     } catch {
@@ -577,11 +590,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     const onPop = (e: PopStateEvent) => {
       let target: string;
-      if (isApparelPath()) target = APPAREL_VIEW;
+      const pathView = viewForPath();
+      if (pathView) target = pathView;
       else {
         const fromState = e.state && typeof e.state.grView === 'string' ? (e.state.grView as string) : '';
         target =
-          fromState && fromState !== APPAREL_VIEW
+          fromState && !isPathView(fromState)
             ? fromState
             : lastAppViewRef.current || (isLoggedInRef.current ? portalForRole(currentRoleRef.current) : 'landing');
         if (!isLoggedInRef.current && target !== 'login') target = 'landing';

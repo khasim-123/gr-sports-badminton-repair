@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Clock, MapPin, Menu, Phone, Shirt, Truck, X } from 'lucide-react';
+import { CalendarClock, Clock, MapPin, Menu, Phone, Shirt, Truck, X } from 'lucide-react';
 import { CartButton } from '../../shop/CartButton';
 import { useModalBehavior } from './Dialog';
 import { useShop } from './shop';
@@ -22,6 +22,8 @@ interface SiteHeaderProps {
   showStaffLinks: boolean;
   /** Opens the T-shirt store (/tshirts). */
   onOpenTshirts: () => void;
+  /** Opens court booking (/courts). */
+  onOpenCourts: () => void;
 }
 
 /** Highlights the nav item whose section is in the middle of the viewport. */
@@ -70,6 +72,7 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
   onNavigate,
   showStaffLinks,
   onOpenTshirts,
+  onOpenCourts,
 }) => {
   const SHOP = useShop();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -134,10 +137,11 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
             className="inline-flex min-h-[44px] shrink-0 items-center rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sportsBlue"
             aria-label={`${SHOP.name}, back to top`}
           >
-            <span className="xl:hidden">
+            {/* The tagline needs room the nav uses below 1536 px (Courts + T-shirts links). */}
+            <span className="2xl:hidden">
               <Wordmark subline={false} />
             </span>
-            <span className="hidden xl:inline">
+            <span className="hidden 2xl:inline">
               <Wordmark />
             </span>
           </a>
@@ -178,6 +182,19 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
                 >
                   <Shirt className="h-[18px] w-[18px]" aria-hidden="true" />
                   T-shirts
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/courts"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onOpenCourts();
+                  }}
+                  className="inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 xl:px-3 text-[15px] font-medium text-ink hover:text-sportsBlue focus-visible:outline focus-visible:outline-2 focus-visible:outline-sportsBlue"
+                >
+                  <CalendarClock className="h-[18px] w-[18px]" aria-hidden="true" />
+                  Courts
                 </a>
               </li>
             </ul>
@@ -238,6 +255,10 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
           setMenuOpen(false);
           onOpenTshirts();
         }}
+        onOpenCourts={() => {
+          setMenuOpen(false);
+          onOpenCourts();
+        }}
       />
     </>
   );
@@ -255,6 +276,7 @@ interface MenuSheetProps {
   onStaffLogin: (role: 'EMPLOYEE' | 'ADMIN') => void;
   showStaffLinks: boolean;
   onOpenTshirts: () => void;
+  onOpenCourts: () => void;
 }
 
 const MenuSheet: React.FC<MenuSheetProps> = ({
@@ -269,6 +291,7 @@ const MenuSheet: React.FC<MenuSheetProps> = ({
   onStaffLogin,
   showStaffLinks,
   onOpenTshirts,
+  onOpenCourts,
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -330,6 +353,19 @@ const MenuSheet: React.FC<MenuSheetProps> = ({
               >
                 <Shirt className="h-6 w-6 text-ink-soft" aria-hidden="true" />
                 T-shirts &amp; team wear
+              </a>
+            </li>
+            <li>
+              <a
+                href="/courts"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onOpenCourts();
+                }}
+                className="flex min-h-[52px] items-center gap-3 rounded-xl px-3 font-display text-[24px] font-semibold text-ink hover:bg-paper"
+              >
+                <CalendarClock className="h-6 w-6 text-ink-soft" aria-hidden="true" />
+                Book a court
               </a>
             </li>
           </ul>

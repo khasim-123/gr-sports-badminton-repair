@@ -15,6 +15,7 @@ import {
   serviceSummary,
 } from './requestDisplay';
 import { YourOrdersBlock } from '../shop/MyOrders';
+import { NextCourtBookingBlock } from '../courts/MyCourtBookings';
 
 export const CustomerDashboard: React.FC = () => {
   const {
@@ -99,7 +100,8 @@ export const CustomerDashboard: React.FC = () => {
         </div>
       </section>
 
-      {/* Shop orders (only when there are any) */}
+      {/* Next court booking and shop orders (only when there are any) */}
+      <NextCourtBookingBlock />
       <YourOrdersBlock />
 
       {/* Things that need the customer's attention */}

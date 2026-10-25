@@ -24,7 +24,8 @@ const CUSTOMER_TABS = [
   { id: 'wizard', label: 'Book Service' },
   { id: 'requests', label: 'My Requests' },
   { id: 'orders', label: 'Orders' },
-  { id: 'addresses', label: 'Saved Addresses' },
+  { id: 'courts', label: 'Courts' },
+  { id: 'addresses', label: 'Addresses' },
   { id: 'profile', label: 'Profile' },
 ];
 
@@ -115,6 +116,21 @@ export const Navbar: React.FC = () => {
       setAdminSubView('orders');
     }
   };
+
+  /** Court bookings ("CRT-…") open in the customer's Courts screen or the admin Courts page. */
+  const isCourtBookingId = (id?: string | null): id is string => !!id && id.startsWith('CRT-');
+  const openCourtBookingFromNotification = (bookingId: string) => {
+    setSelectedRequestId(bookingId);
+    if (currentRole === 'CUSTOMER') {
+      setActiveView('customer_portal');
+      setCustomerSubView('courts');
+    } else if (currentRole === 'ADMIN') {
+      setActiveView('admin_portal');
+      setAdminSubView('courts');
+    }
+  };
+  /** Shop orders and court bookings open on their own screens; service requests in the request view. */
+  const canOpenLinked = (id?: string | null) => (isOrderId(id) || isCourtBookingId(id)) && canOpenOrder;
 
   const handleBrandLogoClick = () => {
     if (!isLoggedIn) {
@@ -385,6 +401,9 @@ export const Navbar: React.FC = () => {
                               if (isOrderId(notif.requestId) && canOpenOrder) {
                                 openOrderFromNotification(notif.requestId);
                                 setNotificationsOpen(false);
+                              } else if (isCourtBookingId(notif.requestId) && canOpenOrder) {
+                                openCourtBookingFromNotification(notif.requestId);
+                                setNotificationsOpen(false);
                               } else if (notif.requestId && requests.some((r) => r.id === notif.requestId)) {
                                 openFromNotification(notif.requestId);
                                 setNotificationsOpen(false);
@@ -407,7 +426,7 @@ export const Navbar: React.FC = () => {
                             <p className="text-slate-600 mt-1 text-[11px] leading-relaxed">
                               {tidyRupees(notif.message.replace(/\+91\d{10}\b/g, (m) => formatMobile(m)))}
                             </p>
-                            {notif.requestId && (requests.some((r) => r.id === notif.requestId) || (isOrderId(notif.requestId) && canOpenOrder)) && (
+                            {notif.requestId && (requests.some((r) => r.id === notif.requestId) || canOpenLinked(notif.requestId)) && (
                               <span className="inline-block mt-1 text-[10px] font-mono font-bold text-ink bg-white px-1.5 py-0.2 rounded border border-line">
                                 View {notif.requestId} →
                               </span>

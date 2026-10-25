@@ -1028,3 +1028,219 @@ class OrderPaymentInput(BaseModel):
 
 class OrderCancelInput(BaseModel):
     reason: Optional[str] = Field(default=None, max_length=300)
+
+
+# ---------------- Court booking: venues, courts, blocked times, availability, bookings ----------------
+# Mirrors src/types/courts.ts. Lengths here are generous hard caps; app/routers/courts.py applies
+# the tighter limits with readable error messages.
+
+CourtBookingStatus = Literal['Confirmed', 'Completed', 'No-show', 'Cancelled']
+SlotState = Literal['free', 'booked', 'blocked', 'past']
+
+
+class CourtSchema(OrmModel):
+    id: str
+    venueId: str
+    name: str
+    surface: Optional[str] = None
+    isActive: bool = True
+    sortOrder: int = 0
+
+
+class CourtCreate(BaseModel):
+    model_config = FINITE
+    name: str = Field(max_length=200)
+    surface: Optional[str] = Field(default=None, max_length=200)
+    isActive: bool = True
+    sortOrder: Optional[int] = None
+
+
+class CourtUpdate(BaseModel):
+    model_config = FINITE
+    name: Optional[str] = Field(default=None, max_length=200)
+    surface: Optional[str] = Field(default=None, max_length=200)
+    isActive: Optional[bool] = None
+    sortOrder: Optional[int] = None
+
+
+class CourtVenueSchema(BaseModel):
+    id: str
+    name: str
+    address: str
+    area: Optional[str] = None
+    mapsUrl: Optional[str] = None
+    description: Optional[str] = None
+    photos: List[str] = []
+    amenities: List[str] = []
+    rules: Optional[str] = None
+    openTime: str
+    closeTime: str
+    slotMinutes: int
+    pricePerHour: float
+    peakPricePerHour: Optional[float] = None
+    peakStart: Optional[str] = None
+    peakEnd: Optional[str] = None
+    weekendPricePerHour: Optional[float] = None
+    advanceDays: int
+    maxSlotsPerBooking: int
+    cancellationHours: int
+    isActive: bool = True
+    sortOrder: int = 0
+    createdAt: str
+    courts: List[CourtSchema] = []
+
+
+class CourtVenueCreate(BaseModel):
+    model_config = FINITE
+    name: str = Field(max_length=500)
+    address: str = Field(max_length=1000)
+    area: Optional[str] = Field(default=None, max_length=500)
+    mapsUrl: Optional[str] = Field(default=None, max_length=1000)
+    description: Optional[str] = Field(default=None, max_length=5000)
+    photos: List[str] = Field(default_factory=list, max_length=50)
+    amenities: List[str] = Field(default_factory=list, max_length=50)
+    rules: Optional[str] = Field(default=None, max_length=5000)
+    openTime: str = Field(max_length=10)
+    closeTime: str = Field(max_length=10)
+    slotMinutes: int = 60
+    pricePerHour: float
+    peakPricePerHour: Optional[float] = None
+    peakStart: Optional[str] = Field(default=None, max_length=10)
+    peakEnd: Optional[str] = Field(default=None, max_length=10)
+    weekendPricePerHour: Optional[float] = None
+    advanceDays: int = 14
+    maxSlotsPerBooking: int = 4
+    cancellationHours: int = 12
+    isActive: bool = True
+    sortOrder: Optional[int] = None
+
+
+class CourtVenueUpdate(BaseModel):
+    model_config = FINITE
+    name: Optional[str] = Field(default=None, max_length=500)
+    address: Optional[str] = Field(default=None, max_length=1000)
+    area: Optional[str] = Field(default=None, max_length=500)
+    mapsUrl: Optional[str] = Field(default=None, max_length=1000)
+    description: Optional[str] = Field(default=None, max_length=5000)
+    photos: Optional[List[str]] = Field(default=None, max_length=50)
+    amenities: Optional[List[str]] = Field(default=None, max_length=50)
+    rules: Optional[str] = Field(default=None, max_length=5000)
+    openTime: Optional[str] = Field(default=None, max_length=10)
+    closeTime: Optional[str] = Field(default=None, max_length=10)
+    slotMinutes: Optional[int] = None
+    pricePerHour: Optional[float] = None
+    peakPricePerHour: Optional[float] = None
+    peakStart: Optional[str] = Field(default=None, max_length=10)
+    peakEnd: Optional[str] = Field(default=None, max_length=10)
+    weekendPricePerHour: Optional[float] = None
+    advanceDays: Optional[int] = None
+    maxSlotsPerBooking: Optional[int] = None
+    cancellationHours: Optional[int] = None
+    isActive: Optional[bool] = None
+    sortOrder: Optional[int] = None
+
+
+class CourtBlockSchema(OrmModel):
+    id: str
+    venueId: str
+    courtId: Optional[str] = None
+    date: Optional[str] = None
+    weekdays: Optional[List[int]] = None
+    fromDate: Optional[str] = None
+    toDate: Optional[str] = None
+    startTime: str
+    endTime: str
+    reason: str
+    createdAt: str
+
+
+class CourtBlockCreate(BaseModel):
+    model_config = FINITE
+    venueId: str = Field(max_length=80)
+    courtId: Optional[str] = Field(default=None, max_length=80)
+    date: Optional[str] = Field(default=None, max_length=20)
+    weekdays: Optional[List[int]] = Field(default=None, max_length=7)
+    fromDate: Optional[str] = Field(default=None, max_length=20)
+    toDate: Optional[str] = Field(default=None, max_length=20)
+    startTime: str = Field(max_length=10)
+    endTime: str = Field(max_length=10)
+    reason: str = Field(max_length=500)
+
+
+class AvailabilityCellSchema(BaseModel):
+    start: str
+    end: str
+    state: SlotState
+    price: float
+
+
+class CourtAvailabilitySchema(BaseModel):
+    courtId: str
+    courtName: str
+    surface: Optional[str] = None
+    cells: List[AvailabilityCellSchema] = []
+
+
+class VenueAvailabilitySchema(BaseModel):
+    venueId: str
+    date: str
+    slotMinutes: int
+    bookable: bool
+    message: Optional[str] = None
+    courts: List[CourtAvailabilitySchema] = []
+
+
+class CourtBookingSchema(BaseModel):
+    id: str
+    venueId: str
+    venueName: str
+    courtId: str
+    courtName: str
+    date: str
+    startTime: str
+    endTime: str
+    slots: int
+    price: float
+    customerName: str
+    customerMobile: str
+    players: Optional[int] = None
+    notes: Optional[str] = None
+    status: CourtBookingStatus
+    paymentStatus: Literal['Pending', 'Paid'] = 'Pending'
+    paymentMethod: Optional[PaymentMethod] = None
+    paidAt: Optional[str] = None
+    bookedBy: Literal['customer', 'admin'] = 'customer'
+    cancelReason: Optional[str] = None
+    canCancel: bool = False
+    createdAt: str
+    timeline: List[OrderTimelineEntrySchema] = []
+
+
+class CourtBookingCreate(BaseModel):
+    model_config = FINITE
+    venueId: str = Field(max_length=80)
+    courtId: str = Field(max_length=80)
+    date: str = Field(max_length=20)
+    startTime: str = Field(max_length=10)
+    slots: int
+    players: Optional[int] = None
+    notes: Optional[str] = Field(default=None, max_length=1000)
+    # Admin walk-in / phone bookings only (ignored for customers):
+    customerName: Optional[str] = Field(default=None, max_length=200)
+    customerMobile: Optional[str] = Field(default=None, max_length=40)
+
+
+class CourtBookingCancelInput(BaseModel):
+    reason: Optional[str] = Field(default=None, max_length=1000)
+
+
+class CourtBookingStatusUpdate(BaseModel):
+    status: Literal['Completed', 'No-show']
+    notes: Optional[str] = Field(default=None, max_length=300)
+
+
+class CourtBookingPaymentInput(BaseModel):
+    model_config = FINITE
+    amount: float = Field(le=MAX_AMOUNT)
+    method: PaymentMethod
+    notes: Optional[str] = Field(default=None, max_length=300)

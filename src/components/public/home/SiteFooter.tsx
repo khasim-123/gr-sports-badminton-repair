@@ -11,12 +11,13 @@ interface SiteFooterProps {
   onStaffLogin: (role: 'EMPLOYEE' | 'ADMIN') => void;
   showStaffLinks: boolean;
   onOpenTshirts?: () => void;
+  onOpenCourts?: () => void;
 }
 
 const linkClass =
   'inline-flex min-h-[44px] items-center text-white/75 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white rounded';
 
-export const SiteFooter: React.FC<SiteFooterProps> = ({ nav, onNavigate, onBook, onStaffLogin, showStaffLinks, onOpenTshirts }) => {
+export const SiteFooter: React.FC<SiteFooterProps> = ({ nav, onNavigate, onBook, onStaffLogin, showStaffLinks, onOpenTshirts, onOpenCourts }) => {
   const SHOP = useShop();
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const year = new Date().getFullYear();
@@ -75,6 +76,20 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({ nav, onNavigate, onBook,
                   className={linkClass}
                 >
                   T-shirts &amp; team wear
+                </a>
+              </li>
+            )}
+            {onOpenCourts && (
+              <li>
+                <a
+                  href="/courts"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onOpenCourts();
+                  }}
+                  className={linkClass}
+                >
+                  Badminton court
                 </a>
               </li>
             )}

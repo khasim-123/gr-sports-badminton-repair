@@ -22,7 +22,11 @@ from app.models import (
     EventModel,
     ApparelProductModel,
     ApparelVariantModel,
+    CourtBlockModel,
+    CourtModel,
+    CourtVenueModel,
 )
+from app.services.shop_settings import get_shop_settings
 
 def seed_database(db: Session):
     # 1. Distance Config
@@ -504,6 +508,11 @@ def seed_database(db: Session):
     if seed_demo and not db.query(ApparelProductModel).first():
         db.add_all(demo_apparel())
 
+    # 11. A sample court venue so a local preview shows court booking (real photos in /images/site/).
+    # Demo branch only: production starts with no venues; the admin adds the real one.
+    if seed_demo and not db.query(CourtVenueModel).first():
+        db.add_all(demo_court_venue(db, business_today()))
+
     db.commit()
 
     seed_string_catalogue(db)
@@ -825,3 +834,43 @@ def demo_apparel() -> list:
             ))
         products.append(product)
     return products
+
+
+def demo_court_venue(db: Session, today: date) -> list:
+    """Local-development sample court venue (SEED_DEMO_DATA) at the shop's address: two
+    courts and a weekly coaching batch on Court 1. No description or rules: the admin
+    writes the real venue details."""
+    shop = get_shop_settings(db)
+    venue = CourtVenueModel(
+        id=new_id("VEN"),
+        name="GR Sports Courts (demo)",
+        address=shop.get("addressLine") or "GR Sports",
+        area=shop.get("area") or None,
+        mapsUrl=shop.get("mapsUrl") or None,
+        description=None,
+        photos=["/images/site/court-empty.webp", "/images/site/hall-players.webp"],
+        amenities=["Wooden floor", "Floodlit", "Drinking water", "Parking"],
+        rules=None,
+        openTime="06:00",
+        closeTime="22:00",
+        slotMinutes=60,
+        pricePerHour=300.0,
+        peakPricePerHour=400.0,
+        peakStart="17:00",
+        peakEnd="21:00",
+        weekendPricePerHour=400.0,
+        advanceDays=14,
+        maxSlotsPerBooking=3,
+        cancellationHours=12,
+        isActive=True,
+        sortOrder=0,
+        createdAt=now_iso(),
+    )
+    court1 = CourtModel(id=new_id("CRT"), venueId=venue.id, name="Court 1", surface="Wooden", isActive=True, sortOrder=0)
+    court2 = CourtModel(id=new_id("CRT"), venueId=venue.id, name="Court 2", surface="Wooden", isActive=True, sortOrder=1)
+    coaching = CourtBlockModel(
+        id=new_id("BLK"), venueId=venue.id, courtId=court1.id, date=None, weekdays=[0, 2, 4],
+        fromDate=today.isoformat(), toDate=None, startTime="06:00", endTime="08:00",
+        reason="Coaching batch", createdAt=now_iso(),
+    )
+    return [venue, court1, court2, coaching]

@@ -124,6 +124,7 @@ export const Footer: React.FC = () => {
                 { label: 'Rackets', view: 'rackets' },
                 { label: 'String catalogue', view: 'strings' },
                 { label: 'T-shirts & team wear', view: 'tshirts' },
+                { label: 'Book a badminton court', view: 'courts' },
                 { label: 'Store home page', view: 'home' },
               ].map((item) => (
                 <li key={item.view}>

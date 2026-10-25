@@ -19,6 +19,7 @@ const CustomerPortal = lazy(() => import('./components/customer/CustomerPortal')
 const EmployeePortal = lazy(() => import('./components/employee/EmployeePortal').then((m) => ({ default: m.EmployeePortal })));
 const AdminPortal = lazy(() => import('./components/admin/AdminPortal').then((m) => ({ default: m.AdminPortal })));
 const ApparelStore = lazy(() => import('./components/shop/ApparelStore').then((m) => ({ default: m.ApparelStore })));
+const CourtsPage = lazy(() => import('./components/courts/CourtsPage').then((m) => ({ default: m.CourtsPage })));
 
 const PortalLoading: React.FC = () => (
   <div className="flex items-center justify-center gap-2 py-24 text-sm text-slate-500" role="status">
@@ -27,7 +28,7 @@ const PortalLoading: React.FC = () => (
   </div>
 );
 
-const KNOWN_VIEWS = ['landing', 'apparel', 'login', 'customer_portal', 'employee_portal', 'admin_portal'];
+const KNOWN_VIEWS = ['landing', 'apparel', 'courts', 'login', 'customer_portal', 'employee_portal', 'admin_portal'];
 
 export const App: React.FC = () => {
   const { activeView, setActiveView, isLoggedIn, currentRole, isAuthChecking, customerSubView } = useApp();
@@ -83,8 +84,9 @@ export const App: React.FC = () => {
     return <LandingPage />;
   };
 
-  // The homepage and the T-shirt store (/tshirts) render their own header, main and footer.
-  const isStandaloneLanding = activeView === 'landing' || activeView === 'apparel';
+  // The homepage, the T-shirt store (/tshirts) and court booking (/courts) render their own
+  // header, main and footer.
+  const isStandaloneLanding = activeView === 'landing' || activeView === 'apparel' || activeView === 'courts';
   // Admin console uses an app layout on desktop: fixed top bar + sidebar, only the main area scrolls.
   const isAdminShell = !isAuthChecking && isLoggedIn && activeView === 'admin_portal' && currentRole === 'ADMIN';
   // Customer screens (portal + login) and the staff portal keep their top bar on screen while the
@@ -137,6 +139,10 @@ export const App: React.FC = () => {
       {activeView === 'apparel' ? (
         <Suspense fallback={<PortalLoading />}>
           <ApparelStore />
+        </Suspense>
+      ) : activeView === 'courts' ? (
+        <Suspense fallback={<PortalLoading />}>
+          <CourtsPage />
         </Suspense>
       ) : isStandaloneLanding ? (
         <LandingPage />

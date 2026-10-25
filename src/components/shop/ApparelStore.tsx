@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Clock, MapPin, Phone, Ruler, Store, Truck, Wallet } from 'lucide-react';
+import { ArrowLeft, CalendarClock, Clock, MapPin, Phone, Ruler, Store, Truck, Wallet } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ApiError } from '../../services/apiClient';
 import { shopService } from '../../services/shopService';
@@ -178,6 +178,19 @@ export const ApparelStore: React.FC = () => {
               <li>
                 <a href="/" onClick={goHome} className="inline-flex h-11 items-center rounded-lg px-3 text-ink-soft hover:text-ink">
                   Badminton
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/courts"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    openStoreSection(setActiveView, 'courts');
+                  }}
+                  className="inline-flex h-11 items-center gap-1.5 rounded-lg px-3 text-ink-soft hover:text-ink"
+                >
+                  <CalendarClock className="h-[18px] w-[18px]" aria-hidden="true" />
+                  Courts
                 </a>
               </li>
             </ul>

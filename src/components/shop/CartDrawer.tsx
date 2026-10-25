@@ -9,6 +9,7 @@ import { btn, cx } from '../public/home/ui';
 import { formatInr } from './shopFormat';
 import { ItemThumb, QtyStepper } from './shopUi';
 import { lineKey, useQuote } from './useQuote';
+import { useMyOrders } from './useMyOrders';
 
 /** "String set · Black", "M · Navy", "Racket". */
 export function itemDetail(i: Pick<CartItem, 'kind' | 'detail'>): string {
@@ -24,13 +25,16 @@ export function itemDetail(i: Pick<CartItem, 'kind' | 'detail'>): string {
  */
 export const CartDrawer: React.FC = () => {
   const cart = useCart();
-  const { distanceConfig, setActiveView, isLoggedIn, currentRole } = useApp();
+  const { distanceConfig, setActiveView, setCustomerSubView, isLoggedIn, currentRole } = useApp();
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
   useModalBehavior(cart.isOpen, panelRef, cart.closeCart, closeRef);
 
   const q = useQuote(cart.isOpen && cart.items.length ? { items: cart.lines, fulfilment: 'pickup' } : null);
+  // Placing an order empties the cart; point customers to where their orders went.
+  const myOrders = useMyOrders(cart.isOpen && cart.items.length === 0 && isLoggedIn && currentRole === 'CUSTOMER');
+  const latestOrder = myOrders.orders[0];
 
   // Prices that changed since the item was added: key -> the old price (kept while the drawer is open).
   const [was, setWas] = useState<Record<string, number>>({});
@@ -97,6 +101,26 @@ export const CartDrawer: React.FC = () => {
 
         {cart.items.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+            {latestOrder && (
+              <div className="w-full max-w-xs rounded-xl border border-line bg-paper p-4 text-left">
+                <p className="text-[15px] font-semibold text-ink">Looking for something you ordered?</p>
+                <p className="mt-1 text-[14px] text-ink-soft">
+                  Ordered items move from the cart to <b>My orders</b>. Latest: {latestOrder.id} · {latestOrder.status}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    cart.closeCart();
+                    setActiveView('customer_portal');
+                    setCustomerSubView('orders');
+                    window.scrollTo({ top: 0 });
+                  }}
+                  className={cx(btn.base, btn.secondary, 'mt-3 w-full')}
+                >
+                  View my orders ({myOrders.orders.length})
+                </button>
+              </div>
+            )}
             <p className="font-display text-[26px] font-semibold">Your cart is empty</p>
             <p className="max-w-xs text-[15px] text-ink-soft">
               T-shirts and team wear are in our clothing shop. Rackets and string sets with a price can be added from the badminton page.

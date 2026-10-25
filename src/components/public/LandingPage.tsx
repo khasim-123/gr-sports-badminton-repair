@@ -6,6 +6,7 @@ import { analyticsService } from '../../services/analyticsService';
 import { peekPendingStoreSection, subscribeStoreSection, takePendingStoreSection } from '../../utils/storeNavigation';
 import { BookingSection, type BookingPreset, type BookingService, type RepairRequest, type StringingRequest } from './home/BookingSection';
 import { ContactSection } from './home/ContactSection';
+import { CourtsSection } from './home/CourtsSection';
 import { EventDialog } from './home/EventDialog';
 import { EventsSection } from './home/EventsSection';
 import { categoryLabel, eventAction, eventDateText, eventPhoto, feeText, registrationStatus, spotsText, visibleEvents } from './home/events';
@@ -31,7 +32,7 @@ const BANNER_DEFAULT_LABEL: Record<Exclude<BannerCtaTarget, 'none'>, string> = {
   strings: 'See our strings',
   rackets: 'See rackets',
   tshirts: 'See T-shirts',
-  courts: 'Get in touch',
+  courts: 'Book a court',
   tournaments: 'See events',
   url: 'Find out more',
 };
@@ -208,6 +209,10 @@ export const LandingPage: React.FC = () => {
     appRef.current.setActiveView('apparel');
     window.scrollTo({ top: 0 });
   };
+  const openCourts = useCallback(() => {
+    appRef.current.setActiveView('courts');
+    window.scrollTo({ top: 0 });
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Events
@@ -307,6 +312,8 @@ export const LandingPage: React.FC = () => {
         primary = { label, onClick: () => startBooking(target) };
       } else if (target === 'tshirts') {
         primary = { label, onClick: () => appRef.current.setActiveView('apparel') };
+      } else if (target === 'courts') {
+        primary = { label, onClick: openCourts };
       } else if (target !== 'none') {
         const id =
           target === 'strings'
@@ -317,7 +324,7 @@ export const LandingPage: React.FC = () => {
                 : SECTION_IDS.contact
               : target === 'tournaments'
                 ? SECTION_IDS.events
-                : SECTION_IDS.contact; // courts
+                : SECTION_IDS.contact;
         primary = { label, onClick: () => navigate(id) };
       }
       return {
@@ -331,7 +338,7 @@ export const LandingPage: React.FC = () => {
         primary,
       };
     }
-  }, [events, content, distanceConfig.freeRadiusKm, rackets.length, showEvent, startBooking, navigate, SHOP]);
+  }, [events, content, distanceConfig.freeRadiusKm, rackets.length, showEvent, startBooking, navigate, openCourts, SHOP]);
 
   return (
     <div id="top" className="w-full bg-white font-sans text-ink selection:bg-accent selection:text-ink" onClickCapture={onClickCapture}>
@@ -351,6 +358,7 @@ export const LandingPage: React.FC = () => {
         onNavigate={navigate}
         showStaffLinks={!isLoggedIn}
         onOpenTshirts={openTshirts}
+        onOpenCourts={openCourts}
       />
 
       <div id="content">
@@ -374,6 +382,7 @@ export const LandingPage: React.FC = () => {
         <RepairsSection gettingServices={gettingServices} repairCategories={repairCategories} onBook={startBooking} />
         <HowItWorksSection distanceConfig={distanceConfig} availability={availability?.settings} />
         <EventsSection events={events} status={status} onOpen={showEvent} />
+        <CourtsSection onOpenCourts={openCourts} />
         <StringsSection
           strings={strings}
           status={stringsStatus}
@@ -394,6 +403,7 @@ export const LandingPage: React.FC = () => {
         onStaffLogin={onStaffLogin}
         showStaffLinks={!isLoggedIn}
         onOpenTshirts={openTshirts}
+        onOpenCourts={openCourts}
       />
 
       <EventDialog

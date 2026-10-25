@@ -1,8 +1,8 @@
 /**
  * Opens the public GR Sports homepage (the 'landing' view) and, optionally, scrolls to one of
  * its sections. Old section names used by the navbar / footer links are mapped onto the
- * homepage's section ids ('courts' has no section of its own: it goes to Contact). 'tshirts' opens the
- * separate T-shirt store view ('apparel', URL /tshirts) instead of the homepage.
+ * homepage's section ids. 'tshirts' opens the separate T-shirt store view ('apparel', URL /tshirts)
+ * and 'courts' the court booking view ('courts', URL /courts) instead of the homepage.
  *
  * The homepage picks the request up when it mounts (takePendingStoreSection) or, if it is
  * already showing, through subscribeStoreSection; it scrolls once its content has loaded.
@@ -22,7 +22,6 @@ const SECTION_ALIASES: Record<string, string> = {
   reviews: 'reviews',
   faq: 'faq',
   contact: 'contact',
-  courts: 'contact',
 };
 
 let pendingSection: string | null = null;
@@ -30,10 +29,17 @@ const listeners = new Set<() => void>();
 
 /** View id of the T-shirt store (synced with the /tshirts URL in AppContext). */
 export const APPAREL_VIEW = 'apparel';
+/** View id of court booking (synced with the /courts URL in AppContext). */
+export const COURTS_VIEW = 'courts';
 
 export function openStoreSection(setActiveView: (view: string) => void, section?: string): void {
   if (section === 'tshirts' || section === 'apparel') {
     setActiveView(APPAREL_VIEW);
+    window.scrollTo({ top: 0 });
+    return;
+  }
+  if (section === 'courts' || section === 'court-booking') {
+    setActiveView(COURTS_VIEW);
     window.scrollTo({ top: 0 });
     return;
   }

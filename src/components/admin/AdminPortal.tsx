@@ -39,11 +39,14 @@ import {
   Trash2,
   Users,
   ShoppingBag,
+  LandPlot,
 } from 'lucide-react';
 import { WebsiteContentPanel } from './content/WebsiteContentPanel';
 import { ShopSettingsForm } from './ShopSettingsForm';
 import { CustomersPanel } from './CustomersPanel';
 import { OrdersPanel, orderSummary, useAdminOrders } from './OrdersPanel';
+import { CourtsPanel } from './CourtsPanel';
+import { courtsTodaySummary, fmtTime as fmtCourtTime, useCourtsToday } from './courts/shared';
 import { NewBookingDialog, NewBookingPrefill } from './NewBookingDialog';
 import { requestService } from '../../services/requestService';
 import { MobileInput } from '../common/MobileInput';
@@ -318,6 +321,11 @@ export const AdminPortal: React.FC = () => {
   const shopSummary = orderSummary(shopOrders.orders);
   const [ordersPreset, setOrdersPreset] = useState<{ status: string; n: number } | null>(null);
 
+  // Court bookings today: sidebar badge + dashboard card (real numbers only; hidden until the server has courts).
+  const courtsToday = useCourtsToday();
+  const courtsSummary = courtsTodaySummary(courtsToday.bookings);
+  const courtsReady = courtsToday.loaded && !courtsToday.unavailable && !courtsToday.error;
+
   // New booking (phone / walk-in) dialog + customers list refresh
   const [newBooking, setNewBooking] = useState<NewBookingPrefill | null>(null);
   const [customersRefresh, setCustomersRefresh] = useState(0);
@@ -531,6 +539,17 @@ export const AdminPortal: React.FC = () => {
     if (selectedRequestId && selectedRequestId.startsWith('ORD-') && adminSubView !== 'orders') setAdminSubView('orders');
   }, [selectedRequestId, adminSubView, setAdminSubView]);
 
+  // A notification for a court booking (id "CRT-…") opens the Courts page; the panel opens the booking.
+  useEffect(() => {
+    if (selectedRequestId && selectedRequestId.startsWith('CRT-') && adminSubView !== 'courts') setAdminSubView('courts');
+  }, [selectedRequestId, adminSubView, setAdminSubView]);
+
+  // Fresh court numbers whenever the Courts page or the dashboard is opened.
+  const reloadCourtsToday = courtsToday.reload;
+  useEffect(() => {
+    if (adminSubView === 'courts' || adminSubView === 'dashboard') reloadCourtsToday();
+  }, [adminSubView, reloadCourtsToday]);
+
   // Fresh order numbers whenever the Orders page or the dashboard is opened.
   const reloadShopOrders = shopOrders.reload;
   useEffect(() => {
@@ -710,6 +729,13 @@ export const AdminPortal: React.FC = () => {
       icon: ShoppingBag,
       badge: shopOrders.loaded && !shopOrders.unavailable && !(shopOrders.error && shopOrders.orders.length === 0) ? shopSummary.open : undefined,
       badgeTitle: 'Open shop orders (not delivered, picked up or cancelled)',
+    },
+    {
+      id: 'courts',
+      label: 'Courts',
+      icon: LandPlot,
+      badge: courtsReady ? courtsSummary.remaining : undefined,
+      badgeTitle: "Today's court bookings still to play",
     },
     { id: 'customers', label: 'Customers', icon: Users },
     {
@@ -946,6 +972,67 @@ export const AdminPortal: React.FC = () => {
                     </button>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Court bookings today (real numbers only; hidden until the server has court booking) */}
+            {courtsReady && (
+              <div className={`${cardCls} p-5 sm:p-6 space-y-3`}>
+                <div className="flex justify-between items-start gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <LandPlot className="w-4 h-4 text-ink" /> Courts today
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      {courtsToday.bookings.filter((b) => b.status !== 'Cancelled').length} court{' '}
+                      {courtsToday.bookings.filter((b) => b.status !== 'Cancelled').length === 1 ? 'booking' : 'bookings'} today
+                      {courtsSummary.playing > 0 ? ` · ${courtsSummary.playing} playing now` : ''}.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => goTo('courts')}
+                    className="text-xs text-ink font-bold hover:underline min-h-[40px] px-2 shrink-0"
+                  >
+                    Open courts
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => goTo('courts')}
+                    className="min-h-[56px] text-left p-2.5 rounded-xl border border-line hover:bg-paper transition-colors min-w-0"
+                  >
+                    <span className="block text-[11px] font-semibold text-slate-600 truncate">Still to play</span>
+                    <span className="block text-lg font-black text-slate-900">{courtsSummary.remaining}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => goTo('courts')}
+                    className="min-h-[56px] text-left p-2.5 rounded-xl border border-line hover:bg-paper transition-colors min-w-0"
+                  >
+                    <span className="block text-[11px] font-semibold text-slate-600 truncate">Next booking</span>
+                    <span className="block text-lg font-black text-slate-900 truncate">
+                      {courtsSummary.next ? fmtCourtTime(courtsSummary.next.startTime) : '—'}
+                    </span>
+                    {courtsSummary.next && (
+                      <span className="block text-[11px] text-slate-500 truncate">
+                        {courtsSummary.next.courtName} · {courtsSummary.next.customerName}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => goTo('courts')}
+                    className="min-h-[56px] text-left p-2.5 rounded-xl border border-amber-200 bg-amber-50/50 hover:bg-amber-50 transition-colors min-w-0"
+                  >
+                    <span className="block text-[11px] font-semibold text-slate-600 truncate">Unpaid (to collect)</span>
+                    <span className="block text-lg font-black text-amber-600">{formatINR(courtsSummary.unpaidTotal)}</span>
+                    <span className="block text-[11px] text-slate-500 truncate">
+                      {courtsSummary.unpaidCount} {courtsSummary.unpaidCount === 1 ? 'booking' : 'bookings'}
+                    </span>
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1322,6 +1409,8 @@ export const AdminPortal: React.FC = () => {
         {/* SHOP ORDERS                                                        */}
         {/* ------------------------------------------------------------------ */}
         {adminSubView === 'orders' && <OrdersPanel data={shopOrders} preset={ordersPreset} onPresetUsed={() => setOrdersPreset(null)} />}
+
+        {adminSubView === 'courts' && <CourtsPanel onBookingsChanged={reloadCourtsToday} />}
 
         {/* ------------------------------------------------------------------ */}
         {/* REPAIR SLA MONITOR                                                 */}

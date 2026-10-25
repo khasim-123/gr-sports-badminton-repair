@@ -444,3 +444,122 @@ class OrderModel(Base):
     notes = Column(Text, nullable=True)  # customer's note
     cancelReason = Column(Text, nullable=True)
     timeline = Column(JSON, default=list)
+
+
+# ---------------- Court booking: venues, courts, blocked times and bookings ----------------
+# Times are India local "HH:MM" (24-hour), dates "YYYY-MM-DD".
+
+class CourtVenueModel(Base):
+    """A place with badminton courts the customers can book (admin managed)."""
+    __tablename__ = "court_venues"
+
+    id = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    address = Column(String, nullable=False)
+    area = Column(String, nullable=True)
+    mapsUrl = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
+    photos = Column(JSON, default=list)  # up to 6 links, first = main
+    amenities = Column(JSON, default=list)  # short labels, e.g. "Wooden floor"
+    rules = Column(Text, nullable=True)
+    openTime = Column(String, nullable=False)  # "06:00"
+    closeTime = Column(String, nullable=False)  # "22:00" (the last slot ends here)
+    slotMinutes = Column(Integer, nullable=False, default=60)  # 30 | 60
+    pricePerHour = Column(Float, nullable=False)
+    peakPricePerHour = Column(Float, nullable=True)
+    peakStart = Column(String, nullable=True)
+    peakEnd = Column(String, nullable=True)
+    weekendPricePerHour = Column(Float, nullable=True)  # Sat & Sun, all day (beats peak)
+    advanceDays = Column(Integer, nullable=False, default=14)
+    maxSlotsPerBooking = Column(Integer, nullable=False, default=4)
+    cancellationHours = Column(Integer, nullable=False, default=12)
+    isActive = Column(Boolean, default=True)
+    sortOrder = Column(Integer, default=0, index=True)
+    createdAt = Column(String, nullable=False)
+
+    courts = relationship(
+        "CourtModel",
+        back_populates="venue",
+        cascade="all, delete-orphan",
+        order_by="CourtModel.sortOrder",
+    )
+    blocks = relationship("CourtBlockModel", cascade="all, delete-orphan")
+
+
+class CourtModel(Base):
+    __tablename__ = "courts"
+    __table_args__ = (UniqueConstraint("venueId", "name", name="uq_courts_venue_name"),)
+
+    id = Column(String, primary_key=True)
+    venueId = Column(String, ForeignKey("court_venues.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String, nullable=False)  # "Court 1"
+    surface = Column(String, nullable=True)  # "Wooden", "Synthetic mat"
+    isActive = Column(Boolean, default=True)
+    sortOrder = Column(Integer, default=0)
+
+    venue = relationship("CourtVenueModel", back_populates="courts")
+
+
+class CourtBlockModel(Base):
+    """Time the courts can't be booked (coaching batch, tournament, maintenance): a single
+    date, or weekly on `weekdays` (0=Mon … 6=Sun) from fromDate until toDate (open-ended
+    when null). courtId null = every court at the venue."""
+    __tablename__ = "court_blocks"
+
+    id = Column(String, primary_key=True)
+    venueId = Column(String, ForeignKey("court_venues.id", ondelete="CASCADE"), nullable=False, index=True)
+    courtId = Column(String, nullable=True, index=True)
+    date = Column(String, nullable=True)
+    weekdays = Column(JSON, nullable=True)
+    fromDate = Column(String, nullable=True)
+    toDate = Column(String, nullable=True)
+    startTime = Column(String, nullable=False)
+    endTime = Column(String, nullable=False)
+    reason = Column(String, nullable=False)  # shown to the admin only
+    createdAt = Column(String, nullable=False)
+
+
+class CourtBookingModel(Base):
+    """One booking of one court for consecutive slots. Venue / court names are snapshots, so
+    past bookings survive the court or venue being renamed or deleted."""
+    __tablename__ = "court_bookings"
+
+    id = Column(String, primary_key=True)  # CRT-12345
+    venueId = Column(String, nullable=False, index=True)
+    venueName = Column(String, nullable=False)
+    courtId = Column(String, nullable=False, index=True)
+    courtName = Column(String, nullable=False)
+    date = Column(String, nullable=False, index=True)
+    startTime = Column(String, nullable=False)
+    endTime = Column(String, nullable=False)
+    slots = Column(Integer, nullable=False)
+    price = Column(Float, nullable=False)  # computed by the server
+    customerName = Column(String, nullable=False)
+    customerMobile = Column(String, nullable=False, index=True)  # +91XXXXXXXXXX
+    players = Column(Integer, nullable=True)
+    notes = Column(Text, nullable=True)
+    status = Column(String, nullable=False, index=True)  # Confirmed | Completed | No-show | Cancelled
+    paymentStatus = Column(String, nullable=False, default="Pending")  # Pending | Paid
+    paymentMethod = Column(String, nullable=True)
+    paidAmount = Column(Float, nullable=True)
+    paidAt = Column(String, nullable=True)
+    bookedBy = Column(String, nullable=False, default="customer")  # customer | admin
+    cancellationHours = Column(Integer, nullable=False, default=0)  # the venue's policy when booked
+    cancelReason = Column(Text, nullable=True)
+    createdAt = Column(String, nullable=False)
+    timeline = Column(JSON, default=list)
+
+
+class CourtBookingSlotModel(Base):
+    """One row per 30-minute piece of court time an active booking holds. The unique
+    (courtId, date, startTime) makes the database refuse a second booking of the same time,
+    even when two customers book at the same moment (or the venue's slot length changes).
+    Cancelling a booking deletes its rows."""
+    __tablename__ = "court_booking_slots"
+    __table_args__ = (UniqueConstraint("courtId", "date", "startTime", name="uq_court_booking_slots_time"),)
+
+    id = Column(String, primary_key=True)
+    bookingId = Column(String, ForeignKey("court_bookings.id", ondelete="CASCADE"), nullable=False, index=True)
+    courtId = Column(String, nullable=False)
+    date = Column(String, nullable=False)
+    startTime = Column(String, nullable=False)  # "18:30"
