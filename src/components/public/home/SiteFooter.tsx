@@ -185,7 +185,7 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({ pages, onOpenPage, onTra
 
       <div className="border-t border-white/10">
         {/* Right padding keeps the text clear of the floating WhatsApp button. */}
-        <div className={cx(container, 'flex flex-col gap-1 py-5 pb-24 text-[13px] text-white/60 sm:flex-row sm:items-center sm:justify-between sm:pb-5 sm:pr-24')}>
+        <div className={cx(container, 'flex flex-col gap-1 py-5 pb-24 text-[13px] text-white/60 sm:flex-row sm:items-center sm:justify-between sm:pb-5 sm:pr-24 lg:pr-24')}>
           <p>
             © {year} {SHOP.name}, {SHOP.city}
           </p>
