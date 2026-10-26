@@ -8,7 +8,11 @@ import { ErrorState, ListSkeleton, Pills, addDaysISO, cardClass, errorMessage, i
 type RangePreset = '7' | '30' | '90' | 'custom';
 
 const PAGE_LABELS: Record<string, string> = {
-  home: 'Home page',
+  home: 'Main page',
+  'home/event': 'Event details (main page)',
+  badminton: 'Badminton page',
+  'badminton/event': 'Event details (Badminton page)',
+  apparel: 'T-shirts page',
   'home/strings': 'Strings catalogue',
   'home/rackets': 'Rackets',
   'home/tshirts': 'T-shirts',

@@ -16,15 +16,21 @@ export interface ProductCategory {
 interface ShopByProductSectionProps {
   /** Only the catalogues the shop has; empty = the section is not shown. */
   categories: ProductCategory[];
+  id?: string;
+  title?: string;
+  intro?: string;
 }
 
-/** "Shop by product": one tile per catalogue (rackets, strings, T-shirts), each opening it. */
-export const ShopByProductSection: React.FC<ShopByProductSectionProps> = ({ categories }) => {
+/**
+ * "Shop by product": one tile per catalogue (rackets, strings, T-shirts), each opening it. The
+ * main page uses the same tiles for its sections (badminton, T-shirts, academies, …).
+ */
+export const ShopByProductSection: React.FC<ShopByProductSectionProps> = ({ categories, id = SECTION_IDS.shop, title = 'Shop by product', intro }) => {
   if (categories.length === 0) return null;
   return (
-    <section id={SECTION_IDS.shop} aria-labelledby="shop-title" className="scroll-mt-20 border-t border-line bg-paper py-10 sm:py-14">
+    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-20 border-t border-line bg-paper py-10 sm:py-14">
       <div className={container}>
-        <SectionHeader id="shop-title" title="Shop by product" />
+        <SectionHeader id={`${id}-title`} title={title} intro={intro} />
         <ul
           className={cx(
             'mt-6 grid gap-3 sm:gap-6',

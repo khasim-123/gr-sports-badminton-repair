@@ -1,6 +1,7 @@
 /**
- * The public website's pages (GR website map). The homepage is the 'landing' view at "/"; every
- * other page has its own view id and address, kept in step with the browser by AppContext.
+ * The public website's pages (GR website map). The main page is the 'landing' view at "/"; the
+ * Badminton page, the T-shirts page and every other page have their own view id and address,
+ * kept in step with the browser by AppContext.
  *
  * openPublicPage() switches page and can pass an "intent" — what the page should show first,
  * e.g. the Services page with Repair selected. The page reads it with takePageIntent() when it
@@ -8,10 +9,21 @@
  */
 import { openStoreSection } from './storeNavigation';
 
-export type PublicPageId = 'home' | 'tshirts' | 'courts' | 'academies' | 'tournaments' | 'events' | 'rackets' | 'strings' | 'services';
+export type PublicPageId =
+  | 'home'
+  | 'badminton'
+  | 'tshirts'
+  | 'courts'
+  | 'academies'
+  | 'tournaments'
+  | 'events'
+  | 'rackets'
+  | 'strings'
+  | 'services';
 
 export const PUBLIC_PAGES: Record<PublicPageId, { view: string; path: string; title: string }> = {
-  home: { view: 'landing', path: '/', title: 'Badminton' },
+  home: { view: 'landing', path: '/', title: 'Home' },
+  badminton: { view: 'badminton', path: '/badminton', title: 'Badminton' },
   tshirts: { view: 'apparel', path: '/tshirts', title: 'T-shirts' },
   courts: { view: 'courts', path: '/courts', title: 'Courts' },
   academies: { view: 'academies', path: '/academies', title: 'Academies' },
@@ -53,8 +65,9 @@ let pending: { page: PublicPageId; intent: PageIntent } | null = null;
 const listeners = new Set<() => void>();
 
 export function openPublicPage(setActiveView: (view: string) => void, page: PublicPageId, intent?: PageIntent): void {
-  if (page === 'home') {
-    openStoreSection(setActiveView, intent?.section);
+  // The main page and the Badminton page scroll to a section through storeNavigation.
+  if (page === 'home' || page === 'badminton') {
+    openStoreSection(setActiveView, intent?.section || (page === 'badminton' ? 'badminton' : undefined));
     return;
   }
   pending = intent ? { page, intent } : null;

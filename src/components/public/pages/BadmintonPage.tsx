@@ -1,61 +1,49 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, GraduationCap, Grid3x3, LandPlot, Recycle, Trophy, Wrench } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
-import type { Banner, BannerCtaTarget, BannerPlacement, StringProduct } from '../../types/content';
-import { analyticsService } from '../../services/analyticsService';
-import { shopService } from '../../services/shopService';
-import { PUBLIC_PAGES } from '../../utils/publicPages';
-import { peekPendingStoreSection, subscribeStoreSection, takePendingStoreSection } from '../../utils/storeNavigation';
-import { BookingSection, type BookingPreset, type BookingService } from './home/BookingSection';
-import { useBookingWizard } from './home/booking';
-import { BrandGridSection, type BrandTile } from './home/BrandGridSection';
-import { eventSlides, useEventDialog } from './home/EventsHero';
-import { FaqSection } from './home/FaqSection';
-import { activeStrings, formatKm, localIsoDate, safeImageUrl, safeUrl } from './home/format';
-import { HeroCarousel, type HeroAction, type HeroSlide } from './home/HeroCarousel';
-import { OffersSection } from './home/OffersSection';
-import { RacketsSection, activeRackets } from './home/RacketsSection';
-import { ReviewsSection } from './home/ReviewsSection';
-import { ServiceLogosSection, type ServiceLogo } from './home/ServiceLogosSection';
-import { ShopByProductSection, type ProductCategory } from './home/ShopByProductSection';
-import { StringBookingDialog, type StringBookingRequest } from './home/StringBookingDialog';
-import { StringsSection } from './home/StringsSection';
-import { SECTION_IDS, scrollToSection, useShop } from './home/shop';
-import { container } from './home/ui';
-import { useHomeContent } from './home/useHomeContent';
-import { PublicLayout, useNavItem, usePublicNav } from './layout/PublicLayout';
-
-/** How long the hero shows only its photo while content loads, before falling back to the default slide. */
-const HERO_PLACEHOLDER_MS = 1200;
+import { useApp } from '../../../context/AppContext';
+import type { StringProduct } from '../../../types/content';
+import { analyticsService } from '../../../services/analyticsService';
+import { shopService } from '../../../services/shopService';
+import { PUBLIC_PAGES } from '../../../utils/publicPages';
+import { BADMINTON_VIEW, peekPendingStoreSection, subscribeStoreSection, takePendingStoreSection } from '../../../utils/storeNavigation';
+import { BookingSection, type BookingPreset, type BookingService } from '../home/BookingSection';
+import { topBannerSlides, useHeroPlaceholder, useSiteBanners } from '../home/banners';
+import { useBookingWizard } from '../home/booking';
+import { BrandGridSection, type BrandTile } from '../home/BrandGridSection';
+import { eventSlides, useEventDialog } from '../home/EventsHero';
+import { FaqSection } from '../home/FaqSection';
+import { activeStrings, formatKm } from '../home/format';
+import { HeroCarousel, type HeroSlide } from '../home/HeroCarousel';
+import { OffersSection } from '../home/OffersSection';
+import { RacketsSection, activeRackets } from '../home/RacketsSection';
+import { ReviewsSection } from '../home/ReviewsSection';
+import { ServiceLogosSection, type ServiceLogo } from '../home/ServiceLogosSection';
+import { ShopByProductSection, type ProductCategory } from '../home/ShopByProductSection';
+import { StringBookingDialog, type StringBookingRequest } from '../home/StringBookingDialog';
+import { StringsSection } from '../home/StringsSection';
+import { SECTION_IDS, scrollToSection, useShop } from '../home/shop';
+import { container } from '../home/ui';
+import { useHomeContent } from '../home/useHomeContent';
+import { PublicLayout, useNavItem, usePublicNav } from '../layout/PublicLayout';
 
 /**
- * Menu ids that open the booking form on a service. The homepage no longer has stringing or
- * repair sections (GR website map), so "Stringing" / "Repairs" links from older screens and old
- * /#stringing, /#repairs addresses go straight to booking.
+ * Menu ids that open the booking form on a service. The page has no stringing or repair sections
+ * (GR website map), so "Stringing" / "Repairs" links from older screens and old /#stringing,
+ * /#repairs addresses go straight to booking.
  */
 const BOOKING_LINKS: Record<string, BookingService> = { stringing: 'stringing', repairs: 'repair' };
-
-const BANNER_DEFAULT_LABEL: Record<Exclude<BannerCtaTarget, 'none'>, string> = {
-  stringing: 'Book stringing',
-  repair: 'Book a repair',
-  strings: 'See our strings',
-  rackets: 'See rackets',
-  tshirts: 'See T-shirts',
-  courts: 'Book a court',
-  tournaments: 'See events',
-  url: 'Find out more',
-};
 
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /**
- * Public GR Sports homepage ("Badminton" page), in the order of the GR website map:
- * top banner, brand grid, booking form, our services, strings, promo banners and announcements,
- * shop by product, more promo banners and announcements, rackets (new and second-hand), an events
- * banner, reviews and FAQs. Live content comes from GET /api/content/site (shared with the other
- * pages); the booking form hands its details to the customer booking wizard (login first if needed).
+ * Badminton page (/badminton; "HOMEPAGE (BADMINTON PAGE)" in the GR website map), in the map's
+ * order: top banner, brand grid, booking form, our services, strings, promo banners and
+ * announcements, shop by product, more promo banners and announcements, rackets (new and
+ * second-hand), an events banner, reviews and FAQs. Live content comes from GET /api/content/site
+ * (shared with the other pages); the booking form hands its details to the customer booking wizard
+ * (login first if needed).
  */
-export const LandingPage: React.FC = () => {
+export const BadmintonPage: React.FC = () => {
   const app = useApp();
   const { status, content } = useHomeContent();
   const SHOP = useShop();
@@ -70,15 +58,12 @@ export const LandingPage: React.FC = () => {
   const { isLoggedIn, currentRole, distanceConfig, gettingServices, repairCategories } = app;
   const isCustomer = isLoggedIn && currentRole === 'CUSTOMER';
 
+  // The page view itself is counted by App ('badminton'); this reports the event dialog.
   const track = useCallback((page: string) => {
     const { isLoggedIn: loggedIn, currentRole: role } = appRef.current;
     if (loggedIn && role !== 'CUSTOMER') return; // staff browsing isn't counted
     analyticsService.trackPageView(page);
   }, []);
-
-  useEffect(() => {
-    track('home');
-  }, [track]);
 
   // ---------------------------------------------------------------------------
   // Derived content
@@ -109,7 +94,7 @@ export const LandingPage: React.FC = () => {
   // ---------------------------------------------------------------------------
   const [pendingSection, setPendingSection] = useState<string | null>(() => {
     // Peek here (initialisers may run twice in development); cleared in the effect below.
-    const requested = peekPendingStoreSection();
+    const requested = peekPendingStoreSection(BADMINTON_VIEW);
     if (requested) return requested;
     const hash = typeof window !== 'undefined' ? decodeURIComponent(window.location.hash.slice(1)) : '';
     return hash && ((Object.values(SECTION_IDS) as string[]).includes(hash) || hash in BOOKING_LINKS) ? hash : null;
@@ -132,9 +117,9 @@ export const LandingPage: React.FC = () => {
 
   // Requests from other screens (menus and footers elsewhere in the app).
   useEffect(() => {
-    takePendingStoreSection(); // already read by the state initialiser
+    takePendingStoreSection(BADMINTON_VIEW); // already read by the state initialiser
     return subscribeStoreSection(() => {
-      const id = takePendingStoreSection();
+      const id = takePendingStoreSection(BADMINTON_VIEW);
       if (id) setPendingSection(id);
     });
   }, []);
@@ -169,83 +154,18 @@ export const LandingPage: React.FC = () => {
   // ---------------------------------------------------------------------------
   // Events (top banner, the events banner further down, and their details / registration dialog)
   // ---------------------------------------------------------------------------
-  const onShowEvent = useCallback(() => track('home/event'), [track]);
+  const onShowEvent = useCallback(() => track('badminton/event'), [track]);
   const { events, showEvent, dialog: eventDialog } = useEventDialog(onShowEvent);
 
   // ---------------------------------------------------------------------------
-  // Banners: top slideshow, and two spots of promo banners + announcements
+  // Banners: top slideshow (events marked "show as banner", then admin slides, else the default
+  // slide), and two spots of promo banners + announcements
   // ---------------------------------------------------------------------------
-  const liveBanners = useMemo(() => {
-    const today = localIsoDate(new Date());
-    const live = (content?.banners || [])
-      .filter((b) => b.isActive !== false)
-      .filter((b) => (!b.startsAt || b.startsAt <= today) && (!b.endsAt || b.endsAt >= today))
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-    const at = (placement: BannerPlacement) => live.filter((b) => (b.placement || 'hero') === placement);
-    return { hero: at('hero'), promo: at('promo'), announcement: at('announcement'), promo2: at('promo2'), announcement2: at('announcement2') };
-  }, [content]);
-
-  /** What a banner's button does. */
-  const bannerAction = useCallback(
-    (b: Banner): HeroAction | undefined => {
-      const target = b.ctaTarget || 'none';
-      if (target === 'none') return undefined;
-      const label = (b.ctaLabel || '').trim() || BANNER_DEFAULT_LABEL[target];
-      switch (target) {
-        case 'url': {
-          const href = safeUrl(b.ctaUrl);
-          return href ? { label, href, external: true } : undefined;
-        }
-        case 'stringing':
-        case 'repair':
-          return { label, onClick: () => startBooking(target) };
-        case 'tshirts':
-          return { label, href: PUBLIC_PAGES.tshirts.path, onClick: (e?: unknown) => openPage(e, 'tshirts') };
-        case 'courts':
-          return { label, href: PUBLIC_PAGES.courts.path, onClick: (e?: unknown) => openPage(e, 'courts') };
-        case 'strings':
-          return { label, href: PUBLIC_PAGES.strings.path, onClick: (e?: unknown) => openPage(e, 'strings') };
-        case 'rackets':
-          return { label, href: PUBLIC_PAGES.rackets.path, onClick: (e?: unknown) => openPage(e, 'rackets') };
-        case 'tournaments':
-          return { label, href: PUBLIC_PAGES.events.path, onClick: (e?: unknown) => openPage(e, 'events') };
-        default:
-          return undefined;
-      }
-      function openPage(e: unknown, page: 'tshirts' | 'courts' | 'strings' | 'rackets' | 'events') {
-        (e as React.MouseEvent | undefined)?.preventDefault?.();
-        go(page);
-      }
-    },
-    [startBooking, go],
-  );
-
-  // ---------------------------------------------------------------------------
-  // Top banner: events marked "show as banner", then admin slides, else the default slide
-  // ---------------------------------------------------------------------------
-  const [heroWaitOver, setHeroWaitOver] = useState(false);
-  useEffect(() => {
-    const t = window.setTimeout(() => setHeroWaitOver(true), HERO_PLACEHOLDER_MS);
-    return () => clearTimeout(t);
-  }, []);
-  const heroPlaceholder = status === 'loading' && !heroWaitOver;
+  const { liveBanners, bannerAction } = useSiteBanners(startBooking);
+  const heroPlaceholder = useHeroPlaceholder(status);
 
   const slides: HeroSlide[] = useMemo(() => {
-    const out: HeroSlide[] = eventSlides(events, SHOP, showEvent);
-    for (const b of liveBanners.hero) {
-      const image = safeImageUrl(b.desktopImageUrl);
-      if (!image) continue;
-      out.push({
-        key: `banner-${b.id}`,
-        image,
-        mobileImage: safeImageUrl(b.mobileImageUrl),
-        alt: (b.title || '').trim() || SHOP.name,
-        eyebrow: (b.badge || '').trim() || undefined,
-        title: (b.title || '').trim() || undefined,
-        text: (b.subtitle || '').trim() || undefined,
-        primary: bannerAction(b),
-      });
-    }
+    const out = topBannerSlides(events, liveBanners.hero, bannerAction, SHOP, showEvent);
     if (out.length === 0) {
       out.push({
         key: 'default',
@@ -355,7 +275,7 @@ export const LandingPage: React.FC = () => {
 
   return (
     <PublicLayout
-      page="home"
+      page="badminton"
       skipTo="book"
       onClickCapture={onClickCapture}
       navigator={{

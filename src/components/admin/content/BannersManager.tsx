@@ -1,5 +1,6 @@
 /**
- * Admin: homepage banners — top slideshow slides, promo banners and announcements.
+ * Admin: website banners — top slideshow slides (main page and Badminton page), and the Badminton
+ * page's promo banners and announcements.
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, CalendarClock, ExternalLink, Megaphone, MousePointerClick, Pencil, Plus, Trash2 } from 'lucide-react';
@@ -55,35 +56,35 @@ const PLACEMENTS: Record<BannerPlacement, { label: string; tab: string; noun: st
     label: 'Top slideshow',
     tab: 'Slideshow',
     noun: 'slide',
-    description: 'A large photo slide at the very top of the homepage.',
+    description: 'A large photo slide at the top of the main page and the Badminton page.',
     add: 'Add slide',
   },
   promo: {
     label: 'Promo banner',
     tab: 'Promo banners',
     noun: 'promo banner',
-    description: 'A running photo banner further down the homepage, below the strings.',
+    description: 'A running photo banner on the Badminton page, below the strings.',
     add: 'Add promo banner',
   },
   announcement: {
     label: 'Announcement',
     tab: 'Announcements',
     noun: 'announcement',
-    description: 'A short notice card, e.g. holiday timings or new stock. Photo optional.',
+    description: 'A short notice card on the Badminton page, e.g. holiday timings or new stock. Photo optional.',
     add: 'Add announcement',
   },
   promo2: {
     label: 'Promo banner (lower)',
     tab: 'Lower promo banners',
     noun: 'promo banner',
-    description: 'A running photo banner lower on the homepage, after “Shop by product”.',
+    description: 'A running photo banner lower on the Badminton page, after “Shop by product”.',
     add: 'Add lower promo banner',
   },
   announcement2: {
     label: 'Announcement (lower)',
     tab: 'Lower announcements',
     noun: 'announcement',
-    description: 'A notice card lower on the homepage, after “Shop by product”. Photo optional.',
+    description: 'A notice card lower on the Badminton page, after “Shop by product”. Photo optional.',
     add: 'Add lower announcement',
   },
 };
@@ -479,7 +480,7 @@ const BannerFormModal: React.FC<BannerFormModalProps> = ({ banner, defaultPlacem
             <Switch
               checked={form.isActive}
               onChange={(v) => set('isActive', v)}
-              label="Show on the homepage"
+              label="Show on the website"
               description="When off, the banner stays hidden whatever the dates."
               onLabel="On"
               offLabel="Hidden"
@@ -595,7 +596,7 @@ export const BannersManager: React.FC = () => {
     <div className="space-y-4">
       <SectionHeader
         title="Homepage banners"
-        description="The top slideshow (after any events marked “Show in homepage banner”), promo banners and announcements further down. Each shows in the order listed."
+        description="The top slideshow on the main page and the Badminton page (after any events marked “Show in homepage banner”), and the Badminton page’s promo banners and announcements. Each shows in the order listed."
         actions={
           <Button
             type="button"
@@ -625,11 +626,11 @@ export const BannersManager: React.FC = () => {
           title={tab === 'hero' ? 'No slides yet' : isPromoPlacement(tab) ? 'No promo banners yet' : 'No announcements yet'}
           description={
             tab === 'hero'
-              ? 'Add your first homepage slide — e.g. a stringing offer or new string colours.'
+              ? 'Add your first slide — e.g. a stringing offer or new string colours.'
               : tab === 'promo'
-                ? 'Promo banners run one after another further down the homepage, below the strings — e.g. new stock or a seasonal offer.'
+                ? 'Promo banners run one after another on the Badminton page, below the strings — e.g. new stock or a seasonal offer.'
                 : tab === 'announcement'
-                  ? 'Announcements appear as notice cards on the homepage — e.g. holiday timings or new arrivals.'
+                  ? 'Announcements appear as notice cards on the Badminton page — e.g. holiday timings or new arrivals.'
                   : `${tabMeta.description} Nothing shows there until you add one.`
           }
           actionText={tabMeta.add}
@@ -741,7 +742,7 @@ export const BannersManager: React.FC = () => {
                         checked={b.isActive}
                         onChange={() => toggleActive(b)}
                         disabled={busy}
-                        label={`Show "${b.title}" on the homepage`}
+                        label={`Show "${b.title}" on the website`}
                         hideLabel
                         onLabel="On"
                         offLabel="Hidden"
@@ -805,7 +806,7 @@ export const BannersManager: React.FC = () => {
         title="Delete banner?"
         message={
           <>
-            <b className="font-semibold text-ink">“{toDelete?.title}”</b> will be removed from the homepage. This can’t be undone.
+            <b className="font-semibold text-ink">“{toDelete?.title}”</b> will be removed from the website. This can’t be undone.
             <span className="block mt-2 text-[13px] text-ink-muted">Tip: switch it to Hidden instead if you may use it again.</span>
           </>
         }

@@ -13,7 +13,7 @@ import { CartAddedNotice, CartDrawer } from './components/shop/CartDrawer';
 import { PUBLIC_VIEWS } from './utils/publicPages';
 
 // Views
-import { LandingPage } from './components/public/LandingPage';
+import { HomePage } from './components/public/pages/HomePage';
 import { CentralLogin } from './components/public/CentralLogin';
 // The portals load on demand, so homepage visitors don't download the admin/staff screens.
 const CustomerPortal = lazy(() => import('./components/customer/CustomerPortal').then((m) => ({ default: m.CustomerPortal })));
@@ -22,6 +22,7 @@ const AdminPortal = lazy(() => import('./components/admin/AdminPortal').then((m)
 const ApparelStore = lazy(() => import('./components/shop/ApparelStore').then((m) => ({ default: m.ApparelStore })));
 const CourtsPage = lazy(() => import('./components/courts/CourtsPage').then((m) => ({ default: m.CourtsPage })));
 // The other public pages (GR website map), also loaded on demand.
+const BadmintonPage = lazy(() => import('./components/public/pages/BadmintonPage').then((m) => ({ default: m.BadmintonPage })));
 const EventsPage = lazy(() => import('./components/public/pages/EventsPage').then((m) => ({ default: m.EventsPage })));
 const RacketsPage = lazy(() => import('./components/public/pages/RacketsPage').then((m) => ({ default: m.RacketsPage })));
 const StringsPage = lazy(() => import('./components/public/pages/StringsPage').then((m) => ({ default: m.StringsPage })));
@@ -29,6 +30,7 @@ const ServicesPage = lazy(() => import('./components/public/pages/ServicesPage')
 const AcademiesPage = lazy(() => import('./components/public/pages/AcademiesPage').then((m) => ({ default: m.AcademiesPage })));
 const TournamentsPage = lazy(() => import('./components/public/pages/TournamentsPage').then((m) => ({ default: m.TournamentsPage })));
 const PUBLIC_PAGE_VIEWS: Record<string, React.LazyExoticComponent<React.FC>> = {
+  badminton: BadmintonPage,
   apparel: ApparelStore,
   courts: CourtsPage,
   events: EventsPage,
@@ -60,7 +62,7 @@ export const App: React.FC = () => {
   }, [activeView, isLoggedIn, currentRole, setActiveView]);
 
   // Page-view tracking for the admin visitor report. Staff activity is not tracked;
-  // the landing page reports its own internal sections (see LandingPage).
+  // the main page reports its own views (see HomePage).
   useEffect(() => {
     if (isAuthChecking || activeView === 'landing') return;
     if (isLoggedIn && currentRole !== 'CUSTOMER') return;
@@ -99,11 +101,11 @@ export const App: React.FC = () => {
       return <CustomerPortal />;
     }
 
-    return <LandingPage />;
+    return <HomePage />;
   };
 
-  // The public pages (homepage, /tshirts, /courts, /academies, /events, …) render their own
-  // header, main and footer.
+  // The public pages (main page, /badminton, /tshirts, /courts, /academies, /events, …) render
+  // their own header, main and footer.
   const isStandaloneLanding = PUBLIC_VIEWS.includes(activeView);
   const PublicPage = PUBLIC_PAGE_VIEWS[activeView];
   // Admin console uses an app layout on desktop: fixed top bar + sidebar, only the main area scrolls.
@@ -160,7 +162,7 @@ export const App: React.FC = () => {
           <PublicPage />
         </Suspense>
       ) : isStandaloneLanding ? (
-        <LandingPage />
+        <HomePage />
       ) : (
         <main className={isAdminShell ? 'flex-1 lg:min-h-0' : 'flex-1'}>
           {activeView === 'login' && <CentralLogin />}

@@ -611,7 +611,7 @@ const RacketFormModal: React.FC<{
               checked={form.isFeatured}
               onChange={(v) => set('isFeatured', v)}
               label="Featured"
-              description="Shown in the rackets row on the homepage."
+              description="Shown in the rackets row on the Badminton page."
             />
           </div>
         </FormSection>

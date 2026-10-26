@@ -8,9 +8,9 @@ import { AccountButton } from './AccountButton';
 import { useShop } from './shop';
 import { WhatsAppIcon, Wordmark, btn, container, cx } from './ui';
 
-/** The main menu (GR website map): one item per page. */
+/** The main menu (GR website map): one item per page. The logo opens the main page. */
 const MAIN_MENU: { page: PublicPageId; label: string }[] = [
-  { page: 'home', label: 'Badminton' },
+  { page: 'badminton', label: 'Badminton' },
   { page: 'tshirts', label: 'T-shirts' },
   { page: 'academies', label: 'Academies' },
   { page: 'tournaments', label: 'Tournament organizing' },
@@ -258,7 +258,8 @@ const MenuSheet: React.FC<MenuSheetProps> = ({
 
         <nav aria-label="Main" className="px-2 py-3">
           <ul>
-            {MAIN_MENU.map(({ page, label }) => (
+            {/* Phones: the main page is listed too (on laptops it is the logo). */}
+            {[{ page: 'home' as const, label: 'Home' }, ...MAIN_MENU].map(({ page, label }) => (
               <li key={page}>{link(page, label, true)}</li>
             ))}
           </ul>

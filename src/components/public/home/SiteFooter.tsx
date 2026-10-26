@@ -30,7 +30,7 @@ const COLUMNS: { heading: string; links: FooterLink[] }[] = [
       { label: 'Our promise', page: 'promise' },
       { label: 'Local pickup', page: 'local-pickup' },
       { label: 'Express stringing', page: 'express-stringing' },
-      { label: "FAQ's", go: 'home', intent: { section: 'faq' } },
+      { label: "FAQ's", go: 'badminton', intent: { section: 'faq' } },
       { label: 'Contact us', action: 'contact' },
       { label: 'Shuttlers talk', page: 'shuttlers-talk' },
     ],
@@ -80,7 +80,7 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({ pages, onOpenPage, onTra
       );
     }
     if ('go' in link) {
-      const path = link.go === 'home' ? `/#${link.intent?.section || ''}` : PUBLIC_PAGES[link.go].path;
+      const path = PUBLIC_PAGES[link.go].path + (link.intent?.section ? `#${link.intent.section}` : '');
       return (
         <a
           href={path}
