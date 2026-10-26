@@ -73,7 +73,6 @@ export const SECTION_IDS = {
   book: 'book',
   stringing: 'stringing',
   repairs: 'repairs',
-  pickup: 'how-it-works',
   events: 'events',
   strings: 'strings',
   rackets: 'rackets',

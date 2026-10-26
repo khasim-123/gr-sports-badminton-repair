@@ -13,7 +13,6 @@ import { categoryLabel, eventAction, eventDateText, eventPhoto, feeText, registr
 import { FaqSection } from './home/FaqSection';
 import { activeStrings, describePickupHours, formatKm, localIsoDate, safeImageUrl, safeUrl } from './home/format';
 import { HeroCarousel, type HeroSlide } from './home/HeroCarousel';
-import { HowItWorksSection } from './home/HowItWorksSection';
 import { RacketsSection, activeRackets } from './home/RacketsSection';
 import { ReviewsSection } from './home/ReviewsSection';
 import { RepairsSection, StringingSection } from './home/ServicesSection';
@@ -380,7 +379,6 @@ export const LandingPage: React.FC = () => {
         />
         <StringingSection gettingServices={gettingServices} repairCategories={repairCategories} onBook={startBooking} />
         <RepairsSection gettingServices={gettingServices} repairCategories={repairCategories} onBook={startBooking} />
-        <HowItWorksSection distanceConfig={distanceConfig} availability={availability?.settings} />
         <EventsSection events={events} status={status} onOpen={showEvent} />
         <CourtsSection onOpenCourts={openCourts} />
         <StringsSection
