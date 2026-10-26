@@ -75,7 +75,7 @@ export const RacketsSection: React.FC<RacketsSectionProps> = ({
   const shown = expanded ? rackets.filter((r) => brand === ALL || ((r.brand || '').trim() || 'Other') === brand) : featured;
 
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className={cx('scroll-mt-20 border-t border-line py-10 sm:py-14', tone === 'paper' ? 'bg-paper' : 'bg-white')}>
+    <section id={id} aria-labelledby={`${id}-title`} className={cx('scroll-mt-20 border-t border-line py-6 sm:py-8', tone === 'paper' ? 'bg-paper' : 'bg-white')}>
       <div className={container}>
         <SectionHeader
           id={`${id}-title`}

@@ -11,7 +11,7 @@ export interface ServiceLogo {
 
 /** "Our services in the form of logos" (GR website map): one round icon per service, each opening its page. */
 export const ServiceLogosSection: React.FC<{ services: ServiceLogo[] }> = ({ services }) => (
-  <section id="services-logos" aria-labelledby="services-logos-title" className="scroll-mt-20 border-t border-line bg-white py-8 sm:py-12">
+  <section id="services-logos" aria-labelledby="services-logos-title" className="scroll-mt-20 border-t border-line bg-white py-6 sm:py-8">
     <div className={container}>
       <SectionHeader id="services-logos-title" title="Our services" />
       <ul className={cx('mt-6 grid grid-cols-3 gap-x-2 gap-y-6 sm:grid-cols-4 lg:gap-x-4', services.length > 6 ? 'lg:grid-cols-7' : 'lg:grid-cols-6')}>

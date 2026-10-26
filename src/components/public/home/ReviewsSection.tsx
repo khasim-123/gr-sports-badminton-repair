@@ -27,7 +27,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ data, status }) 
   const shown = showAll ? reviews : reviews.slice(0, INITIAL_COUNT);
 
   return (
-    <section id={SECTION_IDS.reviews} aria-labelledby="reviews-title" className="scroll-mt-20 bg-paper py-10 sm:py-14">
+    <section id={SECTION_IDS.reviews} aria-labelledby="reviews-title" className="scroll-mt-20 bg-paper py-6 sm:py-8">
       <div className={cx(container, 'grid gap-8 lg:grid-cols-12 lg:gap-12')}>
         <div className="lg:col-span-4">
           <SectionHeader id="reviews-title" title="What customers say" />
@@ -83,7 +83,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ data, status }) 
             <p className="rounded-xl border border-line bg-white px-5 py-4 text-[15px] text-ink-soft">Reviews aren't loading right now.</p>
           )}
           {status === 'ready' && reviews.length === 0 && (
-            <div className="rounded-xl border border-dashed border-ink/20 bg-white px-6 py-10 sm:px-10">
+            <div className="rounded-xl border border-dashed border-ink/20 bg-white px-5 py-6 sm:px-8">
               <h3 className="font-display text-[28px] font-semibold leading-tight text-ink">No reviews yet</h3>
               <p className="mt-2 max-w-lg text-[16px] leading-relaxed text-ink-soft">
                 If we've strung or repaired a racket for you, tell other players how it went. Short and honest is perfect.

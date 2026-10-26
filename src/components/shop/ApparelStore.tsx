@@ -134,7 +134,7 @@ export const ApparelStore: React.FC = () => {
       <HeroCarousel slides={hero} label={SUBLINE} />
 
       {/* Products */}
-      <section id="products" aria-labelledby="products-title" className="scroll-mt-24 py-8 sm:py-12">
+      <section id="products" aria-labelledby="products-title" className="scroll-mt-24 py-6 sm:py-8">
         <div className={container}>
           {state.status === 'loading' && (
             <>
@@ -252,7 +252,7 @@ export const ApparelStore: React.FC = () => {
       </section>
 
       {/* Custom T-shirts (GR website map: "customized option form") */}
-      <section id="custom" aria-labelledby="custom-title" className="scroll-mt-24 border-t border-line bg-paper py-10 sm:py-14">
+      <section id="custom" aria-labelledby="custom-title" className="scroll-mt-24 border-t border-line bg-paper py-6 sm:py-8">
         <div className={cx(container, 'grid items-start gap-8 lg:grid-cols-12')}>
           <div className="lg:col-span-5">
             <h2 id="custom-title" data-section-heading className="font-display text-[34px] font-semibold leading-[1.02] outline-none sm:text-[42px]">
@@ -302,7 +302,7 @@ export const ApparelStore: React.FC = () => {
       </section>
 
       {/* Delivery, pickup, payment, sizes */}
-      <section id="delivery" aria-labelledby="delivery-title" className="scroll-mt-24 border-t border-line py-10 sm:py-12">
+      <section id="delivery" aria-labelledby="delivery-title" className="scroll-mt-24 border-t border-line py-6 sm:py-8">
         <div className={container}>
           <h2 id="delivery-title" data-section-heading className="font-display text-[30px] font-semibold leading-none outline-none sm:text-[36px]">
             Delivery, pickup and payment

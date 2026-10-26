@@ -325,7 +325,7 @@ export const BadmintonPage: React.FC = () => {
       )}
 
       {eventsBannerSlides.length > 0 && (
-        <section id={SECTION_IDS.events} aria-labelledby="events-banner-title" className="scroll-mt-20 border-t border-line bg-white py-10 sm:py-14">
+        <section id={SECTION_IDS.events} aria-labelledby="events-banner-title" className="scroll-mt-20 border-t border-line bg-white py-6 sm:py-8">
           <div className={container}>
             <h2 id="events-banner-title" className="sr-only">
               Upcoming events

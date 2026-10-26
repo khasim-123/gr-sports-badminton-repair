@@ -67,7 +67,7 @@ export const RacketsPage: React.FC = () => {
             intro="Used rackets the shop is selling. Message us to ask about a racket's condition before you visit."
           />
         ) : (
-          <section id={USED_ID} aria-labelledby={`${USED_ID}-title`} className="scroll-mt-20 border-t border-line bg-white py-10 sm:py-14">
+          <section id={USED_ID} aria-labelledby={`${USED_ID}-title`} className="scroll-mt-20 border-t border-line bg-white py-6 sm:py-8">
             <div className={container}>
               <h2 id={`${USED_ID}-title`} className="font-display text-[28px] font-semibold leading-tight text-ink sm:text-[32px]">
                 Second-hand rackets

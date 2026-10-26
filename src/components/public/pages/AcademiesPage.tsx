@@ -53,7 +53,7 @@ export const AcademiesPage: React.FC = () => {
       <h1 className="sr-only">Badminton academies near {SHOP.name}</h1>
       <EventsHero lead={PAGE_SLIDE} label="Academies" />
 
-      <section aria-labelledby={LIST_ID} className="bg-paper py-10 sm:py-14">
+      <section aria-labelledby={LIST_ID} className="bg-paper py-6 sm:py-8">
         <div className={container}>
           <SectionHeader
             id={LIST_ID}

@@ -14,7 +14,7 @@ export const CourtsSection: React.FC<{ onOpenCourts: () => void }> = ({ onOpenCo
   const courtCount = venues.reduce((n, v) => n + v.courts.length, 0);
 
   return (
-    <section id="courts" aria-labelledby="courts-title" className="scroll-mt-20 border-t border-line bg-white py-10 sm:py-14">
+    <section id="courts" aria-labelledby="courts-title" className="scroll-mt-20 border-t border-line bg-white py-6 sm:py-8">
       <div className={cx(container, 'grid items-center gap-8 md:grid-cols-12 lg:gap-12')}>
         <div className="md:col-span-6 lg:col-span-7">
           {photo ? (

@@ -140,7 +140,7 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
   const pickupField = <PickupDayField id={id('date')} availability={availability} pickup={pickup} />;
 
   return (
-    <section id={SECTION_IDS.book} aria-labelledby={`${uid}-title`} className={cx('scroll-mt-20 bg-paper', formOnly ? 'py-8 sm:py-10' : 'py-10 sm:py-14')}>
+    <section id={SECTION_IDS.book} aria-labelledby={`${uid}-title`} className={cx('scroll-mt-20 bg-paper', formOnly ? 'py-6 sm:py-8' : 'py-6 sm:py-8')}>
       <div className={cx(container, !formOnly && 'grid gap-8 lg:grid-cols-12 lg:gap-12')}>
         {formOnly ? (
           <h2 id={`${uid}-title`} className="sr-only">

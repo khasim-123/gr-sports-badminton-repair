@@ -74,7 +74,7 @@ export const FaqSection: React.FC<FaqSectionProps> = ({ distanceConfig, gettingS
   ];
 
   return (
-    <section id={SECTION_IDS.faq} aria-labelledby="faq-title" className="scroll-mt-20 bg-white py-10 sm:py-14">
+    <section id={SECTION_IDS.faq} aria-labelledby="faq-title" className="scroll-mt-20 bg-white py-6 sm:py-8">
       <div className={cx(container, 'grid gap-8 lg:grid-cols-12 lg:gap-12')}>
         <div className="lg:col-span-4">
           <SectionHeader id="faq-title" title="Common questions" />

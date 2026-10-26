@@ -15,7 +15,7 @@ export interface BrandTile {
 export const BrandGridSection: React.FC<{ brands: BrandTile[] }> = ({ brands }) => {
   if (brands.length === 0) return null;
   return (
-    <section id="brands" aria-labelledby="brands-title" className="scroll-mt-20 bg-white py-8 sm:py-12">
+    <section id="brands" aria-labelledby="brands-title" className="scroll-mt-20 bg-white py-6 sm:py-8">
       <div className={container}>
         <SectionHeader id="brands-title" title="Shop by brand" />
         <ul

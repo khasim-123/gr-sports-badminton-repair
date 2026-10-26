@@ -178,7 +178,7 @@ export const HomePage: React.FC = () => {
       <ShopByProductSection id="sections" title={`What you'll find at ${SHOP.name}`} categories={sections} layout="slider" />
 
       {eventsBannerSlides.length > 0 && (
-        <section id="events-banner" aria-labelledby="events-banner-title" className="scroll-mt-20 border-t border-line bg-white py-10 sm:py-14">
+        <section id="events-banner" aria-labelledby="events-banner-title" className="scroll-mt-20 border-t border-line bg-white py-6 sm:py-8">
           <div className={container}>
             <h2 id="events-banner-title" className="sr-only">
               Upcoming events

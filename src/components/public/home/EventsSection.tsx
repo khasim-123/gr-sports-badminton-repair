@@ -28,7 +28,7 @@ export const EventsSection: React.FC<EventsSectionProps> = ({ events, status, on
   const SHOP = useShop();
   const single = events.length === 1;
   return (
-    <section id={SECTION_IDS.events} aria-labelledby="events-title" className="scroll-mt-20 border-t border-line bg-paper py-10 sm:py-14">
+    <section id={SECTION_IDS.events} aria-labelledby="events-title" className="scroll-mt-20 border-t border-line bg-paper py-6 sm:py-8">
       <div className={container}>
         <SectionHeader
           id="events-title"

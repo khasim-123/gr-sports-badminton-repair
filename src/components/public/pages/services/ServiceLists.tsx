@@ -29,7 +29,7 @@ export const StringingSection: React.FC<ServicesProps> = ({ gettingServices, onB
   const SHOP = useShop();
   const tiers = gettingServices.filter((t) => t.isActive !== false);
   return (
-    <section id={SERVICE_SECTION_IDS.stringing} aria-labelledby="stringing-title" className="scroll-mt-20 bg-white py-10 sm:py-14">
+    <section id={SERVICE_SECTION_IDS.stringing} aria-labelledby="stringing-title" className="scroll-mt-20 bg-white py-6 sm:py-8">
       <div className={cx(container, 'grid gap-8 lg:grid-cols-12 lg:gap-12')}>
         <div className="lg:col-span-5">
           <div className="lg:sticky lg:top-28">
@@ -106,7 +106,7 @@ export const RepairsSection: React.FC<ServicesProps> = ({ repairCategories, onBo
   const SHOP = useShop();
   const categories = repairCategories.filter((c) => c.isActive !== false);
   return (
-    <section id={SERVICE_SECTION_IDS.repairs} aria-labelledby="repairs-title" className="scroll-mt-20 border-t border-line bg-white py-10 sm:py-14">
+    <section id={SERVICE_SECTION_IDS.repairs} aria-labelledby="repairs-title" className="scroll-mt-20 border-t border-line bg-white py-6 sm:py-8">
       <div className={cx(container, 'grid gap-8 lg:grid-cols-12 lg:gap-12')}>
         <div className="lg:order-2 lg:col-span-5">
           <div className="lg:sticky lg:top-28">

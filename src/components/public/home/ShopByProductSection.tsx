@@ -36,7 +36,7 @@ export const ShopByProductSection: React.FC<ShopByProductSectionProps> = ({
 }) => {
   if (categories.length === 0) return null;
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-20 border-t border-line bg-paper py-10 sm:py-14">
+    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-20 border-t border-line bg-paper py-6 sm:py-8">
       <div className={container}>
         {layout === 'slider' ? (
           <TileSlider id={id} title={title} intro={intro} categories={categories} />

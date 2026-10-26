@@ -41,7 +41,7 @@ export const OffersSection: React.FC<OffersSectionProps> = ({ promos, announceme
     <section
       id={id}
       aria-labelledby={`${id}-title`}
-      className="scroll-mt-20 border-t border-line bg-paper py-10 sm:py-14"
+      className="scroll-mt-20 border-t border-line bg-paper py-6 sm:py-8"
     >
       <div className={container}>
         <h2 id={`${id}-title`} className="sr-only">

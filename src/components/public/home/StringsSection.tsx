@@ -56,7 +56,7 @@ export const StringsSection: React.FC<StringsSectionProps> = ({ strings, status,
   const brandNames = brands.map(([b]) => b);
 
   return (
-    <section id={SECTION_IDS.strings} aria-labelledby={showHeader ? 'strings-title' : 'page-title'} className="scroll-mt-20 border-t border-line bg-white py-10 sm:py-14">
+    <section id={SECTION_IDS.strings} aria-labelledby={showHeader ? 'strings-title' : 'page-title'} className="scroll-mt-20 border-t border-line bg-white py-6 sm:py-8">
       <div className={container}>
         {showHeader && (
         <SectionHeader

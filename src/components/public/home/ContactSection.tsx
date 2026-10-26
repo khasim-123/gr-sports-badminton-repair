@@ -29,7 +29,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ availability, do
   const row = 'flex items-start gap-3 py-4';
 
   return (
-    <section id={SECTION_IDS.contact} aria-labelledby="contact-title" className="scroll-mt-20 bg-paper py-10 sm:py-14">
+    <section id={SECTION_IDS.contact} aria-labelledby="contact-title" className="scroll-mt-20 bg-paper py-6 sm:py-8">
       <div className={cx(container, 'grid gap-8 lg:grid-cols-12 lg:gap-12')}>
         <div className="lg:col-span-6">
           <SectionHeader id="contact-title" title={`Find us in ${SHOP.locality}`} />
