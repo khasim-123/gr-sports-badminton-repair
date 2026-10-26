@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Clock, MapPin, Menu, Phone, Shirt, Truck, UserRound, X } from 'lucide-react';
 import { PUBLIC_PAGES, type PublicPageId } from '../../../utils/publicPages';
@@ -48,14 +48,76 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
   const SHOP = useShop();
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // The menu bar sits at the very top and scrolls away; once it is out of view, the same links
+  // show in the sticky header (laptops), so the menu is always one click away.
+  const menuBarRef = useRef<HTMLElement>(null);
+  const [menuBarOutOfView, setMenuBarOutOfView] = useState(false);
+  useEffect(() => {
+    const bar = menuBarRef.current;
+    if (!bar || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([entry]) => setMenuBarOutOfView(!entry.isIntersecting));
+    io.observe(bar);
+    return () => io.disconnect();
+  }, []);
+
+  // Phones: the bar scrolls sideways; bring the current page's item into view.
+  const menuScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const scroller = menuScrollRef.current;
+    const item = scroller?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!scroller || !item || scroller.scrollWidth <= scroller.clientWidth) return;
+    scroller.scrollLeft = Math.max(0, item.offsetLeft - (scroller.clientWidth - item.offsetWidth) / 2);
+  }, [current]);
+
   const open = (e: React.MouseEvent, page: PublicPageId) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
     e.preventDefault();
     onOpenPage(page);
   };
 
+  const menuLinks = (size: 'bar' | 'header') => (
+    <ul className={cx('flex items-center', size === 'bar' ? 'gap-1 sm:gap-2' : 'gap-0.5 xl:gap-1')}>
+      {MAIN_MENU.map(({ page, label }) => {
+        const isCurrent = current === page;
+        return (
+          <li key={page} className="shrink-0">
+            <a
+              href={PUBLIC_PAGES[page].path}
+              onClick={(e) => open(e, page)}
+              aria-current={isCurrent ? 'page' : undefined}
+              className={cx(
+                'relative inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg font-medium transition-colors',
+                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-sportsBlue',
+                size === 'bar' ? 'h-11 px-2 text-[14px] sm:text-[15px]' : 'h-11 px-2.5 text-[15px] xl:px-3',
+                isCurrent ? 'font-semibold text-ink' : 'text-ink-soft hover:text-ink',
+              )}
+            >
+              {page === 'tshirts' && <Shirt className="h-[18px] w-[18px]" aria-hidden="true" />}
+              {label}
+              <span
+                aria-hidden="true"
+                className={cx(
+                  'absolute bottom-1 h-[2px] rounded-full bg-accent transition-opacity',
+                  size === 'bar' ? 'inset-x-2' : 'inset-x-2.5 xl:inset-x-3',
+                  isCurrent ? 'opacity-100' : 'opacity-0',
+                )}
+              />
+            </a>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
   return (
     <>
+      {/* Menu bar at the very top (GR website map: menu navigator, then the text ad). Phones: scrolls sideways. */}
+      <nav ref={menuBarRef} aria-label="Main" className="border-b border-line bg-white">
+        <div ref={menuScrollRef} className={cx(container, 'no-scrollbar overflow-x-auto')}>
+          <div className="-mx-2 w-max min-w-full">{menuLinks('bar')}</div>
+        </div>
+      </nav>
+
       {/* Info bar ("text ad"; scrolls away) */}
       <div className="bg-ink text-white/80 text-[13px]">
         <div className={cx(container, 'flex min-h-[36px] items-center justify-between gap-4')}>
@@ -83,14 +145,6 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
               <Phone className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
               {SHOP.phoneDisplay}
             </a>
-            <a
-              href={PUBLIC_PAGES.tshirts.path}
-              onClick={(e) => open(e, 'tshirts')}
-              className="lg:hidden inline-flex min-h-[36px] shrink-0 items-center gap-1.5 font-semibold text-white hover:text-accent"
-            >
-              <Shirt className="h-4 w-4 text-accent" aria-hidden="true" />
-              T-shirts
-            </a>
           </div>
         </div>
       </div>
@@ -104,46 +158,21 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
             className="inline-flex min-h-[44px] shrink-0 items-center rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sportsBlue"
             aria-label={`${SHOP.name}, home`}
           >
-            {/* The subline needs the room the menu takes on smaller laptops. */}
-            <span className="xl:hidden">
+            {/* Short wordmark on phones (room for the buttons) and on smaller laptops once the menu
+                moves into this row; the subline otherwise. */}
+            <span className={menuBarOutOfView ? 'xl:hidden' : 'lg:hidden'}>
               <Wordmark subline={false} />
             </span>
-            <span className="hidden xl:inline">
+            <span className={menuBarOutOfView ? 'hidden xl:inline' : 'hidden lg:inline'}>
               <Wordmark />
             </span>
           </a>
 
-          <nav aria-label="Main" className="hidden lg:block">
-            <ul className="flex items-center gap-0.5 xl:gap-1">
-              {MAIN_MENU.map(({ page, label }) => {
-                const isCurrent = current === page;
-                return (
-                  <li key={page}>
-                    <a
-                      href={PUBLIC_PAGES[page].path}
-                      onClick={(e) => open(e, page)}
-                      aria-current={isCurrent ? 'page' : undefined}
-                      className={cx(
-                        'relative inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[15px] font-medium transition-colors xl:px-3',
-                        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-sportsBlue',
-                        isCurrent ? 'text-ink' : 'text-ink-soft hover:text-ink',
-                      )}
-                    >
-                      {page === 'tshirts' && <Shirt className="h-[18px] w-[18px]" aria-hidden="true" />}
-                      {label}
-                      <span
-                        aria-hidden="true"
-                        className={cx(
-                          'absolute inset-x-2.5 bottom-1.5 h-[2px] rounded-full bg-accent transition-opacity xl:inset-x-3',
-                          isCurrent ? 'opacity-100' : 'opacity-0',
-                        )}
-                      />
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
+          {menuBarOutOfView && (
+            <nav aria-label="Main menu" className="hidden lg:block">
+              {menuLinks('header')}
+            </nav>
+          )}
 
           <div className="flex items-center gap-2">
             <CartButton />
