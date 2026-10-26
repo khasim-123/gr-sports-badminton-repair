@@ -21,10 +21,12 @@ const DEPARTMENTS: { key: TournamentDepartment; label: string; text: string; ico
   { key: 'other', label: 'Others', text: 'Anything else your tournament needs', icon: CirclePlus },
 ];
 
-const FALLBACK: HeroSlide = {
+/** The page's own banner slide; upcoming events rotate in after it. */
+const PAGE_SLIDE: HeroSlide = {
   key: 'tournaments-default',
-  image: '/images/site/events/tournament.webp',
-  alt: 'A badminton player celebrating a point under the hall lights',
+  // Not the events photo, so the page doesn't open looking like the event slides after it.
+  image: '/images/site/hall-players.webp',
+  alt: 'A doubles game on blue indoor badminton courts',
   eyebrow: 'Tournament organizing',
   title: 'Organizing a tournament?',
   text: 'Umpires, dress, trophies and refreshments: tell us what you need and we call you back.',
@@ -54,7 +56,7 @@ export const TournamentsPage: React.FC = () => {
       }}
     >
       <h1 className="sr-only">Tournament organizing at {SHOP.name}</h1>
-      <EventsHero fallback={FALLBACK} />
+      <EventsHero lead={PAGE_SLIDE} label="Tournament organizing" />
 
       <section aria-labelledby={LIST_ID} className="bg-paper py-10 sm:py-14">
         <div className={container}>

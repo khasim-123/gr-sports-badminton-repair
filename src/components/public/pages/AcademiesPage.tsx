@@ -12,7 +12,8 @@ import { PublicLayout, useNavItem } from '../layout/PublicLayout';
 
 const LIST_ID = 'academies-list';
 
-const FALLBACK: HeroSlide = {
+/** The page's own banner slide; upcoming events rotate in after it. */
+const PAGE_SLIDE: HeroSlide = {
   key: 'academies-default',
   image: '/images/site/kids-hall.webp',
   alt: 'Juniors playing badminton in an indoor hall',
@@ -46,7 +47,7 @@ export const AcademiesPage: React.FC = () => {
       }}
     >
       <h1 className="sr-only">Badminton academies near {SHOP.name}</h1>
-      <EventsHero fallback={FALLBACK} />
+      <EventsHero lead={PAGE_SLIDE} label="Academies" />
 
       <section aria-labelledby={LIST_ID} className="bg-paper py-10 sm:py-14">
         <div className={container}>

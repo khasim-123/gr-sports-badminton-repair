@@ -83,21 +83,29 @@ interface EventsHeroProps {
   /** 'hero': full width at the top of a page (default); 'inset': a rounded running banner inside the page. */
   variant?: 'hero' | 'inset';
   label?: string;
+  /** The page's own slide, shown first; the banner events follow it. */
+  lead?: HeroSlide;
   /** Shown when no event is marked for the banner (e.g. a photo with the page's title). Omit to show nothing. */
   fallback?: HeroSlide;
 }
 
-/** "Events hero banner — same as the homepage" (GR website map): a slideshow of the banner events. */
-export const EventsHero: React.FC<EventsHeroProps> = ({ variant = 'hero', label = 'Upcoming events', fallback }) => {
+/**
+ * "Events hero banner — same as the homepage" (GR website map): a slideshow of the banner events,
+ * optionally after the page's own slide so each page opens on its own banner.
+ */
+export const EventsHero: React.FC<EventsHeroProps> = ({ variant = 'hero', label = 'Upcoming events', lead, fallback }) => {
   const SHOP = useShop();
   const { status, events, showEvent, dialog } = useEventDialog();
   const slides = useMemo(() => {
     const fromEvents = eventSlides(events, SHOP, showEvent);
-    return fromEvents.length ? fromEvents : fallback ? [fallback] : [];
-  }, [events, SHOP, showEvent, fallback]);
+    const out = lead ? [lead, ...fromEvents] : fromEvents;
+    return out.length ? out : fallback ? [fallback] : [];
+  }, [events, SHOP, showEvent, lead, fallback]);
   return (
     <>
-      {slides.length > 0 && <HeroCarousel slides={slides} variant={variant} label={label} placeholder={status === 'loading' && !!fallback} />}
+      {slides.length > 0 && (
+        <HeroCarousel slides={slides} variant={variant} label={label} placeholder={status === 'loading' && !lead && !!fallback} />
+      )}
       {dialog}
     </>
   );
