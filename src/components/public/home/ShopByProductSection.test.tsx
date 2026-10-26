@@ -41,4 +41,28 @@ describe('ShopByProductSection', () => {
     expect(openStrings).toHaveBeenCalledTimes(1);
     expect(openTshirts).toHaveBeenCalledTimes(1);
   });
+
+  it('slider: shows every tile as a photo card in one row, and each opens its page', async () => {
+    const openAcademies = vi.fn();
+    render(
+      <ShopByProductSection
+        id="sections"
+        title="What you'll find at GR Sports"
+        layout="slider"
+        categories={[
+          category({ key: 'badminton', name: 'Badminton', detail: 'Rackets, strings, stringing and repairs' }),
+          category({ key: 'academies', name: 'Academies', detail: 'Book a slot', onOpen: openAcademies }),
+        ]}
+      />,
+    );
+    const section = screen.getByRole('region', { name: "What you'll find at GR Sports" });
+    const row = within(section).getByRole('list');
+    expect(within(row).getAllByRole('listitem')).toHaveLength(2);
+    expect(row).toHaveClass('snap-x', 'overflow-x-auto');
+    // jsdom has no layout, so nothing overflows: no arrows or pause button are needed.
+    expect(within(section).queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+
+    await userEvent.setup().click(within(row).getByRole('button', { name: /Academies/ }));
+    expect(openAcademies).toHaveBeenCalledTimes(1);
+  });
 });
