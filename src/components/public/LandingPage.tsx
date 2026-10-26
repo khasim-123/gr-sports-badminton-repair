@@ -17,7 +17,6 @@ import { activeStrings, describePickupHours, formatKm, localIsoDate, safeImageUr
 import { HeroCarousel, type HeroAction, type HeroSlide } from './home/HeroCarousel';
 import { RacketsSection, activeRackets } from './home/RacketsSection';
 import { ReviewsSection } from './home/ReviewsSection';
-import { RepairsSection } from './home/ServicesSection';
 import { SiteFooter } from './home/SiteFooter';
 import { SiteHeader, type NavItem } from './home/SiteHeader';
 import { StringBookingDialog, type StringBookingRequest } from './home/StringBookingDialog';
@@ -28,6 +27,13 @@ import { useHomeContent } from './home/useHomeContent';
 
 /** How long the hero shows only its photo while content loads, before falling back to the default slide. */
 const HERO_PLACEHOLDER_MS = 1200;
+
+/**
+ * Menu ids that open the booking form on a service. The homepage no longer has stringing or
+ * repair sections (GR website map), so "Stringing" / "Repairs" in the header, the footer and
+ * links from other pages go straight to booking.
+ */
+const BOOKING_LINKS: Record<string, BookingService> = { stringing: 'stringing', repairs: 'repair' };
 
 const BANNER_DEFAULT_LABEL: Record<Exclude<BannerCtaTarget, 'none'>, string> = {
   stringing: 'Book stringing',
@@ -102,9 +108,8 @@ export const LandingPage: React.FC = () => {
   const nav: NavItem[] = useMemo(
     () =>
       [
-        // The stringing packages section is gone (website map); "Stringing" opens the booking form.
-        { id: SECTION_IDS.book, label: 'Stringing' },
-        { id: SECTION_IDS.repairs, label: 'Repairs' },
+        { id: 'stringing', label: 'Stringing' }, // BOOKING_LINKS: opens the booking form
+        { id: 'repairs', label: 'Repairs' },
         { id: SECTION_IDS.strings, label: 'Strings' },
         rackets.length ? { id: SECTION_IDS.rackets, label: 'Rackets' } : null,
         { id: SECTION_IDS.events, label: 'Events' },
@@ -117,6 +122,20 @@ export const LandingPage: React.FC = () => {
   // ---------------------------------------------------------------------------
   // Navigation within the page
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Booking
+  // ---------------------------------------------------------------------------
+  const [preset, setPreset] = useState<BookingPreset | null>(null);
+  const nonce = useRef(0);
+
+  const startBooking = useCallback((service: BookingService) => {
+    setPreset({ service, nonce: ++nonce.current });
+    requestAnimationFrame(() => scrollToSection(SECTION_IDS.book, { focus: true }));
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Navigation within the page
+  // ---------------------------------------------------------------------------
   const [stringsExpanded, setStringsExpanded] = useState(false);
   const [racketsExpanded, setRacketsExpanded] = useState(false);
   const [pendingSection, setPendingSection] = useState<string | null>(() => {
@@ -124,16 +143,20 @@ export const LandingPage: React.FC = () => {
     const requested = peekPendingStoreSection();
     if (requested) return requested;
     const hash = typeof window !== 'undefined' ? decodeURIComponent(window.location.hash.slice(1)) : '';
-    return hash && (Object.values(SECTION_IDS) as string[]).includes(hash) ? hash : null;
+    return hash && ((Object.values(SECTION_IDS) as string[]).includes(hash) || hash in BOOKING_LINKS) ? hash : null;
   });
 
   const navigate = useCallback((id: string) => {
+    if (BOOKING_LINKS[id]) {
+      startBooking(BOOKING_LINKS[id]);
+      return;
+    }
     if (id === 'top') {
       window.scrollTo({ top: 0, behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
       return;
     }
     scrollToSection(id, { focus: true });
-  }, []);
+  }, [startBooking]);
 
   // Requests from other screens (navbar / footer links on the customer pages).
   useEffect(() => {
@@ -151,11 +174,15 @@ export const LandingPage: React.FC = () => {
     if (pendingSection === SECTION_IDS.rackets) setRacketsExpanded(true);
     const id = pendingSection;
     setPendingSection(null);
+    if (BOOKING_LINKS[id]) {
+      startBooking(BOOKING_LINKS[id]);
+      return;
+    }
     const raf = requestAnimationFrame(() => {
       if (!scrollToSection(id, { focus: true })) window.scrollTo({ top: 0 });
     });
     return () => cancelAnimationFrame(raf);
-  }, [pendingSection, status]);
+  }, [pendingSection, status, startBooking]);
 
   useEffect(() => {
     if (stringsExpanded) track('home/strings');
@@ -175,17 +202,6 @@ export const LandingPage: React.FC = () => {
       navigate(id);
     }
   };
-
-  // ---------------------------------------------------------------------------
-  // Booking
-  // ---------------------------------------------------------------------------
-  const [preset, setPreset] = useState<BookingPreset | null>(null);
-  const nonce = useRef(0);
-
-  const startBooking = useCallback((service: BookingService) => {
-    setPreset({ service, nonce: ++nonce.current });
-    requestAnimationFrame(() => scrollToSection(SECTION_IDS.book, { focus: true }));
-  }, []);
 
   // "Book with this string" opens a short form over the catalogue instead of scrolling back up.
   const [stringBooking, setStringBooking] = useState<StringBookingRequest | null>(null);
@@ -437,7 +453,6 @@ export const LandingPage: React.FC = () => {
           onBookStringing={bookStringing}
           onBookRepair={bookRepair}
         />
-        <RepairsSection repairCategories={repairCategories} onBook={startBooking} />
         <EventsSection events={events} status={status} onOpen={showEvent} />
         <CourtsSection onOpenCourts={openCourts} />
         <StringsSection
