@@ -1,8 +1,10 @@
-"""Shop details the admin can edit (name, phone, WhatsApp, address, hours, declined-repair fee).
+"""Shop details the admin can edit (name, phone, WhatsApp, address, hours, declined-repair fee,
+social media links and the footer highlights).
 
 Stored as one JSON document in the existing `app_meta` table (key "shop_settings"), so no
 migration is needed. Missing keys fall back to DEFAULTS.
 """
+import copy
 from typing import Any, Dict
 
 from sqlalchemy.orm import Session
@@ -25,13 +27,25 @@ DEFAULTS: Dict[str, Any] = {
     # Charged when a customer declines a repair estimate and the racket is returned unrepaired,
     # on top of the pickup & delivery charge. 0 = only the pickup & delivery charge.
     "declinedRepairFee": 0,
+    # Social media pages (https links); None = not shown in the footer.
+    "instagramUrl": None,
+    "facebookUrl": None,
+    "xUrl": None,
+    "youtubeUrl": None,
+    # The footer's highlight lines, in the shop's own wording (GR website map).
+    "footerHighlights": [
+        "24-hour stringing SLA: electronic constant-pull machines",
+        "7–10 day repair SLA: high-modulus internal carbon splicing",
+        "100% genuine: authorised brand importer source",
+    ],
 }
 
 
 def get_shop_settings(db: Session) -> Dict[str, Any]:
     row = db.query(AppMetaModel).filter(AppMetaModel.key == KEY).first()
     stored = dict(row.value or {}) if row else {}
-    return {**DEFAULTS, **{k: v for k, v in stored.items() if k in DEFAULTS}}
+    # Deep copy so callers can't change the shared default list.
+    return copy.deepcopy({**DEFAULTS, **{k: v for k, v in stored.items() if k in DEFAULTS}})
 
 
 def save_shop_settings(db: Session, values: Dict[str, Any]) -> Dict[str, Any]:

@@ -199,8 +199,8 @@ class BannerModel(Base):
     ctaUrl = Column(String, nullable=True)
     desktopImageUrl = Column(String, nullable=False)  # "" for an announcement without a photo
     mobileImageUrl = Column(String, nullable=True)
-    # Where it shows on the homepage: "hero" (top slideshow), "promo" (photo banner further
-    # down) or "announcement" (notice card; photo optional).
+    # Where it shows on the homepage: "hero" (top slideshow), "promo" / "promo2" (photo banners
+    # further down) or "announcement" / "announcement2" (notice cards; photo optional).
     placement = Column(String, nullable=False, default="hero", server_default="hero")
     isActive = Column(Boolean, default=True)
     sortOrder = Column(Integer, default=0, index=True)
@@ -260,11 +260,58 @@ class RacketModel(Base):
     maxTension = Column(String, nullable=True)
     description = Column(Text, nullable=True)
     images = Column(JSON, default=list)  # photo URLs, first = main
+    # "new", or "used" for a second-hand racket the shop re-sells.
+    condition = Column(String, nullable=False, default="new", server_default="new")
     inStock = Column(Boolean, default=True)
     isFeatured = Column(Boolean, default=False)
     isActive = Column(Boolean, default=True)
     sortOrder = Column(Integer, default=0, index=True)
     createdAt = Column(String, nullable=False)
+
+
+class AcademyModel(Base):
+    """A badminton academy listed on the website; visitors request a slot (see EnquiryModel)."""
+    __tablename__ = "academies"
+
+    id = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    area = Column(String, nullable=False)  # locality, e.g. "MVP Colony, Visakhapatnam"
+    address = Column(String, nullable=True)
+    mapsUrl = Column(String, nullable=True)
+    phone = Column(String, nullable=True)  # +91XXXXXXXXXX, the academy's own number
+    photoUrl = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
+    ageGroups = Column(String, nullable=True)
+    fee = Column(String, nullable=True)  # free text, e.g. "₹2,000 a month"
+    batches = Column(JSON, default=list)  # slot options visitors choose from
+    isActive = Column(Boolean, default=True)
+    sortOrder = Column(Integer, default=0, index=True)
+    createdAt = Column(String, nullable=False)
+
+
+class EnquiryModel(Base):
+    """A request sent from the website without logging in: an academy slot, help organizing a
+    tournament, or custom T-shirts. The admin follows up by phone. academyId has no foreign key
+    and `subject` is a snapshot (academy name, department or "Custom T-shirts"), so enquiries
+    survive the academy being renamed or deleted."""
+    __tablename__ = "enquiries"
+
+    id = Column(String, primary_key=True)  # ENQ-12345
+    kind = Column(String, nullable=False, index=True)  # academy | tournament | custom_tshirt
+    name = Column(String, nullable=False)
+    mobile = Column(String, nullable=False, index=True)  # +91XXXXXXXXXX
+    academyId = Column(String, nullable=True, index=True)
+    batch = Column(String, nullable=True)
+    department = Column(String, nullable=True)  # umpire | dress | trophies | refreshments | other
+    location = Column(String, nullable=True)
+    date = Column(String, nullable=True)  # YYYY-MM-DD
+    quantity = Column(Integer, nullable=True)
+    notes = Column(Text, nullable=True)
+    subject = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="new", index=True)  # new | contacted | closed
+    adminNote = Column(Text, nullable=True)
+    createdAt = Column(String, nullable=False, index=True)  # ISO UTC
+    updatedAt = Column(String, nullable=False)
 
 
 class ReviewModel(Base):

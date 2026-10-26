@@ -1,5 +1,6 @@
 """Shared helpers for admin-managed website content."""
 import io
+import re
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
@@ -48,6 +49,51 @@ def validate_link(value: Optional[str], field: str, allow_relative: bool = True)
     if v.startswith("https://") or v.startswith(("http://localhost", "http://127.0.0.1")):
         return v
     raise HTTPException(status_code=422, detail=f"{field} must be an https:// link" + (" or a /path" if allow_relative else ""))
+
+
+# ---------- Form text ----------
+
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def clean_text(
+    value: Optional[str],
+    label: str,
+    max_len: int,
+    required: bool = False,
+    single_line: bool = True,
+    min_len: int = 0,
+) -> Optional[str]:
+    """Trims (and, for single-line fields, collapses whitespace in) a form field.
+    Empty -> None, or 422 when required; 422 when shorter than min_len or longer than max_len."""
+    v = (value or "").replace("\r\n", "\n").strip()
+    if single_line:
+        v = " ".join(v.split())
+    if not v:
+        if required:
+            raise HTTPException(status_code=422, detail=f"{label} is required")
+        return None
+    if len(v) < min_len:
+        raise HTTPException(status_code=422, detail=f"{label} must be at least {min_len} characters")
+    if len(v) > max_len:
+        raise HTTPException(status_code=422, detail=f"{label} must be at most {max_len} characters")
+    return v
+
+
+def clean_date(value: Optional[str], label: str, required: bool = False) -> Optional[str]:
+    """A YYYY-MM-DD date (or None when empty and not required)."""
+    v = (value or "").strip()
+    if not v:
+        if required:
+            raise HTTPException(status_code=422, detail=f"{label} is required")
+        return None
+    if not DATE_RE.match(v):
+        raise HTTPException(status_code=422, detail=f"{label} must be a date in YYYY-MM-DD format")
+    try:
+        date.fromisoformat(v)
+    except ValueError:
+        raise HTTPException(status_code=422, detail=f"{label} is not a valid date")
+    return v
 
 
 # ---------- Media ----------

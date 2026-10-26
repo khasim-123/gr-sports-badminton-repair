@@ -387,7 +387,9 @@ class CustomerResponse(BaseModel):
 # ---------------- Website content ----------------
 
 BannerCtaTarget = Literal['stringing', 'repair', 'strings', 'rackets', 'tshirts', 'courts', 'tournaments', 'url', 'none']
-BannerPlacement = Literal['hero', 'promo', 'announcement']
+# 'promo' / 'announcement' sit after the strings; 'promo2' / 'announcement2' further down.
+BannerPlacement = Literal['hero', 'promo', 'announcement', 'promo2', 'announcement2']
+RacketCondition = Literal['new', 'used']
 ReviewStatus = Literal['pending', 'approved', 'hidden']
 DocumentCategory = Literal['Price List', 'Terms & Conditions', 'Warranty', 'Policy', 'Guide', 'Internal', 'Other']
 DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
@@ -527,6 +529,7 @@ class RacketBase(BaseModel):
     maxTension: Optional[str] = Field(default=None, max_length=40)
     description: Optional[str] = Field(default=None, max_length=1500)
     images: List[str] = Field(default_factory=list, max_length=6)
+    condition: RacketCondition = 'new'  # 'used' = a second-hand racket the shop re-sells
     inStock: bool = True
     isFeatured: bool = False
     isActive: bool = True
@@ -547,6 +550,7 @@ class RacketUpdate(BaseModel):
     maxTension: Optional[str] = Field(default=None, max_length=40)
     description: Optional[str] = Field(default=None, max_length=1500)
     images: Optional[List[str]] = Field(default=None, max_length=6)
+    condition: Optional[RacketCondition] = None
     inStock: Optional[bool] = None
     isFeatured: Optional[bool] = None
     isActive: Optional[bool] = None
@@ -557,6 +561,115 @@ class RacketSchema(RacketBase, OrmModel):
     id: str
     sortOrder: int = 0
     createdAt: str
+
+
+# ---------------- Academies ----------------
+# Lengths here are generous hard caps; app/routers/academies.py applies the tighter limits
+# with readable error messages.
+
+class AcademyBase(BaseModel):
+    name: str = Field(max_length=300)
+    area: str = Field(max_length=300)
+    address: Optional[str] = Field(default=None, max_length=1000)
+    mapsUrl: Optional[str] = Field(default=None, max_length=1000)
+    phone: Optional[str] = Field(default=None, max_length=40)
+    photoUrl: Optional[str] = Field(default=None, max_length=1000)
+    description: Optional[str] = Field(default=None, max_length=10000)
+    ageGroups: Optional[str] = Field(default=None, max_length=300)
+    fee: Optional[str] = Field(default=None, max_length=300)
+    batches: List[str] = Field(default_factory=list, max_length=50)
+    isActive: bool = True
+
+
+class AcademyCreate(AcademyBase):
+    sortOrder: Optional[int] = None
+
+
+class AcademyUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, max_length=300)
+    area: Optional[str] = Field(default=None, max_length=300)
+    address: Optional[str] = Field(default=None, max_length=1000)
+    mapsUrl: Optional[str] = Field(default=None, max_length=1000)
+    phone: Optional[str] = Field(default=None, max_length=40)
+    photoUrl: Optional[str] = Field(default=None, max_length=1000)
+    description: Optional[str] = Field(default=None, max_length=10000)
+    ageGroups: Optional[str] = Field(default=None, max_length=300)
+    fee: Optional[str] = Field(default=None, max_length=300)
+    batches: Optional[List[str]] = Field(default=None, max_length=50)
+    isActive: Optional[bool] = None
+    sortOrder: Optional[int] = None
+
+
+class AcademySchema(AcademyBase, OrmModel):
+    id: str
+    batches: List[str] = []
+    sortOrder: int = 0
+    createdAt: str
+
+
+# ---------------- Enquiries (academy slots, tournament organizing, custom T-shirts) ----------------
+# Lengths here are generous hard caps; app/routers/enquiries.py applies the tighter limits.
+
+EnquiryKind = Literal['academy', 'tournament', 'custom_tshirt']
+EnquiryStatus = Literal['new', 'contacted', 'closed']
+TournamentDepartment = Literal['umpire', 'dress', 'trophies', 'refreshments', 'other']
+
+
+class EnquiryCreate(BaseModel):
+    kind: EnquiryKind
+    name: str = Field(max_length=300)
+    mobile: str = Field(max_length=40)
+    academyId: Optional[str] = Field(default=None, max_length=100)
+    batch: Optional[str] = Field(default=None, max_length=300)
+    department: Optional[TournamentDepartment] = None
+    location: Optional[str] = Field(default=None, max_length=1000)
+    date: Optional[str] = Field(default=None, max_length=20)
+    quantity: Optional[int] = None
+    notes: Optional[str] = Field(default=None, max_length=5000)
+
+
+class EnquiryUpdate(BaseModel):
+    status: Optional[EnquiryStatus] = None
+    adminNote: Optional[str] = Field(default=None, max_length=5000)
+
+
+class EnquirySchema(OrmModel):
+    id: str
+    kind: EnquiryKind
+    name: str
+    mobile: str
+    academyId: Optional[str] = None
+    batch: Optional[str] = None
+    department: Optional[TournamentDepartment] = None
+    location: Optional[str] = None
+    date: Optional[str] = None
+    quantity: Optional[int] = None
+    notes: Optional[str] = None
+    subject: str
+    status: EnquiryStatus
+    adminNote: Optional[str] = None
+    createdAt: str
+    updatedAt: str
+
+
+# ---------------- Footer pages (About us, Shipping, ...) ----------------
+
+SitePageSlug = Literal[
+    'about', 'promise', 'local-pickup', 'express-stringing', 'shuttlers-talk',
+    'shipping', 'returns', 'terms', 'payments', 'stringing-guide',
+]
+
+
+class SitePageSchema(BaseModel):
+    slug: SitePageSlug
+    title: str
+    body: str = ""  # plain text; blank lines separate paragraphs
+    updatedAt: Optional[str] = None
+
+
+class SitePageUpdate(BaseModel):
+    title: str = Field(max_length=300)
+    body: str = Field(default="", max_length=100_000)
 
 
 class ReviewSubmission(BaseModel):
@@ -761,6 +874,8 @@ class PublicSiteContent(BaseModel):
     reviews: PublicReviewsResponse
     documents: List[DocumentSchema]
     availability: PublicAvailabilitySchema
+    academies: List[AcademySchema] = []  # active only
+    pages: List[SitePageSchema] = []  # footer pages that have text
 
 
 # ---------------- Shop settings (admin-editable shop details) ----------------
@@ -778,6 +893,14 @@ class ShopSettingsSchema(BaseModel):
     mapsUrl: Optional[str] = None
     openingHours: str = ""
     declinedRepairFee: float = 0
+    # Social media pages (https links; empty = not shown). On PUT, a field left out keeps its
+    # saved value, so an older admin form doesn't wipe them.
+    instagramUrl: Optional[str] = Field(default=None, max_length=1000)
+    facebookUrl: Optional[str] = Field(default=None, max_length=1000)
+    xUrl: Optional[str] = Field(default=None, max_length=1000)
+    youtubeUrl: Optional[str] = Field(default=None, max_length=1000)
+    # Up to 3 short footer lines (the shop's own promises). Left out / null on PUT = keep.
+    footerHighlights: Optional[List[str]] = Field(default=None, max_length=20)
 
 
 class PublicSiteContentWithShop(PublicSiteContent):

@@ -15,6 +15,8 @@ from app.schemas import (
     RacketSchema,
     RacketUpdate,
     ReorderRequest,
+    SitePageSchema,
+    SitePageUpdate,
     StockUpdate,
     StringProductCreate,
     StringProductSchema,
@@ -23,6 +25,7 @@ from app.schemas import (
     StringVariantSchema,
     StringVariantUpdate,
 )
+from app.routers.academies import public_academies
 from app.routers.events import public_events
 from app.security import CurrentUser, require_admin
 from app.services.content_service import (
@@ -37,6 +40,7 @@ from app.services.content_service import (
 )
 from app.services.notification_service import log_audit
 from app.services.shop_settings import get_shop_settings
+from app.services.site_pages import list_pages, public_pages, save_page
 
 router = APIRouter(prefix="/content", tags=["Website Content"])
 
@@ -119,7 +123,29 @@ def get_public_site(
         "reviews": {"summary": review_summary(db), "reviews": reviews},
         "documents": documents,
         "availability": {"settings": get_availability_settings(db), "days": compute_days(db, 30)},
+        "academies": public_academies(db),
+        "pages": public_pages(db),
     }
+
+
+# ---------------- Admin: footer pages ----------------
+
+@router.get("/admin/pages", response_model=List[SitePageSchema])
+def list_site_pages(db: Session = Depends(get_db), _: CurrentUser = Depends(require_admin)):
+    return list_pages(db)
+
+
+@router.put("/admin/pages/{slug}", response_model=SitePageSchema)
+def update_site_page(
+    slug: str,
+    payload: SitePageUpdate,
+    db: Session = Depends(get_db),
+    admin: CurrentUser = Depends(require_admin),
+):
+    page = save_page(db, slug, payload.title, payload.body)
+    log_audit(db, admin.label, "ADMIN", f"Updated page: {page['title']}", "CONTENT",
+              None if page["body"] else "No text: not shown on the website")
+    return page
 
 
 # ---------------- Admin: banners ----------------
@@ -134,9 +160,12 @@ def _check_banner_links(data: dict) -> None:
         data["ctaUrl"] = validate_link(data["ctaUrl"], "Button link", allow_relative=False)
 
 
+TEXT_ONLY_PLACEMENTS = ("announcement", "announcement2")
+
+
 def _check_banner_image(placement: str, image: Optional[str]) -> None:
     # Slideshow and promo banners are photos; an announcement can be text only.
-    if placement != "announcement" and not image:
+    if placement not in TEXT_ONLY_PLACEMENTS and not image:
         raise HTTPException(status_code=422, detail="Add the wide image for this banner")
 
 
@@ -395,7 +424,7 @@ def update_racket(
     if "images" in data:
         data["images"] = _clean_images(data["images"] or [])
     for key, value in data.items():
-        if key in ("brand", "name", "inStock", "isFeatured", "isActive", "sortOrder") and value is None:
+        if key in ("brand", "name", "condition", "inStock", "isFeatured", "isActive", "sortOrder") and value is None:
             continue
         setattr(racket, key, value)
     db.commit()

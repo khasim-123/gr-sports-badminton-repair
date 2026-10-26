@@ -210,6 +210,45 @@ def _shop_text(value: Optional[str], field: str, max_len: int, min_len: int = 0,
     return v
 
 
+SOCIAL_FIELDS = {
+    "instagramUrl": "Instagram link",
+    "facebookUrl": "Facebook link",
+    "xUrl": "X (Twitter) link",
+    "youtubeUrl": "YouTube link",
+}
+SOCIAL_URL_MAX = 300
+FOOTER_HIGHLIGHTS_MAX = 3
+FOOTER_HIGHLIGHT_LEN = 120
+
+
+def _social_url(value: Optional[str], label: str) -> Optional[str]:
+    v = (value or "").strip()
+    if not v:
+        return None
+    # https only (validate_link would also let http://localhost through).
+    if not v.startswith("https://") or len(v) <= len("https://") or re.search(r"\s", v):
+        raise HTTPException(status_code=422, detail=f"{label} must be an https:// link")
+    if len(v) > SOCIAL_URL_MAX:
+        raise HTTPException(status_code=422, detail=f"{label} must be at most {SOCIAL_URL_MAX} characters")
+    return v
+
+
+def _footer_highlights(values: List[str]) -> List[str]:
+    cleaned: List[str] = []
+    for raw in values:
+        v = " ".join((raw or "").split())
+        if not v:
+            continue
+        if len(v) > FOOTER_HIGHLIGHT_LEN:
+            raise HTTPException(status_code=422,
+                                detail=f"Keep each footer highlight to {FOOTER_HIGHLIGHT_LEN} characters or fewer")
+        if v not in cleaned:
+            cleaned.append(v)
+    if len(cleaned) > FOOTER_HIGHLIGHTS_MAX:
+        raise HTTPException(status_code=422, detail=f"Add at most {FOOTER_HIGHLIGHTS_MAX} footer highlights")
+    return cleaned
+
+
 @router.get("/shop", response_model=ShopSettingsSchema)
 def get_shop(db: Session = Depends(get_db)):
     return get_shop_settings(db)
@@ -242,6 +281,14 @@ def update_shop(payload: ShopSettingsSchema, db: Session = Depends(get_db),
         "openingHours": _shop_text(payload.openingHours, "Opening hours", 120),
         "declinedRepairFee": int(fee) if fee == int(fee) else round(fee, 2),
     }
+    # Fields added later (socials, footer highlights) are only changed when sent, so a form that
+    # doesn't know about them keeps the saved values. An empty / null link removes it.
+    sent = payload.model_fields_set
+    for field, label in SOCIAL_FIELDS.items():
+        if field in sent:
+            values[field] = _social_url(getattr(payload, field), label)
+    if "footerHighlights" in sent and payload.footerHighlights is not None:
+        values["footerHighlights"] = _footer_highlights(payload.footerHighlights)
     before = get_shop_settings(db)
     saved = save_shop_settings(db, values)
     changed = [k for k in values if before.get(k) != saved.get(k)]

@@ -467,7 +467,7 @@ def test_public_site_bundle(client):
     r = client.get("/api/content/site")
     assert r.status_code == 200
     body = r.json()
-    assert set(body) == {"shop", "events", "banners", "strings", "rackets", "reviews", "documents", "availability"}
+    assert set(body) == {"shop", "events", "banners", "strings", "rackets", "reviews", "documents", "availability", "academies", "pages"}
     assert body["availability"]["days"]
 
 

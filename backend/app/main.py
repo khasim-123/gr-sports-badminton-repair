@@ -29,6 +29,8 @@ from app.routers import (
     customers,
     shop,
     courts,
+    academies,
+    enquiries,
 )
 
 @asynccontextmanager
@@ -110,6 +112,8 @@ app.include_router(analytics.router, prefix=settings.API_V1_STR)
 app.include_router(customers.router, prefix=settings.API_V1_STR)
 app.include_router(shop.router, prefix=settings.API_V1_STR)
 app.include_router(courts.router, prefix=settings.API_V1_STR)
+app.include_router(academies.router, prefix=settings.API_V1_STR)
+app.include_router(enquiries.router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def root():
