@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { ArrowRight, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { siteSrcSet } from './format';
 import { SECTION_IDS, prefersReducedMotion } from './shop';
 import { SectionHeader, container, cx } from './ui';
@@ -107,9 +107,6 @@ const Tile: React.FC<{ category: ProductCategory; card?: boolean }> = ({ categor
 /** Time each position stays before the row slides on (when sliding on its own). */
 const SLIDE_MS = 4500;
 
-const controlClass =
-  'inline-flex h-11 w-11 items-center justify-center rounded-full border border-line bg-white text-ink transition-colors hover:border-ink/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sportsBlue';
-
 /** Previous / next on the left and right of the row, over the middle of the photos. */
 const sideArrowClass =
   'absolute z-10 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white text-ink shadow-lg shadow-ink/15 ring-1 ring-black/5 transition-[transform,background-color] hover:bg-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sportsBlue';
@@ -117,8 +114,8 @@ const sideArrowClass =
 /**
  * A sliding row of tiles: three across on laptops, two on tablets, one (with the next peeking in)
  * on phones. Arrows and swipe move it; it also slides on its own, stopping while the pointer or
- * keyboard focus is on it, when it's off screen, once someone moves it themselves, or with the
- * pause button. Never slides on its own with "reduce motion".
+ * keyboard focus is on it, when it's off screen, and for good once someone moves it themselves.
+ * Never slides on its own with "reduce motion".
  */
 const TileSlider: React.FC<{ id: string; title: string; intro?: string; categories: ProductCategory[] }> = ({ id, title, intro, categories }) => {
   const uid = useId();
@@ -126,7 +123,7 @@ const TileSlider: React.FC<{ id: string; title: string; intro?: string; categori
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
   const [overflowing, setOverflowing] = useState(false);
-  const [paused, setPaused] = useState(false); // pause button, or the visitor moved it themselves
+  const [paused, setPaused] = useState(false); // the visitor moved it themselves
   const [hovering, setHovering] = useState(false);
   const [focusInside, setFocusInside] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -209,33 +206,11 @@ const TileSlider: React.FC<{ id: string; title: string; intro?: string; categori
     return () => window.clearInterval(t);
   }, [sliding, move]);
 
-  // Top right: stop / start the sliding (the arrows sit on the row itself).
-  const controls =
-    overflowing && !reduced ? (
-      <button
-        type="button"
-        onClick={() => setPaused((p) => !p)}
-        className={controlClass}
-        aria-label={paused ? 'Start sliding' : 'Stop sliding'}
-        title={paused ? 'Start sliding' : 'Stop sliding'}
-      >
-        {paused ? (
-          <Play className="h-4 w-4" fill="currentColor" aria-hidden="true" />
-        ) : (
-          <Pause className="h-4 w-4" fill="currentColor" aria-hidden="true" />
-        )}
-      </button>
-    ) : undefined;
-
   const arrowStyle = arrowTop !== null ? { top: arrowTop } : undefined;
 
   return (
     <>
-      {/* The stop / start button stays beside the heading, phones too (no row of its own). */}
-      <div className="flex items-end justify-between gap-4">
-        <SectionHeader id={`${id}-title`} title={title} intro={intro} />
-        {controls && <div className="shrink-0">{controls}</div>}
-      </div>
+      <SectionHeader id={`${id}-title`} title={title} intro={intro} />
       <div
         className="relative mt-6"
         onMouseEnter={() => setHovering(true)}
