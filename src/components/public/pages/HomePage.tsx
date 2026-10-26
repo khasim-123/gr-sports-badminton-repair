@@ -103,8 +103,9 @@ export const HomePage: React.FC = () => {
         mobilePosition: '68% 30%',
         alt: 'A badminton player jumping for a smash in an indoor hall',
         eyebrow: `${SHOP.name} · ${SHOP.locality}`,
-        title: 'Badminton gear, team T-shirts and tournaments',
-        text: 'Rackets and strings, stringing and repairs, custom T-shirts, academies, courts and help with your tournament.',
+        // Non-breaking hyphen: 'T-' never ends a line.
+        title: 'Badminton gear, team T‑shirts and tournaments',
+        text: 'Rackets and strings, stringing and repairs, custom T‑shirts, academies, courts and help with your tournament.',
         primary: { label: 'Badminton store', onClick: () => go('badminton') },
         secondary: { label: 'T-shirts', onClick: () => go('tshirts') },
       });
