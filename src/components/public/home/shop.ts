@@ -80,6 +80,7 @@ export const SECTION_IDS = {
   faq: 'faq',
   contact: 'contact',
   offers: 'offers',
+  shop: 'shop',
 } as const;
 
 export type SectionId = (typeof SECTION_IDS)[keyof typeof SECTION_IDS];

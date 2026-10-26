@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import type { WizardPrefill } from '../../types';
 import type { Banner, BannerCtaTarget, SiteEvent, StringProduct } from '../../types/content';
 import { analyticsService } from '../../services/analyticsService';
+import { shopService } from '../../services/shopService';
 import { peekPendingStoreSection, subscribeStoreSection, takePendingStoreSection } from '../../utils/storeNavigation';
 import { BookingSection, type BookingPreset, type BookingService, type RepairRequest, type StringingRequest } from './home/BookingSection';
 import { ContactSection } from './home/ContactSection';
@@ -21,6 +22,7 @@ import { SiteFooter } from './home/SiteFooter';
 import { SiteHeader, type NavItem } from './home/SiteHeader';
 import { StringBookingDialog, type StringBookingRequest } from './home/StringBookingDialog';
 import { StringsSection } from './home/StringsSection';
+import { ShopByProductSection, type ProductCategory } from './home/ShopByProductSection';
 import { SECTION_IDS, scrollToSection, useShop } from './home/shop';
 import { useHomeContent } from './home/useHomeContent';
 
@@ -205,14 +207,61 @@ export const LandingPage: React.FC = () => {
     window.scrollTo({ top: 0 });
   };
   const onStaffLogin = (role: 'EMPLOYEE' | 'ADMIN') => appRef.current.openAuthModal(role);
-  const openTshirts = () => {
+  const openTshirts = useCallback(() => {
     appRef.current.setActiveView('apparel');
     window.scrollTo({ top: 0 });
-  };
+  }, []);
   const openCourts = useCallback(() => {
     appRef.current.setActiveView('courts');
     window.scrollTo({ top: 0 });
   }, []);
+
+  // ---------------------------------------------------------------------------
+  // Shop by product: one tile per catalogue the shop actually has, with live counts
+  // ---------------------------------------------------------------------------
+  const [apparelCount, setApparelCount] = useState<number | null>(null);
+  useEffect(() => {
+    let alive = true;
+    shopService
+      .getApparel()
+      .then((list) => alive && setApparelCount(list.length))
+      .catch(() => alive && setApparelCount(null));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const shopCategories = useMemo<ProductCategory[]>(() => {
+    const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+    const out: ProductCategory[] = [];
+    if (rackets.length) {
+      out.push({
+        key: 'rackets',
+        name: 'Rackets',
+        detail: count(rackets.length, 'racket', 'rackets'),
+        image: '/images/site/rackets-on-court.webp',
+        onOpen: () => navigate(SECTION_IDS.rackets),
+      });
+    }
+    if (strings.length) {
+      out.push({
+        key: 'strings',
+        name: 'Strings',
+        detail: count(strings.length, 'string', 'strings'),
+        image: '/images/site/strings-closeup.webp',
+        onOpen: () => navigate(SECTION_IDS.strings),
+      });
+    }
+    // The T-shirts page always takes team orders, even before any styles are listed.
+    out.push({
+      key: 'tshirts',
+      name: 'T-shirts & team wear',
+      detail: apparelCount ? count(apparelCount, 'style', 'styles') : 'Team orders',
+      image: '/images/apparel/hero.webp',
+      onOpen: openTshirts,
+    });
+    return out;
+  }, [rackets.length, strings.length, apparelCount, navigate, openTshirts]);
 
   // ---------------------------------------------------------------------------
   // Events
@@ -399,6 +448,7 @@ export const LandingPage: React.FC = () => {
           onUseString={bookWithString}
         />
         <OffersSection promos={liveBanners.promo} announcements={liveBanners.announcement} actionFor={bannerAction} />
+        <ShopByProductSection categories={shopCategories} />
         {rackets.length > 0 && <RacketsSection rackets={rackets} expanded={racketsExpanded} onExpandedChange={setRacketsExpanded} />}
         <ReviewsSection data={content?.reviews} status={status} />
         <FaqSection distanceConfig={distanceConfig} gettingServices={gettingServices} />
