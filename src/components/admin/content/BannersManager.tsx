@@ -1,11 +1,11 @@
 /**
- * Admin: homepage banner carousel management.
+ * Admin: homepage banners — top slideshow slides, promo banners and announcements.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArrowDown, ArrowUp, CalendarClock, ExternalLink, MousePointerClick, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, CalendarClock, ExternalLink, Megaphone, MousePointerClick, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
 import { contentService } from '../../../services/contentService';
-import { Banner, BannerCtaTarget, BannerInput } from '../../../types/content';
+import { Banner, BannerCtaTarget, BannerInput, BannerPlacement } from '../../../types/content';
 import { Button } from '../../common/Button';
 import { EmptyState } from '../../common/EmptyStates';
 import { MediaUpload } from './MediaUpload';
@@ -31,6 +31,7 @@ import {
   inputErrorClass,
   isHttpsUrl,
   nullIfEmpty,
+  Pills,
   switchGroupClass,
   todayISO,
 } from './shared';
@@ -48,6 +49,32 @@ export const CTA_TARGET_LABELS: Record<BannerCtaTarget, string> = {
 };
 
 const CTA_TARGETS = Object.keys(CTA_TARGET_LABELS) as BannerCtaTarget[];
+
+const PLACEMENTS: Record<BannerPlacement, { label: string; tab: string; noun: string; description: string; add: string }> = {
+  hero: {
+    label: 'Top slideshow',
+    tab: 'Slideshow',
+    noun: 'slide',
+    description: 'A large photo slide at the very top of the homepage.',
+    add: 'Add slide',
+  },
+  promo: {
+    label: 'Promo banner',
+    tab: 'Promo banners',
+    noun: 'promo banner',
+    description: 'A photo banner further down the homepage, below the strings.',
+    add: 'Add promo banner',
+  },
+  announcement: {
+    label: 'Announcement',
+    tab: 'Announcements',
+    noun: 'announcement',
+    description: 'A short notice card, e.g. holiday timings or new stock. Photo optional.',
+    add: 'Add announcement',
+  },
+};
+const PLACEMENT_IDS = Object.keys(PLACEMENTS) as BannerPlacement[];
+const placementOf = (b: Banner): BannerPlacement => b.placement || 'hero';
 
 const sortBanners = (list: Banner[]) => [...list].sort((a, b) => a.sortOrder - b.sortOrder);
 
@@ -79,24 +106,27 @@ interface BannerFormState {
   ctaUrl: string;
   desktopImageUrl: string | null;
   mobileImageUrl: string | null;
+  placement: BannerPlacement;
   isActive: boolean;
   startsAt: string;
   endsAt: string;
 }
 
-const emptyForm: BannerFormState = {
+const emptyForm = (placement: BannerPlacement): BannerFormState => ({
   title: '',
   subtitle: '',
   badge: '',
-  ctaLabel: 'Book now',
-  ctaTarget: 'stringing',
+  // Announcements usually just inform; slides and promos usually lead somewhere.
+  ctaLabel: placement === 'announcement' ? '' : 'Book now',
+  ctaTarget: placement === 'announcement' ? 'none' : 'stringing',
   ctaUrl: '',
   desktopImageUrl: null,
   mobileImageUrl: null,
+  placement,
   isActive: true,
   startsAt: '',
   endsAt: '',
-};
+});
 
 const toForm = (b: Banner): BannerFormState => ({
   title: b.title,
@@ -107,6 +137,7 @@ const toForm = (b: Banner): BannerFormState => ({
   ctaUrl: b.ctaUrl ?? '',
   desktopImageUrl: b.desktopImageUrl || null,
   mobileImageUrl: b.mobileImageUrl ?? null,
+  placement: placementOf(b),
   isActive: b.isActive,
   startsAt: b.startsAt ?? '',
   endsAt: b.endsAt ?? '',
@@ -117,7 +148,7 @@ type FormErrors = Partial<Record<keyof BannerFormState, string>>;
 const validate = (f: BannerFormState): FormErrors => {
   const e: FormErrors = {};
   if (!f.title.trim()) e.title = 'Add a title.';
-  if (!f.desktopImageUrl) e.desktopImageUrl = 'Add the wide image.';
+  if (!f.desktopImageUrl && f.placement !== 'announcement') e.desktopImageUrl = 'Add the wide image.';
   if (f.ctaTarget !== 'none' && !f.ctaLabel.trim()) e.ctaLabel = 'Add the button text, or choose "No button".';
   if (f.ctaTarget === 'url') {
     if (!f.ctaUrl.trim()) e.ctaUrl = 'Paste the link the button should open.';
@@ -134,8 +165,10 @@ const toInput = (f: BannerFormState): BannerInput => ({
   ctaTarget: f.ctaTarget,
   ctaLabel: f.ctaTarget === 'none' ? null : nullIfEmpty(f.ctaLabel),
   ctaUrl: f.ctaTarget === 'url' ? f.ctaUrl.trim() : null,
-  desktopImageUrl: f.desktopImageUrl as string,
-  mobileImageUrl: f.mobileImageUrl || null,
+  desktopImageUrl: f.desktopImageUrl || null,
+  // Announcements show one photo at most; the phone version is only for slides and promos.
+  mobileImageUrl: f.placement === 'announcement' ? null : f.mobileImageUrl || null,
+  placement: f.placement,
   isActive: f.isActive,
   startsAt: f.startsAt || null,
   endsAt: f.endsAt || null,
@@ -143,14 +176,16 @@ const toInput = (f: BannerFormState): BannerInput => ({
 
 interface BannerFormModalProps {
   banner: Banner | null; // null = new
+  /** Where a new banner shows (the tab it was added from). */
+  defaultPlacement: BannerPlacement;
   open: boolean;
   onClose: () => void;
   onSaved: (b: Banner, isNew: boolean) => void;
 }
 
-const BannerFormModal: React.FC<BannerFormModalProps> = ({ banner, open, onClose, onSaved }) => {
+const BannerFormModal: React.FC<BannerFormModalProps> = ({ banner, defaultPlacement, open, onClose, onSaved }) => {
   const { addToast } = useApp();
-  const [form, setForm] = useState<BannerFormState>(banner ? toForm(banner) : emptyForm);
+  const [form, setForm] = useState<BannerFormState>(banner ? toForm(banner) : emptyForm(defaultPlacement));
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -190,12 +225,14 @@ const BannerFormModal: React.FC<BannerFormModalProps> = ({ banner, open, onClose
 
   const uploading = uploadingDesktop || uploadingMobile;
   const formId = 'banner-form';
+  const meta = PLACEMENTS[form.placement];
+  const isNotice = form.placement === 'announcement';
 
   return (
     <Modal
       open={open}
-      title={banner ? 'Edit banner' : 'New banner'}
-      subtitle="A photo slide at the top of the homepage"
+      title={banner ? `Edit ${meta.noun}` : `New ${meta.noun}`}
+      subtitle={meta.description}
       onClose={onClose}
       busy={saving}
       size="lg"
@@ -205,7 +242,7 @@ const BannerFormModal: React.FC<BannerFormModalProps> = ({ banner, open, onClose
             Cancel
           </Button>
           <Button type="submit" form={formId} isLoading={saving} disabled={uploading} className="min-h-[44px] sm:px-6">
-            {uploading ? 'Waiting for upload…' : banner ? 'Save changes' : 'Add banner'}
+            {uploading ? 'Waiting for upload…' : banner ? 'Save changes' : meta.add}
           </Button>
         </>
       }
@@ -218,72 +255,143 @@ const BannerFormModal: React.FC<BannerFormModalProps> = ({ banner, open, onClose
           </div>
         )}
 
-        <FormSection title="Images" description="Real photos only. Keep words and faces away from the edges.">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="sm:col-span-2">
-              <MediaUpload
-                label="Wide image"
-                required
-                value={form.desktopImageUrl}
-                onChange={(url) => set('desktopImageUrl', url)}
-                aspectClass="aspect-[16/5]"
-                contain={false}
-                hint="For laptops and tablets. 1600 × 500 px works best."
-                error={errors.desktopImageUrl}
-                onUploadingChange={setUploadingDesktop}
-              />
-            </div>
-            <div>
-              <MediaUpload
-                label="Phone image (optional)"
-                value={form.mobileImageUrl}
-                onChange={(url) => set('mobileImageUrl', url)}
-                aspectClass="aspect-square"
-                contain={false}
-                compact
-                hint="Square, 800 × 800 px. If empty, the wide image is used."
-                onUploadingChange={setUploadingMobile}
-              />
-            </div>
+        <FormSection title="Where it shows">
+          <div role="radiogroup" aria-label="Where it shows" className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {PLACEMENT_IDS.map((id) => {
+              const checked = form.placement === id;
+              return (
+                <label
+                  key={id}
+                  className={`flex min-h-[44px] cursor-pointer flex-col rounded-xl border bg-white px-3.5 py-3 transition-colors duration-150 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ink ${
+                    checked ? 'border-ink ring-1 ring-ink' : 'border-line hover:border-ink/30'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="banner-placement"
+                    value={id}
+                    checked={checked}
+                    onChange={() => {
+                      set('placement', id);
+                      if (id === 'announcement' && errors.desktopImageUrl) setErrors((e) => ({ ...e, desktopImageUrl: undefined }));
+                    }}
+                    className="sr-only"
+                  />
+                  <span className="text-[15px] font-semibold text-ink">{PLACEMENTS[id].label}</span>
+                  <span className="mt-0.5 text-[13px] leading-snug text-ink-muted">{PLACEMENTS[id].description}</span>
+                </label>
+              );
+            })}
           </div>
         </FormSection>
 
-        <FormSection title="Text on the banner">
+        {isNotice ? (
+          <FormSection title="Photo" description="Optional. Shown at the top of the card. Real photos only.">
+            <div className="sm:max-w-md">
+              <MediaUpload
+                label="Photo (optional)"
+                value={form.desktopImageUrl}
+                onChange={(url) => set('desktopImageUrl', url)}
+                aspectClass="aspect-[16/9]"
+                contain={false}
+                hint="1200 × 675 px works best. Leave empty for a text-only notice."
+                onUploadingChange={setUploadingDesktop}
+              />
+            </div>
+          </FormSection>
+        ) : (
+          <FormSection title="Images" description="Real photos only. Keep words and faces away from the edges.">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="sm:col-span-2">
+                <MediaUpload
+                  label="Wide image"
+                  required
+                  value={form.desktopImageUrl}
+                  onChange={(url) => set('desktopImageUrl', url)}
+                  aspectClass={form.placement === 'promo' ? 'aspect-[16/6]' : 'aspect-[16/5]'}
+                  contain={false}
+                  hint={
+                    form.placement === 'promo'
+                      ? 'For laptops and tablets. 1600 × 600 px works best; two promos side by side are cropped to 16:9.'
+                      : 'For laptops and tablets. 1600 × 500 px works best.'
+                  }
+                  error={errors.desktopImageUrl}
+                  onUploadingChange={setUploadingDesktop}
+                />
+              </div>
+              <div>
+                <MediaUpload
+                  label="Phone image (optional)"
+                  value={form.mobileImageUrl}
+                  onChange={(url) => set('mobileImageUrl', url)}
+                  aspectClass="aspect-square"
+                  contain={false}
+                  compact
+                  hint="Square, 800 × 800 px. If empty, the wide image is used."
+                  onUploadingChange={setUploadingMobile}
+                />
+              </div>
+            </div>
+          </FormSection>
+        )}
+
+        <FormSection title={isNotice ? 'Text of the announcement' : 'Text on the banner'}>
           <Field label="Title" htmlFor="banner-title" required error={errors.title}>
             <input
               id="banner-title"
               value={form.title}
               onChange={(e) => set('title', e.target.value)}
               className={`${inputClass} ${errors.title ? inputErrorClass : ''}`}
-              placeholder="e.g. Pro stringing in 24 hours"
+              placeholder={isNotice ? 'e.g. Shop closed on Sunday 1 November' : 'e.g. Pro stringing in 24 hours'}
               maxLength={120}
             />
           </Field>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Field label="Subtitle" htmlFor="banner-subtitle" optional className="sm:col-span-2">
-              <input
-                id="banner-subtitle"
-                value={form.subtitle}
-                onChange={(e) => set('subtitle', e.target.value)}
-                className={inputClass}
-                placeholder="e.g. Free pickup within 5 km"
-                maxLength={200}
-              />
+            <Field label={isNotice ? 'Details' : 'Subtitle'} htmlFor="banner-subtitle" optional className="sm:col-span-2">
+              {isNotice ? (
+                <textarea
+                  id="banner-subtitle"
+                  value={form.subtitle}
+                  onChange={(e) => set('subtitle', e.target.value)}
+                  className={`${inputClass} py-2.5 leading-relaxed`}
+                  rows={3}
+                  placeholder="e.g. Pickups resume on Monday 2 November."
+                  maxLength={300}
+                />
+              ) : (
+                <input
+                  id="banner-subtitle"
+                  value={form.subtitle}
+                  onChange={(e) => set('subtitle', e.target.value)}
+                  className={inputClass}
+                  placeholder="e.g. Free pickup within 5 km"
+                  maxLength={200}
+                />
+              )}
             </Field>
-            <Field label="Badge" htmlFor="banner-badge" optional hint="A short tag, e.g. NEW">
+            <Field
+              label={isNotice ? 'Label' : 'Badge'}
+              htmlFor="banner-badge"
+              optional
+              hint={isNotice ? 'Shown above the title. Empty = “Announcement”.' : 'A short tag, e.g. NEW'}
+            >
               <input
                 id="banner-badge"
                 value={form.badge}
                 onChange={(e) => set('badge', e.target.value)}
                 className={inputClass}
+                placeholder={isNotice ? 'e.g. Holiday timings' : undefined}
                 maxLength={30}
               />
             </Field>
           </div>
         </FormSection>
 
-        <FormSection title="Button" description="What happens when a customer taps the banner's button.">
+        <FormSection
+          title={isNotice ? 'Link' : 'Button'}
+          description={isNotice ? 'Optional: a link under the text, e.g. to book stringing.' : "What happens when a customer taps the banner's button."}
+        >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Button goes to" htmlFor="banner-target">
               <select
@@ -378,6 +486,9 @@ export const BannersManager: React.FC = () => {
   const [deleting, setDeleting] = useState(false);
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [reordering, setReordering] = useState(false);
+  const [tab, setTab] = useState<BannerPlacement>('hero');
+  const visible = banners.filter((b) => placementOf(b) === tab);
+  const tabMeta = PLACEMENTS[tab];
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -418,12 +529,15 @@ export const BannersManager: React.FC = () => {
     }
   };
 
+  // Moves within the current tab; the saved order still covers every banner.
   const move = async (index: number, dir: -1 | 1) => {
     const target = index + dir;
-    if (target < 0 || target >= banners.length || reordering) return;
+    if (target < 0 || target >= visible.length || reordering) return;
     const previous = banners;
     const next = [...banners];
-    [next[index], next[target]] = [next[target], next[index]];
+    const a = next.findIndex((b) => b.id === visible[index].id);
+    const z = next.findIndex((b) => b.id === visible[target].id);
+    [next[a], next[z]] = [next[z], next[a]];
     setBanners(next);
     setReordering(true);
     try {
@@ -454,16 +568,17 @@ export const BannersManager: React.FC = () => {
 
   const handleSaved = (saved: Banner, isNew: boolean) => {
     setBanners((list) => (isNew ? [...list, saved] : list.map((b) => (b.id === saved.id ? saved : b))));
+    setTab(placementOf(saved)); // show it where it now lives
     setEditing(null);
   };
 
-  const liveCount = banners.filter((b) => scheduleState(b).tone === 'live').length;
+  const liveCount = visible.filter((b) => scheduleState(b).tone === 'live').length;
 
   return (
     <div className="space-y-4">
       <SectionHeader
         title="Homepage banners"
-        description="Photo slides at the top of the homepage, shown in this order, after any events marked “Show in homepage banner”."
+        description="The top slideshow (after any events marked “Show in homepage banner”), promo banners and announcements further down. Each shows in the order listed."
         actions={
           <Button
             type="button"
@@ -472,40 +587,72 @@ export const BannersManager: React.FC = () => {
             className="min-h-[44px] px-5"
             disabled={loading && banners.length === 0 && !loadError}
           >
-            Add banner
+            {tabMeta.add}
           </Button>
         }
+      />
+
+      <Pills<BannerPlacement>
+        ariaLabel="Banner type"
+        value={tab}
+        onChange={setTab}
+        options={PLACEMENT_IDS.map((id) => ({ id, label: PLACEMENTS[id].tab, count: banners.filter((b) => placementOf(b) === id).length }))}
       />
 
       {loading && banners.length === 0 ? (
         <ListSkeleton rows={3} />
       ) : loadError ? (
         <ErrorState message={loadError} onRetry={load} retrying={loading} />
-      ) : banners.length === 0 ? (
+      ) : visible.length === 0 ? (
         <EmptyState
-          title="No banners yet"
-          description="Add your first homepage slide — e.g. a stringing offer or new string colours."
-          actionText="Add banner"
+          title={tab === 'hero' ? 'No slides yet' : tab === 'promo' ? 'No promo banners yet' : 'No announcements yet'}
+          description={
+            tab === 'hero'
+              ? 'Add your first homepage slide — e.g. a stringing offer or new string colours.'
+              : tab === 'promo'
+                ? 'Promo banners appear further down the homepage, below the strings — e.g. new stock or a seasonal offer.'
+                : 'Announcements appear as notice cards on the homepage — e.g. holiday timings or new arrivals.'
+          }
+          actionText={tabMeta.add}
           onAction={() => setEditing('new')}
         />
       ) : (
         <>
           <p className="text-[14px] text-ink-muted" aria-live="polite">
-            {banners.length} banner{banners.length === 1 ? '' : 's'} ·{' '}
+            {visible.length} {visible.length === 1 ? tabMeta.noun : `${tabMeta.noun}s`} ·{' '}
             <span className={liveCount ? 'font-semibold text-emerald-800' : 'text-ink-muted'}>{liveCount} showing now</span>
           </p>
           <ol className="space-y-3">
-            {banners.map((b, i) => {
+            {visible.map((b, i) => {
               const state = scheduleState(b);
               const busy = busyIds.has(b.id);
               return (
                 <li key={b.id} className={`${cardClass} p-3 sm:p-4`}>
                   <div className="flex flex-col md:flex-row gap-3 md:gap-5">
                     {/* Previews */}
+                    {placementOf(b) === 'announcement' ? (
+                      <div className="md:w-40 shrink-0">
+                        {b.desktopImageUrl ? (
+                          <figure className="relative w-40 aspect-[16/9] rounded-xl overflow-hidden bg-paper border border-line">
+                            <img
+                              src={b.desktopImageUrl}
+                              alt={`${b.title}, photo`}
+                              loading="lazy"
+                              className={`absolute inset-0 w-full h-full object-cover ${b.isActive ? '' : 'grayscale opacity-60'}`}
+                            />
+                          </figure>
+                        ) : (
+                          <div className="flex w-40 aspect-[16/9] flex-col items-center justify-center gap-1 rounded-xl border border-line bg-paper text-[13px] text-ink-muted">
+                            <Megaphone className="w-4 h-4" aria-hidden="true" />
+                            Text only
+                          </div>
+                        )}
+                      </div>
+                    ) : (
                     <div className="flex gap-2 md:w-[320px] shrink-0">
                       <figure className="relative flex-1 min-w-0 aspect-[16/5] rounded-xl overflow-hidden bg-paper border border-line">
                         <img
-                          src={b.desktopImageUrl}
+                          src={b.desktopImageUrl || undefined}
                           alt={`${b.title}, wide image`}
                           loading="lazy"
                           className={`absolute inset-0 w-full h-full object-cover ${b.isActive ? '' : 'grayscale opacity-60'}`}
@@ -516,7 +663,7 @@ export const BannersManager: React.FC = () => {
                       </figure>
                       <figure className="relative w-[4.5rem] sm:w-20 shrink-0 aspect-square rounded-xl overflow-hidden bg-paper border border-line self-start">
                         <img
-                          src={b.mobileImageUrl || b.desktopImageUrl}
+                          src={b.mobileImageUrl || b.desktopImageUrl || undefined}
                           alt={`${b.title}, phone image`}
                           loading="lazy"
                           className={`absolute inset-0 w-full h-full object-cover ${b.isActive ? '' : 'grayscale opacity-60'}`}
@@ -526,11 +673,12 @@ export const BannersManager: React.FC = () => {
                         </figcaption>
                       </figure>
                     </div>
+                    )}
 
                     {/* Details */}
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-[13px] font-semibold text-ink-muted tabular-nums" aria-label={`Slide ${i + 1}`}>
+                        <span className="text-[13px] font-semibold text-ink-muted tabular-nums" aria-label={`Position ${i + 1}`}>
                           {i + 1}.
                         </span>
                         <span className={`${chipClass} ${toneClass[state.tone]}`}>{state.label}</span>
@@ -593,7 +741,7 @@ export const BannersManager: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => move(i, 1)}
-                          disabled={i === banners.length - 1 || reordering}
+                          disabled={i === visible.length - 1 || reordering}
                           aria-label={`Move "${b.title}" down`}
                           title="Move down"
                           className={iconButtonClass}
@@ -627,6 +775,7 @@ export const BannersManager: React.FC = () => {
           key={editing === 'new' ? 'new' : editing.id}
           open
           banner={editing === 'new' ? null : editing}
+          defaultPlacement={tab}
           onClose={() => setEditing(null)}
           onSaved={handleSaved}
         />
@@ -637,7 +786,7 @@ export const BannersManager: React.FC = () => {
         title="Delete banner?"
         message={
           <>
-            <b className="font-semibold text-ink">“{toDelete?.title}”</b> will be removed from the homepage slider. This can’t be undone.
+            <b className="font-semibold text-ink">“{toDelete?.title}”</b> will be removed from the homepage. This can’t be undone.
             <span className="block mt-2 text-[13px] text-ink-muted">Tip: switch it to Hidden instead if you may use it again.</span>
           </>
         }

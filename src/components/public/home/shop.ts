@@ -79,6 +79,7 @@ export const SECTION_IDS = {
   reviews: 'reviews',
   faq: 'faq',
   contact: 'contact',
+  offers: 'offers',
 } as const;
 
 export type SectionId = (typeof SECTION_IDS)[keyof typeof SECTION_IDS];

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, selectinload
@@ -128,8 +128,16 @@ def _check_banner_links(data: dict) -> None:
     for field in ("desktopImageUrl", "mobileImageUrl"):
         if field in data:
             data[field] = validate_link(data[field], field)
+    if "desktopImageUrl" in data and data["desktopImageUrl"] is None:
+        data["desktopImageUrl"] = ""  # stored as "" (column is not nullable)
     if "ctaUrl" in data:
         data["ctaUrl"] = validate_link(data["ctaUrl"], "Button link", allow_relative=False)
+
+
+def _check_banner_image(placement: str, image: Optional[str]) -> None:
+    # Slideshow and promo banners are photos; an announcement can be text only.
+    if placement != "announcement" and not image:
+        raise HTTPException(status_code=422, detail="Add the wide image for this banner")
 
 
 def _get_banner(db: Session, banner_id: str) -> BannerModel:
@@ -148,6 +156,7 @@ def list_banners(db: Session = Depends(get_db), _: CurrentUser = Depends(require
 def create_banner(payload: BannerCreate, db: Session = Depends(get_db), admin: CurrentUser = Depends(require_admin)):
     data = payload.model_dump()
     _check_banner_links(data)
+    _check_banner_image(data["placement"], data["desktopImageUrl"])
     if data["ctaTarget"] == "url" and not data.get("ctaUrl"):
         raise HTTPException(status_code=422, detail="Add a link for the banner button")
     if data.get("sortOrder") is None:
@@ -169,11 +178,10 @@ def update_banner(
 ):
     banner = _get_banner(db, banner_id)
     data = payload.model_dump(exclude_unset=True)
-    if "desktopImageUrl" in data and not data["desktopImageUrl"]:
-        raise HTTPException(status_code=422, detail="Desktop image is required")
     _check_banner_links(data)
     for key, value in data.items():
         setattr(banner, key, value)
+    _check_banner_image(banner.placement, banner.desktopImageUrl)
     if banner.ctaTarget == "url" and not banner.ctaUrl:
         raise HTTPException(status_code=422, detail="Add a link for the banner button")
     db.commit()

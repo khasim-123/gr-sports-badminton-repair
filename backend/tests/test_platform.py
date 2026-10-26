@@ -361,6 +361,37 @@ def test_banner_rejects_script_links(client, admin_token):
     assert r.status_code == 422
 
 
+def test_banner_placements_promo_and_announcement(client, admin_token):
+    post = lambda body: client.post("/api/content/admin/banners", headers=auth(admin_token), json=body)
+    # Existing behaviour: a banner is a slideshow photo unless told otherwise.
+    hero = post({"title": "Slide", "desktopImageUrl": "/images/site/hero.webp"})
+    assert hero.status_code == 201 and hero.json()["placement"] == "hero"
+    # Slideshow and promo banners need a photo; an announcement can be text only.
+    assert post({"title": "No photo slide"}).status_code == 422
+    assert post({"title": "No photo promo", "placement": "promo"}).status_code == 422
+    promo = post({"title": "New string colours", "placement": "promo", "desktopImageUrl": "/images/site/strings.webp",
+                  "ctaTarget": "strings", "ctaLabel": "See strings"})
+    assert promo.status_code == 201 and promo.json()["placement"] == "promo"
+    note = post({"title": "Closed on Sunday 1 November", "subtitle": "Pickups resume on Monday.", "placement": "announcement"})
+    assert note.status_code == 201, note.text
+    assert note.json()["placement"] == "announcement" and not note.json()["desktopImageUrl"]
+
+    public = {b["id"]: b["placement"] for b in client.get("/api/content/site").json()["banners"]}
+    assert public[promo.json()["id"]] == "promo" and public[note.json()["id"]] == "announcement"
+
+    # Moving a text-only announcement into the slideshow needs a photo first.
+    r = client.put(f"/api/content/admin/banners/{note.json()['id']}", headers=auth(admin_token), json={"placement": "hero"})
+    assert r.status_code == 422
+    r = client.put(f"/api/content/admin/banners/{note.json()['id']}", headers=auth(admin_token),
+                   json={"placement": "promo", "desktopImageUrl": "/images/site/shop.webp"})
+    assert r.status_code == 200 and r.json()["placement"] == "promo"
+    assert client.put(f"/api/content/admin/banners/{promo.json()['id']}", headers=auth(admin_token),
+                      json={"placement": "billboard"}).status_code == 422
+
+    for b in (hero, promo, note):
+        assert client.delete(f"/api/content/admin/banners/{b.json()['id']}", headers=auth(admin_token)).status_code == 200
+
+
 # ---------------- Reviews ----------------
 
 def test_public_reviews_need_approval(client, admin_token):

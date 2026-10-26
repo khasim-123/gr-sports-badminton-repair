@@ -16,6 +16,9 @@ export type BannerCtaTarget =
   | 'url'
   | 'none';
 
+/** Where a banner shows on the homepage: top slideshow, photo banner further down, or a notice card. */
+export type BannerPlacement = 'hero' | 'promo' | 'announcement';
+
 export interface Banner {
   id: string;
   title: string;
@@ -24,8 +27,11 @@ export interface Banner {
   ctaLabel?: string | null;
   ctaTarget: BannerCtaTarget;
   ctaUrl?: string | null;
-  desktopImageUrl: string;
+  /** Required for 'hero' and 'promo'; empty for an announcement without a photo. */
+  desktopImageUrl?: string | null;
   mobileImageUrl?: string | null;
+  /** Missing on banners saved before placements existed: treat as 'hero'. */
+  placement?: BannerPlacement;
   isActive: boolean;
   sortOrder: number;
   startsAt?: string | null; // YYYY-MM-DD, inclusive

@@ -197,8 +197,11 @@ class BannerModel(Base):
     ctaLabel = Column(String, nullable=True)
     ctaTarget = Column(String, default="none")
     ctaUrl = Column(String, nullable=True)
-    desktopImageUrl = Column(String, nullable=False)
+    desktopImageUrl = Column(String, nullable=False)  # "" for an announcement without a photo
     mobileImageUrl = Column(String, nullable=True)
+    # Where it shows on the homepage: "hero" (top slideshow), "promo" (photo banner further
+    # down) or "announcement" (notice card; photo optional).
+    placement = Column(String, nullable=False, default="hero", server_default="hero")
     isActive = Column(Boolean, default=True)
     sortOrder = Column(Integer, default=0, index=True)
     startsAt = Column(String, nullable=True)  # YYYY-MM-DD

@@ -387,6 +387,7 @@ class CustomerResponse(BaseModel):
 # ---------------- Website content ----------------
 
 BannerCtaTarget = Literal['stringing', 'repair', 'strings', 'rackets', 'tshirts', 'courts', 'tournaments', 'url', 'none']
+BannerPlacement = Literal['hero', 'promo', 'announcement']
 ReviewStatus = Literal['pending', 'approved', 'hidden']
 DocumentCategory = Literal['Price List', 'Terms & Conditions', 'Warranty', 'Policy', 'Guide', 'Internal', 'Other']
 DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
@@ -412,8 +413,10 @@ class BannerBase(BaseModel):
     ctaLabel: Optional[str] = Field(default=None, max_length=40)
     ctaTarget: BannerCtaTarget = 'none'
     ctaUrl: Optional[str] = Field(default=None, max_length=500)
-    desktopImageUrl: str = Field(min_length=1, max_length=500)
+    # Required for slideshow and promo banners; announcements may be text only.
+    desktopImageUrl: Optional[str] = Field(default=None, max_length=500)
     mobileImageUrl: Optional[str] = Field(default=None, max_length=500)
+    placement: BannerPlacement = 'hero'
     isActive: bool = True
     startsAt: Optional[str] = Field(default=None, pattern=DATE_PATTERN)
     endsAt: Optional[str] = Field(default=None, pattern=DATE_PATTERN)
@@ -430,8 +433,9 @@ class BannerUpdate(BaseModel):
     ctaLabel: Optional[str] = Field(default=None, max_length=40)
     ctaTarget: Optional[BannerCtaTarget] = None
     ctaUrl: Optional[str] = Field(default=None, max_length=500)
-    desktopImageUrl: Optional[str] = Field(default=None, min_length=1, max_length=500)
+    desktopImageUrl: Optional[str] = Field(default=None, max_length=500)
     mobileImageUrl: Optional[str] = Field(default=None, max_length=500)
+    placement: Optional[BannerPlacement] = None
     isActive: Optional[bool] = None
     sortOrder: Optional[int] = None
     startsAt: Optional[str] = Field(default=None, pattern=DATE_PATTERN)

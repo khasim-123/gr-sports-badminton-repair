@@ -41,12 +41,13 @@ const META_ICON = { date: CalendarDays, venue: MapPin, fee: IndianRupee, spots: 
 const controlButton =
   'inline-flex h-10 w-10 items-center justify-center rounded-full text-white transition-colors hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white';
 
-function ActionButton({ action, variant }: { action: HeroAction; variant: 'accent' | 'onDark' }) {
-  const className = cx(btn.base, variant === 'accent' ? btn.accent : btn.onDark, 'px-6');
+/** A banner button: a link when it has `href`, otherwise a button. Also used by the offers section. */
+export function ActionButton({ action, variant }: { action: HeroAction; variant: 'accent' | 'onDark' | 'link' }) {
+  const className = variant === 'link' ? btn.link : cx(btn.base, variant === 'accent' ? btn.accent : btn.onDark, 'px-6');
   const content = (
     <>
       {action.label}
-      {variant === 'accent' && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+      {variant !== 'onDark' && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
     </>
   );
   if (action.href) {

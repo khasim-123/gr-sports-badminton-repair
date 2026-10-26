@@ -11,8 +11,9 @@ import { EventDialog } from './home/EventDialog';
 import { EventsSection } from './home/EventsSection';
 import { categoryLabel, eventAction, eventDateText, eventPhoto, feeText, registrationStatus, spotsText, visibleEvents } from './home/events';
 import { FaqSection } from './home/FaqSection';
+import { OffersSection } from './home/OffersSection';
 import { activeStrings, describePickupHours, formatKm, localIsoDate, safeImageUrl, safeUrl } from './home/format';
-import { HeroCarousel, type HeroSlide } from './home/HeroCarousel';
+import { HeroCarousel, type HeroAction, type HeroSlide } from './home/HeroCarousel';
 import { RacketsSection, activeRackets } from './home/RacketsSection';
 import { ReviewsSection } from './home/ReviewsSection';
 import { RepairsSection, StringingSection } from './home/ServicesSection';
@@ -246,6 +247,45 @@ export const LandingPage: React.FC = () => {
   }, []);
   const heroPlaceholder = status === 'loading' && !heroWaitOver;
 
+  // Live banners (on, within their dates), by placement: top slideshow, promo banners, announcements.
+  const liveBanners = useMemo(() => {
+    const today = localIsoDate(new Date());
+    const live = (content?.banners || [])
+      .filter((b) => b.isActive !== false)
+      .filter((b) => (!b.startsAt || b.startsAt <= today) && (!b.endsAt || b.endsAt >= today))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const at = (placement: NonNullable<Banner['placement']>) => live.filter((b) => (b.placement || 'hero') === placement);
+    return { hero: at('hero'), promo: at('promo'), announcement: at('announcement') };
+  }, [content]);
+
+  /** What a banner's button does. */
+  const bannerAction = useCallback(
+    (b: Banner): HeroAction | undefined => {
+      const target = b.ctaTarget || 'none';
+      if (target === 'none') return undefined;
+      const label = (b.ctaLabel || '').trim() || BANNER_DEFAULT_LABEL[target];
+      if (target === 'url') {
+        const href = safeUrl(b.ctaUrl);
+        return href ? { label, href, external: true } : undefined;
+      }
+      if (target === 'stringing' || target === 'repair') return { label, onClick: () => startBooking(target) };
+      if (target === 'tshirts') return { label, onClick: () => appRef.current.setActiveView('apparel') };
+      if (target === 'courts') return { label, onClick: openCourts };
+      const id =
+        target === 'strings'
+          ? SECTION_IDS.strings
+          : target === 'rackets'
+            ? rackets.length
+              ? SECTION_IDS.rackets
+              : SECTION_IDS.contact
+            : target === 'tournaments'
+              ? SECTION_IDS.events
+              : SECTION_IDS.contact;
+      return { label, onClick: () => navigate(id) };
+    },
+    [startBooking, openCourts, navigate, rackets.length],
+  );
+
   const slides: HeroSlide[] = useMemo(() => {
     const out: HeroSlide[] = [];
 
@@ -278,12 +318,7 @@ export const LandingPage: React.FC = () => {
       });
     }
 
-    const today = localIsoDate(new Date());
-    const banners = (content?.banners || [])
-      .filter((b) => b.isActive !== false && safeImageUrl(b.desktopImageUrl))
-      .filter((b) => (!b.startsAt || b.startsAt <= today) && (!b.endsAt || b.endsAt >= today))
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-    for (const b of banners) out.push(bannerSlide(b));
+    for (const b of liveBanners.hero) if (safeImageUrl(b.desktopImageUrl)) out.push(bannerSlide(b));
 
     if (out.length === 0) {
       out.push({
@@ -301,31 +336,6 @@ export const LandingPage: React.FC = () => {
     return out;
 
     function bannerSlide(b: Banner): HeroSlide {
-      const target = b.ctaTarget || 'none';
-      const label = (b.ctaLabel || '').trim() || (target !== 'none' ? BANNER_DEFAULT_LABEL[target] : '');
-      let primary: HeroSlide['primary'];
-      if (target === 'url') {
-        const href = safeUrl(b.ctaUrl);
-        if (href) primary = { label, href, external: true };
-      } else if (target === 'stringing' || target === 'repair') {
-        primary = { label, onClick: () => startBooking(target) };
-      } else if (target === 'tshirts') {
-        primary = { label, onClick: () => appRef.current.setActiveView('apparel') };
-      } else if (target === 'courts') {
-        primary = { label, onClick: openCourts };
-      } else if (target !== 'none') {
-        const id =
-          target === 'strings'
-            ? SECTION_IDS.strings
-            : target === 'rackets'
-              ? rackets.length
-                ? SECTION_IDS.rackets
-                : SECTION_IDS.contact
-              : target === 'tournaments'
-                ? SECTION_IDS.events
-                : SECTION_IDS.contact;
-        primary = { label, onClick: () => navigate(id) };
-      }
       return {
         key: `banner-${b.id}`,
         image: safeImageUrl(b.desktopImageUrl) as string,
@@ -334,10 +344,10 @@ export const LandingPage: React.FC = () => {
         eyebrow: (b.badge || '').trim() || undefined,
         title: (b.title || '').trim() || undefined,
         text: (b.subtitle || '').trim() || undefined,
-        primary,
+        primary: bannerAction(b),
       };
     }
-  }, [events, content, distanceConfig.freeRadiusKm, rackets.length, showEvent, startBooking, navigate, openCourts, SHOP]);
+  }, [events, liveBanners, bannerAction, distanceConfig.freeRadiusKm, showEvent, startBooking, SHOP]);
 
   return (
     <div id="top" className="w-full bg-white font-sans text-ink selection:bg-accent selection:text-ink" onClickCapture={onClickCapture}>
@@ -388,6 +398,7 @@ export const LandingPage: React.FC = () => {
           onExpandedChange={setStringsExpanded}
           onUseString={bookWithString}
         />
+        <OffersSection promos={liveBanners.promo} announcements={liveBanners.announcement} actionFor={bannerAction} />
         {rackets.length > 0 && <RacketsSection rackets={rackets} expanded={racketsExpanded} onExpandedChange={setRacketsExpanded} />}
         <ReviewsSection data={content?.reviews} status={status} />
         <FaqSection distanceConfig={distanceConfig} gettingServices={gettingServices} />
