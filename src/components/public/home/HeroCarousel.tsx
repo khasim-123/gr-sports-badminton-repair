@@ -73,15 +73,52 @@ interface HeroCarouselProps {
   slides: HeroSlide[];
   /** While content loads: show only the first photo, no text (avoids a flash of default copy). */
   placeholder?: boolean;
+  /**
+   * 'hero': full width at the top of the page (default).
+   * 'inset': a rounded banner inside the page column, e.g. the running promo banners.
+   */
+  variant?: 'hero' | 'inset';
+  /** Accessible name. Default: "Featured at <shop>". */
+  label?: string;
 }
+
+/** Layout per variant (full class strings so Tailwind keeps them). The inset banner switches to its laptop layout earlier (sm). */
+const LAYOUT = {
+  hero: {
+    root: 'relative bg-ink',
+    frame: 'relative h-[clamp(480px,74vh,600px)] lg:h-[clamp(420px,72vh,600px)] overflow-hidden',
+    sizes: '100vw',
+    fadePhone: 'absolute inset-0 lg:hidden bg-[linear-gradient(0deg,rgba(9,18,30,0.92)_0%,rgba(9,18,30,0.72)_42%,rgba(9,18,30,0.15)_78%,rgba(9,18,30,0)_100%)]',
+    fadeWide: 'absolute inset-0 hidden lg:block bg-[linear-gradient(90deg,rgba(9,18,30,0.86)_0%,rgba(9,18,30,0.66)_36%,rgba(9,18,30,0.16)_68%,rgba(9,18,30,0)_100%)]',
+    content: cx(container, 'relative flex h-full items-end lg:items-center pb-[88px] lg:pb-[64px] lg:pt-4'),
+    textBox: 'max-w-[640px] text-white',
+    title:
+      'mt-2 font-display font-bold text-[40px] sm:text-[52px] lg:text-[60px] [@media(min-width:1024px)_and_(max-height:760px)]:text-[50px] leading-[0.98] tracking-[-0.005em] text-balance line-clamp-3',
+    controls: cx(container, 'flex h-[72px] items-center'),
+  },
+  inset: {
+    root: 'relative overflow-hidden rounded-2xl bg-ink',
+    frame: 'relative h-[420px] sm:h-[clamp(300px,30vw,360px)] overflow-hidden',
+    sizes: '(min-width: 1200px) 1136px, 100vw',
+    fadePhone: 'absolute inset-0 sm:hidden bg-[linear-gradient(0deg,rgba(9,18,30,0.94)_0%,rgba(9,18,30,0.8)_50%,rgba(9,18,30,0.4)_78%,rgba(9,18,30,0)_100%)]',
+    fadeWide: 'absolute inset-0 hidden sm:block bg-[linear-gradient(90deg,rgba(9,18,30,0.88)_0%,rgba(9,18,30,0.62)_40%,rgba(9,18,30,0.08)_75%)]',
+    content: 'relative flex h-full items-end px-5 pb-[84px] sm:items-center sm:px-10 sm:pb-[56px] lg:px-12',
+    textBox: 'max-w-[560px] text-white',
+    title: 'mt-1.5 font-display font-semibold text-[30px] sm:text-[36px] lg:text-[40px] leading-[1.02] text-balance line-clamp-3',
+    controls: 'flex h-[72px] items-center px-3 sm:px-8 lg:px-10',
+  },
+} as const;
 
 /**
  * Full-width photo carousel. Crossfades (no layout shift: fixed height), autoplays only while
  * the visitor isn't hovering / focused inside / has paused it, the tab is visible and the hero
  * is on screen, and never under prefers-reduced-motion. Arrows, dots, a pause button and swipe.
  */
-export const HeroCarousel: React.FC<HeroCarouselProps> = ({ slides, placeholder }) => {
+export const HeroCarousel: React.FC<HeroCarouselProps> = ({ slides, placeholder, variant = 'hero', label }) => {
   const SHOP = useShop();
+  const L = LAYOUT[variant];
+  // Inside a page section the slide titles are one level down.
+  const Title = variant === 'inset' ? 'h3' : 'h2';
   const count = slides.length;
   const [index, setIndex] = useState(0);
   const [hovering, setHovering] = useState(false);
@@ -169,8 +206,8 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ slides, placeholder 
     <section
       ref={rootRef}
       aria-roledescription="carousel"
-      aria-label={`Featured at ${SHOP.name}`}
-      className="relative bg-ink"
+      aria-label={label || `Featured at ${SHOP.name}`}
+      className={L.root}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
       onFocusCapture={() => setFocusInside(true)}
@@ -179,7 +216,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ slides, placeholder 
       }}
     >
       <div
-        className="relative h-[clamp(480px,74vh,600px)] lg:h-[clamp(420px,72vh,600px)] overflow-hidden"
+        className={L.frame}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         aria-live={playing ? 'off' : 'polite'}
@@ -210,7 +247,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ slides, placeholder 
                   <img
                     src={slide.image}
                     srcSet={siteSrcSet(slide.image)}
-                    sizes="100vw"
+                    sizes={L.sizes}
                     alt={slide.alt}
                     width={1920}
                     height={1280}
@@ -228,24 +265,16 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ slides, placeholder 
               )}
               {(hasText || slide.primary) && (
                 <>
-                  <div
-                    aria-hidden="true"
-                    className="absolute inset-0 lg:hidden bg-[linear-gradient(0deg,rgba(9,18,30,0.92)_0%,rgba(9,18,30,0.72)_42%,rgba(9,18,30,0.15)_78%,rgba(9,18,30,0)_100%)]"
-                  />
-                  <div
-                    aria-hidden="true"
-                    className="absolute inset-0 hidden lg:block bg-[linear-gradient(90deg,rgba(9,18,30,0.86)_0%,rgba(9,18,30,0.66)_36%,rgba(9,18,30,0.16)_68%,rgba(9,18,30,0)_100%)]"
-                  />
+                  <div aria-hidden="true" className={L.fadePhone} />
+                  <div aria-hidden="true" className={L.fadeWide} />
                 </>
               )}
               {!placeholder && (hasText || slide.primary) && (
-                <div className={cx(container, 'relative flex h-full items-end lg:items-center pb-[88px] lg:pb-[64px] lg:pt-4')}>
-                  <div className="max-w-[640px] text-white">
+                <div className={L.content}>
+                  <div className={L.textBox}>
                     {slide.eyebrow && <p className="text-[14px] font-semibold text-accent">{slide.eyebrow}</p>}
                     {slide.title && (
-                      <h2 className="mt-2 font-display font-bold text-[40px] sm:text-[52px] lg:text-[60px] [@media(min-width:1024px)_and_(max-height:760px)]:text-[50px] leading-[0.98] tracking-[-0.005em] text-balance line-clamp-3">
-                        {slide.title}
-                      </h2>
+                      <Title className={L.title}>{slide.title}</Title>
                     )}
                     {slide.text && (
                       <p
@@ -287,7 +316,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ slides, placeholder 
         {count > 1 && !placeholder && (
           <div className="absolute inset-x-0 bottom-0 z-20">
             {/* One dark bar under the headline: readable on any photo, and clearly a slideshow control. */}
-            <div className={cx(container, 'flex h-[72px] items-center')}>
+            <div className={L.controls}>
               <div
                 role="group"
                 aria-label="Slideshow controls"

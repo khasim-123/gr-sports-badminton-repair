@@ -62,7 +62,7 @@ const PLACEMENTS: Record<BannerPlacement, { label: string; tab: string; noun: st
     label: 'Promo banner',
     tab: 'Promo banners',
     noun: 'promo banner',
-    description: 'A photo banner further down the homepage, below the strings.',
+    description: 'A running photo banner further down the homepage, below the strings.',
     add: 'Add promo banner',
   },
   announcement: {
@@ -308,11 +308,11 @@ const BannerFormModal: React.FC<BannerFormModalProps> = ({ banner, defaultPlacem
                   required
                   value={form.desktopImageUrl}
                   onChange={(url) => set('desktopImageUrl', url)}
-                  aspectClass={form.placement === 'promo' ? 'aspect-[16/6]' : 'aspect-[16/5]'}
+                  aspectClass="aspect-[16/5]"
                   contain={false}
                   hint={
                     form.placement === 'promo'
-                      ? 'For laptops and tablets. 1600 × 600 px works best; two promos side by side are cropped to 16:9.'
+                      ? 'For laptops and tablets. 1600 × 500 px works best. Promo banners take turns, one at a time.'
                       : 'For laptops and tablets. 1600 × 500 px works best.'
                   }
                   error={errors.desktopImageUrl}
@@ -610,7 +610,7 @@ export const BannersManager: React.FC = () => {
             tab === 'hero'
               ? 'Add your first homepage slide — e.g. a stringing offer or new string colours.'
               : tab === 'promo'
-                ? 'Promo banners appear further down the homepage, below the strings — e.g. new stock or a seasonal offer.'
+                ? 'Promo banners run one after another further down the homepage, below the strings — e.g. new stock or a seasonal offer.'
                 : 'Announcements appear as notice cards on the homepage — e.g. holiday timings or new arrivals.'
           }
           actionText={tabMeta.add}

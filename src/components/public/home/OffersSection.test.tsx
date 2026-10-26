@@ -36,7 +36,7 @@ describe('OffersSection', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('shows promo banners with their label, text and button', async () => {
+  it('runs promo banners as a slideshow with their label, text and button', async () => {
     const onClick = vi.fn();
     render(
       <OffersSection
@@ -50,17 +50,33 @@ describe('OffersSection', () => {
       />,
     );
     const offers = screen.getByRole('region', { name: 'Offers and announcements' });
-    expect(within(offers).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual([
-      'Hundred strings in up to 8 colours',
-      'Team T-shirts and jerseys',
-      'Book a badminton court',
+    const slideshow = within(offers).getByRole('region', { name: 'Offers' });
+    expect(slideshow).toHaveAttribute('aria-roledescription', 'carousel');
+    const slides = slideshow.querySelectorAll('[aria-roledescription="slide"]');
+    expect([...slides].map((s) => s.getAttribute('aria-label'))).toEqual([
+      '1 of 3: Hundred strings in up to 8 colours',
+      '2 of 3: Team T-shirts and jerseys',
+      '3 of 3: Book a badminton court',
     ]);
-    expect(within(offers).getByText('Strings')).toBeInTheDocument();
-    expect(within(offers).getByText('Pick your colour when you book.')).toBeInTheDocument();
+    // One banner at a time: the first is showing, with its label, text and button.
+    expect(within(slideshow).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Hundred strings in up to 8 colours']);
+    expect(within(slideshow).getByText('Strings')).toBeInTheDocument();
+    expect(within(slideshow).getByText('Pick your colour when you book.')).toBeInTheDocument();
     expect(within(offers).queryByRole('heading', { name: 'Announcements' })).not.toBeInTheDocument();
 
-    await userEvent.setup().click(within(offers).getByRole('button', { name: 'See strings' }));
+    const user = userEvent.setup();
+    await user.click(within(slideshow).getByRole('button', { name: 'See strings' }));
     expect(onClick).toHaveBeenCalledTimes(1);
+
+    await user.click(within(slideshow).getByRole('button', { name: 'Next slide' }));
+    expect(within(slideshow).getByRole('heading', { level: 3 })).toHaveTextContent('Team T-shirts and jerseys');
+    expect(within(slideshow).getByRole('button', { name: 'Pause slideshow' })).toBeInTheDocument();
+  });
+
+  it('a single promo banner stands still, without slideshow controls', () => {
+    render(<OffersSection promos={[banner({ title: 'New string colours' })]} announcements={[]} actionFor={() => undefined} />);
+    expect(screen.getByRole('heading', { level: 3, name: 'New string colours' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Slideshow controls' })).not.toBeInTheDocument();
   });
 
   it('shows announcements as notice cards, with or without a photo', () => {
