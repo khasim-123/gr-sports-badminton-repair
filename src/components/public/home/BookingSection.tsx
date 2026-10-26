@@ -140,8 +140,8 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
   const pickupField = <PickupDayField id={id('date')} availability={availability} pickup={pickup} />;
 
   return (
-    <section id={SECTION_IDS.book} aria-labelledby={`${uid}-title`} className={cx('scroll-mt-20 bg-paper', formOnly ? 'py-10 sm:py-14' : 'py-16 sm:py-20')}>
-      <div className={cx(container, !formOnly && 'grid gap-10 lg:grid-cols-12 lg:gap-12')}>
+    <section id={SECTION_IDS.book} aria-labelledby={`${uid}-title`} className={cx('scroll-mt-20 bg-paper', formOnly ? 'py-8 sm:py-10' : 'py-10 sm:py-14')}>
+      <div className={cx(container, !formOnly && 'grid gap-8 lg:grid-cols-12 lg:gap-12')}>
         {formOnly ? (
           <h2 id={`${uid}-title`} className="sr-only">
             Book stringing or a repair
@@ -153,7 +153,7 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
             title="Book a pickup in a minute"
             intro="Tell us what your racket needs. We collect it from your door, do the work in our shop and bring it back."
           />
-          <ul className="mt-8 space-y-4 text-[15px] text-ink-soft">
+          <ul className="mt-6 space-y-4 text-[15px] text-ink-soft">
             <li className="flex gap-3">
               <Truck className="mt-0.5 h-5 w-5 shrink-0 text-ink" aria-hidden="true" />
               <span>

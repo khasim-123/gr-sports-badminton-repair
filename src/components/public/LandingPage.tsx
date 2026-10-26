@@ -400,13 +400,12 @@ export const LandingPage: React.FC = () => {
           rackets={usedRackets}
           title="Second-hand rackets"
           intro="Used rackets the shop is selling. Message us to ask about a racket's condition before you visit."
-          photo={null}
           onSeeAll={() => go('rackets', { condition: 'used' })}
         />
       )}
 
       {eventsBannerSlides.length > 0 && (
-        <section id={SECTION_IDS.events} aria-labelledby="events-banner-title" className="scroll-mt-20 border-t border-line bg-white py-14 sm:py-20">
+        <section id={SECTION_IDS.events} aria-labelledby="events-banner-title" className="scroll-mt-20 border-t border-line bg-white py-10 sm:py-14">
           <div className={container}>
             <h2 id="events-banner-title" className="sr-only">
               Upcoming events

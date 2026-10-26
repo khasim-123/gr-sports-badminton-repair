@@ -28,7 +28,7 @@ export const EventsSection: React.FC<EventsSectionProps> = ({ events, status, on
   const SHOP = useShop();
   const single = events.length === 1;
   return (
-    <section id={SECTION_IDS.events} aria-labelledby="events-title" className="scroll-mt-20 border-t border-line bg-paper py-16 sm:py-24">
+    <section id={SECTION_IDS.events} aria-labelledby="events-title" className="scroll-mt-20 border-t border-line bg-paper py-10 sm:py-14">
       <div className={container}>
         <SectionHeader
           id="events-title"
@@ -37,7 +37,7 @@ export const EventsSection: React.FC<EventsSectionProps> = ({ events, status, on
         />
 
         {status === 'loading' && (
-          <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3" aria-hidden="true">
+          <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3" aria-hidden="true">
             {[0, 1, 2].map((i) => (
               <div key={i} className="h-[420px] animate-pulse rounded-xl bg-paper-deep" />
             ))}
@@ -45,7 +45,7 @@ export const EventsSection: React.FC<EventsSectionProps> = ({ events, status, on
         )}
 
         {status !== 'loading' && events.length === 0 && (
-          <div className="mt-10 grid overflow-hidden rounded-xl border border-line bg-white md:grid-cols-2">
+          <div className="mt-6 grid overflow-hidden rounded-xl border border-line bg-white md:grid-cols-2">
             <Photo
               src="/images/site/kids-hall.webp"
               alt="Junior players on an indoor badminton court"
@@ -80,7 +80,7 @@ export const EventsSection: React.FC<EventsSectionProps> = ({ events, status, on
         )}
 
         {events.length > 0 && (
-          <ul className={cx('mt-10 grid gap-6', single ? '' : events.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-3')}>
+          <ul className={cx('mt-6 grid gap-6', single ? '' : events.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-3')}>
             {events.map((e) => (
               <li key={e.id} className="flex">
                 <EventCard event={e} horizontal={single} onOpen={onOpen} />

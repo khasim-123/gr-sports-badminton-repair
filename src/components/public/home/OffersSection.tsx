@@ -41,7 +41,7 @@ export const OffersSection: React.FC<OffersSectionProps> = ({ promos, announceme
     <section
       id={id}
       aria-labelledby={`${id}-title`}
-      className="scroll-mt-20 border-t border-line bg-paper py-16 sm:py-20"
+      className="scroll-mt-20 border-t border-line bg-paper py-10 sm:py-14"
     >
       <div className={container}>
         <h2 id={`${id}-title`} className="sr-only">
@@ -51,7 +51,7 @@ export const OffersSection: React.FC<OffersSectionProps> = ({ promos, announceme
         {promoSlides.length > 0 && <HeroCarousel slides={promoSlides} variant="inset" label="Offers" />}
 
         {announcements.length > 0 && (
-          <div className={cx(promoSlides.length > 0 && 'mt-12 sm:mt-16')}>
+          <div className={cx(promoSlides.length > 0 && 'mt-8 sm:mt-10')}>
             <h3 className="font-display text-[28px] font-semibold leading-tight tracking-[0.01em] text-ink sm:text-[32px]">Announcements</h3>
             <ul className={cx('mt-6 grid gap-4', announcements.length === 1 ? 'max-w-3xl' : 'md:grid-cols-2')}>
               {announcements.map((b) => (

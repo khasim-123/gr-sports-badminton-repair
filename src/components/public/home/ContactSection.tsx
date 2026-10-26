@@ -29,12 +29,12 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ availability, do
   const row = 'flex items-start gap-3 py-4';
 
   return (
-    <section id={SECTION_IDS.contact} aria-labelledby="contact-title" className="scroll-mt-20 bg-paper py-16 sm:py-24">
-      <div className={cx(container, 'grid gap-10 lg:grid-cols-12 lg:gap-14')}>
+    <section id={SECTION_IDS.contact} aria-labelledby="contact-title" className="scroll-mt-20 bg-paper py-10 sm:py-14">
+      <div className={cx(container, 'grid gap-8 lg:grid-cols-12 lg:gap-12')}>
         <div className="lg:col-span-6">
           <SectionHeader id="contact-title" title={`Find us in ${SHOP.locality}`} />
 
-          <address className="mt-8 not-italic">
+          <address className="mt-6 not-italic">
             <ul className="divide-y divide-line border-y border-line text-[16px] text-ink">
               <li className={row}>
                 <MapPin className="mt-1 h-5 w-5 shrink-0 text-ink" aria-hidden="true" />
@@ -145,7 +145,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ availability, do
             </ul>
           </address>
 
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap gap-3">
             <a href={SHOP.phoneTel} className={cx(btn.base, btn.primary)}>
               <Phone className="h-4 w-4" aria-hidden="true" />
               Call the shop
@@ -157,7 +157,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ availability, do
           </div>
 
           {docs.length > 0 && (
-            <div className="mt-10">
+            <div className="mt-8">
               <h3 className="font-display text-[24px] font-semibold text-ink">Price lists and documents</h3>
               <ul className="mt-3 divide-y divide-line border-y border-line">
                 {docs.map((d) => (

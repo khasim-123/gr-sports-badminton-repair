@@ -29,8 +29,8 @@ export const StringingSection: React.FC<ServicesProps> = ({ gettingServices, onB
   const SHOP = useShop();
   const tiers = gettingServices.filter((t) => t.isActive !== false);
   return (
-    <section id={SERVICE_SECTION_IDS.stringing} aria-labelledby="stringing-title" className="scroll-mt-20 bg-white py-16 sm:py-24">
-      <div className={cx(container, 'grid gap-10 lg:grid-cols-12 lg:gap-14')}>
+    <section id={SERVICE_SECTION_IDS.stringing} aria-labelledby="stringing-title" className="scroll-mt-20 bg-white py-10 sm:py-14">
+      <div className={cx(container, 'grid gap-8 lg:grid-cols-12 lg:gap-12')}>
         <div className="lg:col-span-5">
           <div className="lg:sticky lg:top-28">
             <Photo
@@ -49,7 +49,7 @@ export const StringingSection: React.FC<ServicesProps> = ({ gettingServices, onB
             intro="Pick a package when you book, then choose the string, colour and tension. Times are counted from when we collect your racket."
           />
           {tiers.length > 0 ? (
-            <ul className="mt-8 divide-y divide-line border-y border-line">
+            <ul className="mt-6 divide-y divide-line border-y border-line">
               {tiers.map((t) => (
                 <li key={t.id} className={priceRow}>
                   <h3 className="font-display text-[24px] font-semibold leading-tight text-ink">{t.name}</h3>
@@ -73,11 +73,11 @@ export const StringingSection: React.FC<ServicesProps> = ({ gettingServices, onB
               ))}
             </ul>
           ) : (
-            <p className="mt-8 text-[15px] text-ink-soft">
+            <p className="mt-6 text-[15px] text-ink-soft">
               Call <a href={SHOP.phoneTel} className="font-semibold text-sportsBlue underline">{SHOP.phoneDisplay}</a> for current stringing prices.
             </p>
           )}
-          <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
             <button type="button" onClick={() => onBook('stringing')} className={cx(btn.base, btn.primary)}>
               Book stringing
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -106,8 +106,8 @@ export const RepairsSection: React.FC<ServicesProps> = ({ repairCategories, onBo
   const SHOP = useShop();
   const categories = repairCategories.filter((c) => c.isActive !== false);
   return (
-    <section id={SERVICE_SECTION_IDS.repairs} aria-labelledby="repairs-title" className="scroll-mt-20 border-t border-line bg-white py-16 sm:py-24">
-      <div className={cx(container, 'grid gap-10 lg:grid-cols-12 lg:gap-14')}>
+    <section id={SERVICE_SECTION_IDS.repairs} aria-labelledby="repairs-title" className="scroll-mt-20 border-t border-line bg-white py-10 sm:py-14">
+      <div className={cx(container, 'grid gap-8 lg:grid-cols-12 lg:gap-12')}>
         <div className="lg:order-2 lg:col-span-5">
           <div className="lg:sticky lg:top-28">
             <Photo
@@ -127,7 +127,7 @@ export const RepairsSection: React.FC<ServicesProps> = ({ repairCategories, onBo
             intro="Cracked frame, broken shaft, loose handle or worn grip. We inspect the racket first and send you an estimate with the price and the date it will be ready. Work starts only after you approve it."
           />
           {categories.length > 0 ? (
-            <ul className="mt-8 divide-y divide-line border-y border-line">
+            <ul className="mt-6 divide-y divide-line border-y border-line">
               {categories.map((c) => (
                 <li key={c.id} className={priceRow}>
                   <h3 className="font-display text-[24px] font-semibold leading-tight text-ink">{c.name}</h3>
@@ -152,7 +152,7 @@ export const RepairsSection: React.FC<ServicesProps> = ({ repairCategories, onBo
               ))}
             </ul>
           ) : (
-            <p className="mt-8 text-[15px] text-ink-soft">
+            <p className="mt-6 text-[15px] text-ink-soft">
               Call <a href={SHOP.phoneTel} className="font-semibold text-sportsBlue underline">{SHOP.phoneDisplay}</a> to ask about a repair.
             </p>
           )}

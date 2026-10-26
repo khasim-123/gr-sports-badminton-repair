@@ -56,14 +56,14 @@ export const TournamentsPage: React.FC = () => {
       <h1 className="sr-only">Tournament organizing at {SHOP.name}</h1>
       <EventsHero fallback={FALLBACK} />
 
-      <section aria-labelledby={LIST_ID} className="bg-paper py-14 sm:py-20">
+      <section aria-labelledby={LIST_ID} className="bg-paper py-10 sm:py-14">
         <div className={container}>
           <SectionHeader
             id={LIST_ID}
             title="What do you need?"
             intro="Choose one and send a request with your date and venue. We call you back to talk through numbers and prices."
           />
-          <ul className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+          <ul className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
             {DEPARTMENTS.map((d, i) => {
               const Icon = d.icon;
               return (

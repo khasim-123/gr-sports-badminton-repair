@@ -22,12 +22,12 @@ interface ShopByProductSectionProps {
 export const ShopByProductSection: React.FC<ShopByProductSectionProps> = ({ categories }) => {
   if (categories.length === 0) return null;
   return (
-    <section id={SECTION_IDS.shop} aria-labelledby="shop-title" className="scroll-mt-20 border-t border-line bg-paper py-16 sm:py-20">
+    <section id={SECTION_IDS.shop} aria-labelledby="shop-title" className="scroll-mt-20 border-t border-line bg-paper py-10 sm:py-14">
       <div className={container}>
         <SectionHeader id="shop-title" title="Shop by product" />
         <ul
           className={cx(
-            'mt-8 grid gap-3 sm:gap-6',
+            'mt-6 grid gap-3 sm:gap-6',
             categories.length === 1 ? 'max-w-md' : categories.length === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3',
           )}
         >

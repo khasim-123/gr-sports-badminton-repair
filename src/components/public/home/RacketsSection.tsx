@@ -2,7 +2,6 @@ import React, { useId, useMemo, useState } from 'react';
 import type { Racket } from '../../../types/content';
 import { useCart } from '../../../context/CartContext';
 import { formatInr, hasPrice, productLabel, safeImageUrl } from './format';
-import { Photo } from './Photo';
 import { SECTION_IDS, useShop } from './shop';
 import { SectionHeader, WhatsAppIcon, btn, container, cx } from './ui';
 
@@ -36,13 +35,10 @@ interface RacketsSectionProps {
   intro?: string;
   /** Page: start filtered to this brand (when it has rackets here). */
   initialBrand?: string;
-  /** Photo beside the heading on laptops. */
-  photo?: { src: string; alt: string } | null;
   /** Background of the section. */
   tone?: 'white' | 'paper';
 }
 
-const DEFAULT_PHOTO = { src: '/images/site/rackets-on-court.webp', alt: 'Two badminton rackets and shuttles on a green court' };
 
 /** Shown only when there are active rackets (the caller hides it otherwise). */
 export const RacketsSection: React.FC<RacketsSectionProps> = ({
@@ -53,7 +49,6 @@ export const RacketsSection: React.FC<RacketsSectionProps> = ({
   title = 'Rackets at the shop',
   intro = 'A selection of the rackets we keep. Stock changes, so message us to check a model or a price before you visit.',
   initialBrand,
-  photo = DEFAULT_PHOTO,
   tone = 'white',
 }) => {
   const uid = useId();
@@ -79,26 +74,23 @@ export const RacketsSection: React.FC<RacketsSectionProps> = ({
   const shown = expanded ? rackets.filter((r) => brand === ALL || ((r.brand || '').trim() || 'Other') === brand) : featured;
 
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className={cx('scroll-mt-20 border-t border-line py-16 sm:py-24', tone === 'paper' ? 'bg-paper' : 'bg-white')}>
+    <section id={id} aria-labelledby={`${id}-title`} className={cx('scroll-mt-20 border-t border-line py-10 sm:py-14', tone === 'paper' ? 'bg-paper' : 'bg-white')}>
       <div className={container}>
-        <div className="grid items-end gap-8 lg:grid-cols-12">
-          <div className="lg:col-span-7">
-            <SectionHeader id={`${id}-title`} title={title} intro={intro} />
-            {canSeeAll && (
-              <button type="button" onClick={onSeeAll} className={cx(btn.base, btn.secondary, 'mt-6')}>
+        <SectionHeader
+          id={`${id}-title`}
+          title={title}
+          intro={intro}
+          action={
+            canSeeAll ? (
+              <button type="button" onClick={onSeeAll} className={cx(btn.base, btn.secondary)}>
                 See all {rackets.length} rackets
               </button>
-            )}
-          </div>
-          {photo && (
-            <div className="hidden lg:col-span-5 lg:block">
-              <Photo src={photo.src} alt={photo.alt} sizes="460px" className="rounded-xl" />
-            </div>
-          )}
-        </div>
+            ) : undefined
+          }
+        />
 
         {expanded && brands.length > 1 && (
-          <div role="group" aria-label="Filter by brand" className="mt-10 flex flex-wrap gap-2">
+          <div role="group" aria-label="Filter by brand" className="mt-6 flex flex-wrap gap-2">
             {[[ALL, rackets.length] as [string, number], ...brands].map(([b, n]) => (
               <button
                 key={b}
@@ -118,7 +110,7 @@ export const RacketsSection: React.FC<RacketsSectionProps> = ({
           </div>
         )}
 
-        <ul id={`${uid}-grid`} className={cx('grid gap-4 sm:grid-cols-2 lg:grid-cols-4', expanded && brands.length > 1 ? 'mt-6' : 'mt-10')}>
+        <ul id={`${uid}-grid`} className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {shown.map((r) => (
             <li key={r.id} className="flex">
               <RacketCard racket={r} />

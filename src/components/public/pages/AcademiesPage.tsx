@@ -48,7 +48,7 @@ export const AcademiesPage: React.FC = () => {
       <h1 className="sr-only">Badminton academies near {SHOP.name}</h1>
       <EventsHero fallback={FALLBACK} />
 
-      <section aria-labelledby={LIST_ID} className="bg-paper py-14 sm:py-20">
+      <section aria-labelledby={LIST_ID} className="bg-paper py-10 sm:py-14">
         <div className={container}>
           <SectionHeader
             id={LIST_ID}
@@ -57,7 +57,7 @@ export const AcademiesPage: React.FC = () => {
           />
 
           {status === 'loading' && (
-            <div className="mt-10 grid gap-5 md:grid-cols-2" aria-hidden="true">
+            <div className="mt-6 grid gap-5 md:grid-cols-2" aria-hidden="true">
               {[0, 1].map((i) => (
                 <div key={i} className="h-[340px] animate-pulse rounded-2xl bg-paper-deep motion-reduce:animate-none" />
               ))}
@@ -65,7 +65,7 @@ export const AcademiesPage: React.FC = () => {
           )}
 
           {status !== 'loading' && academies.length > 0 && (
-            <ul className="mt-10 grid gap-5 md:grid-cols-2">
+            <ul className="mt-6 grid gap-5 md:grid-cols-2">
               {academies.map((a) => (
                 <li key={a.id} className="flex">
                   <AcademyCard academy={a} onBook={() => setBooking(a)} />
@@ -75,7 +75,7 @@ export const AcademiesPage: React.FC = () => {
           )}
 
           {status !== 'loading' && academies.length === 0 && (
-            <div className="mt-10 rounded-2xl border border-line bg-white px-6 py-10 text-center sm:px-10">
+            <div className="mt-6 rounded-2xl border border-line bg-white px-6 py-10 text-center sm:px-10">
               <p className="font-display text-[26px] font-semibold text-ink">
                 {status === 'error' ? "We couldn't load the academies" : 'No academies listed yet'}
               </p>

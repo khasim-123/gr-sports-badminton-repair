@@ -7,7 +7,7 @@ import { btn, container, cx } from '../home/ui';
 export const ServiceCta: React.FC<{ title: string; text: string }> = ({ title, text }) => {
   const go = usePublicNav();
   return (
-    <section aria-labelledby="service-cta-title" className="border-t border-line bg-paper py-12 sm:py-16">
+    <section aria-labelledby="service-cta-title" className="border-t border-line bg-paper py-8 sm:py-12">
       <div className={cx(container, 'flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between')}>
         <div className="max-w-2xl">
           <h2 id="service-cta-title" className="font-display text-[28px] font-semibold leading-tight text-ink sm:text-[32px]">

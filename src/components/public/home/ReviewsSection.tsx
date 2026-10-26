@@ -27,8 +27,8 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ data, status }) 
   const shown = showAll ? reviews : reviews.slice(0, INITIAL_COUNT);
 
   return (
-    <section id={SECTION_IDS.reviews} aria-labelledby="reviews-title" className="scroll-mt-20 bg-paper py-16 sm:py-24">
-      <div className={cx(container, 'grid gap-10 lg:grid-cols-12 lg:gap-14')}>
+    <section id={SECTION_IDS.reviews} aria-labelledby="reviews-title" className="scroll-mt-20 bg-paper py-10 sm:py-14">
+      <div className={cx(container, 'grid gap-8 lg:grid-cols-12 lg:gap-12')}>
         <div className="lg:col-span-4">
           <SectionHeader id="reviews-title" title="What customers say" />
           {status === 'ready' && count > 0 && (

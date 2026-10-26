@@ -224,7 +224,7 @@ export const CourtsPage: React.FC = () => {
     >
       {venues.status === 'loading' && (
         <section className="border-b border-line bg-paper" aria-busy="true">
-          <div className={cx(container, 'grid gap-8 py-10 sm:py-14 lg:grid-cols-12 lg:gap-12')}>
+          <div className={cx(container, 'grid gap-8 py-8 sm:py-10 lg:grid-cols-12 lg:gap-12')}>
             <div className="space-y-4 lg:col-span-5">
               <div className="h-4 w-40 animate-pulse rounded bg-paper-deep" />
               <div className="h-12 w-4/5 animate-pulse rounded bg-paper-deep" />
@@ -240,7 +240,7 @@ export const CourtsPage: React.FC = () => {
 
       {venues.status === 'error' && (
         <section className="border-b border-line bg-paper">
-          <div className={cx(container, 'py-12 sm:py-16')}>
+          <div className={cx(container, 'py-8 sm:py-12')}>
             <h1 className="font-display text-[40px] font-semibold leading-[1.02] text-ink sm:text-[52px]">Book a badminton court</h1>
             <div className="mt-6 max-w-xl rounded-xl border border-line bg-white px-5 py-5">
               <h2 className="font-display text-[24px] font-semibold">Court times aren't loading right now</h2>
@@ -262,7 +262,7 @@ export const CourtsPage: React.FC = () => {
 
       {venues.status === 'ready' && !hasVenues && (
         <section className="bg-paper">
-          <div className={cx(container, 'grid items-center gap-8 py-10 sm:py-14 lg:grid-cols-12 lg:gap-12 lg:py-16')}>
+          <div className={cx(container, 'grid items-center gap-8 py-8 sm:py-10 lg:grid-cols-12 lg:gap-12')}>
             <div className="lg:col-span-5">
               <p className="text-[13px] font-semibold tracking-wide text-[#9A6B00]">
                 {SHOP.name} · {SHOP.locality}
@@ -528,8 +528,8 @@ export const CourtsPage: React.FC = () => {
           </section>
 
           {/* About the venue */}
-          <section id="venue" aria-labelledby="venue-title" className="scroll-mt-20 border-t border-line bg-paper py-12 sm:py-16">
-            <div className={cx(container, 'grid gap-10 lg:grid-cols-12')}>
+          <section id="venue" aria-labelledby="venue-title" className="scroll-mt-20 border-t border-line bg-paper py-8 sm:py-12">
+            <div className={cx(container, 'grid gap-8 lg:grid-cols-12')}>
               <div className="lg:col-span-5">
                 <h2 id="venue-title" data-section-heading tabIndex={-1} className="font-display text-[32px] font-semibold leading-none outline-none sm:text-[40px]">
                   About the courts

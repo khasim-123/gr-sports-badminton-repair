@@ -123,7 +123,7 @@ export const ApparelStore: React.FC = () => {
       <HeroCarousel slides={hero} label={SUBLINE} />
 
       {/* Products */}
-      <section id="products" aria-labelledby="products-title" className="scroll-mt-24 py-12 sm:py-16">
+      <section id="products" aria-labelledby="products-title" className="scroll-mt-24 py-8 sm:py-12">
         <div className={container}>
           {state.status === 'loading' && (
             <>
@@ -228,7 +228,7 @@ export const ApparelStore: React.FC = () => {
               <p className="sr-only" aria-live="polite">
                 {shown.length} items shown
               </p>
-              <ul className="mt-8 grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 md:grid-cols-3 lg:grid-cols-4">
+              <ul className="mt-6 grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 md:grid-cols-3 lg:grid-cols-4">
                 {shown.map((p) => (
                   <li key={p.id} className="flex">
                     <ProductCard product={p} onOpen={() => setOpenId(p.id)} />
@@ -241,8 +241,8 @@ export const ApparelStore: React.FC = () => {
       </section>
 
       {/* Custom T-shirts (GR website map: "customized option form") */}
-      <section id="custom" aria-labelledby="custom-title" className="scroll-mt-24 border-t border-line bg-paper py-14 sm:py-20">
-        <div className={cx(container, 'grid items-start gap-10 lg:grid-cols-12')}>
+      <section id="custom" aria-labelledby="custom-title" className="scroll-mt-24 border-t border-line bg-paper py-10 sm:py-14">
+        <div className={cx(container, 'grid items-start gap-8 lg:grid-cols-12')}>
           <div className="lg:col-span-5">
             <h2 id="custom-title" data-section-heading className="font-display text-[34px] font-semibold leading-[1.02] outline-none sm:text-[42px]">
               Custom T-shirts &amp; jerseys
@@ -291,12 +291,12 @@ export const ApparelStore: React.FC = () => {
       </section>
 
       {/* Delivery, pickup, payment, sizes */}
-      <section id="delivery" aria-labelledby="delivery-title" className="scroll-mt-24 border-t border-line py-14 sm:py-16">
+      <section id="delivery" aria-labelledby="delivery-title" className="scroll-mt-24 border-t border-line py-10 sm:py-12">
         <div className={container}>
           <h2 id="delivery-title" data-section-heading className="font-display text-[30px] font-semibold leading-none outline-none sm:text-[36px]">
             Delivery, pickup and payment
           </h2>
-          <div className="mt-8 grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-6 grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
             <InfoBlock icon={<Truck className="h-5 w-5" aria-hidden="true" />} title="Delivery">
               {free > 0 ? `Free within ${formatKm(free)} of the shop. ` : ''}
               {beyondFreeText(distanceConfig)} The exact charge is shown at checkout.

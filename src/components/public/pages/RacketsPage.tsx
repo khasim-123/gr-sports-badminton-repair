@@ -36,7 +36,7 @@ export const RacketsPage: React.FC = () => {
       />
 
       {status === 'loading' && (
-        <div className={cx(container, 'grid gap-4 py-16 sm:grid-cols-2 lg:grid-cols-4')} aria-hidden="true">
+        <div className={cx(container, 'grid gap-4 py-10 sm:grid-cols-2 lg:grid-cols-4')} aria-hidden="true">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="h-[420px] animate-pulse rounded-xl bg-paper-deep motion-reduce:animate-none" />
           ))}
@@ -63,10 +63,9 @@ export const RacketsPage: React.FC = () => {
             rackets={usedRackets}
             title="Second-hand rackets"
             intro="Used rackets the shop is selling. Message us to ask about a racket's condition before you visit."
-            photo={null}
           />
         ) : (
-          <section id={USED_ID} aria-labelledby={`${USED_ID}-title`} className="scroll-mt-20 border-t border-line bg-white py-14 sm:py-20">
+          <section id={USED_ID} aria-labelledby={`${USED_ID}-title`} className="scroll-mt-20 border-t border-line bg-white py-10 sm:py-14">
             <div className={container}>
               <h2 id={`${USED_ID}-title`} className="font-display text-[28px] font-semibold leading-tight text-ink sm:text-[32px]">
                 Second-hand rackets

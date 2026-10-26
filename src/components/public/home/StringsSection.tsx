@@ -55,7 +55,7 @@ export const StringsSection: React.FC<StringsSectionProps> = ({ strings, status,
   const brandNames = brands.map(([b]) => b);
 
   return (
-    <section id={SECTION_IDS.strings} aria-labelledby={showHeader ? 'strings-title' : 'page-title'} className="scroll-mt-20 border-t border-line bg-white py-16 sm:py-24">
+    <section id={SECTION_IDS.strings} aria-labelledby={showHeader ? 'strings-title' : 'page-title'} className="scroll-mt-20 border-t border-line bg-white py-10 sm:py-14">
       <div className={container}>
         {showHeader && (
         <SectionHeader
@@ -77,7 +77,7 @@ export const StringsSection: React.FC<StringsSectionProps> = ({ strings, status,
         )}
 
         {status === 'loading' && (
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-hidden="true">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-hidden="true">
             {[0, 1, 2, 3].map((i) => (
               <div key={i} className="h-[440px] animate-pulse rounded-xl bg-paper-deep motion-reduce:animate-none" />
             ))}
@@ -85,7 +85,7 @@ export const StringsSection: React.FC<StringsSectionProps> = ({ strings, status,
         )}
 
         {status === 'error' && (
-          <p className="mt-10 rounded-xl border border-line bg-paper px-5 py-4 text-[15px] text-ink-soft">
+          <p className="mt-6 rounded-xl border border-line bg-paper px-5 py-4 text-[15px] text-ink-soft">
             The strings list isn't loading right now. Call{' '}
             <a href={SHOP.phoneTel} className="font-semibold text-sportsBlue underline underline-offset-2">
               {SHOP.phoneDisplay}
@@ -99,7 +99,7 @@ export const StringsSection: React.FC<StringsSectionProps> = ({ strings, status,
         )}
 
         {status === 'ready' && strings.length === 0 && (
-          <p className="mt-10 rounded-xl border border-line bg-paper px-5 py-4 text-[15px] text-ink-soft">
+          <p className="mt-6 rounded-xl border border-line bg-paper px-5 py-4 text-[15px] text-ink-soft">
             No strings are listed right now. Call {SHOP.phoneDisplay} for what we have in stock.
           </p>
         )}
@@ -107,7 +107,7 @@ export const StringsSection: React.FC<StringsSectionProps> = ({ strings, status,
         {status === 'ready' && strings.length > 0 && (
           <>
             {expanded && (
-              <div className="mt-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 {brands.length > 1 && (
                   <div role="group" aria-label="Filter by brand" className="flex flex-wrap gap-2">
                     {[[ALL, strings.length] as [string, number], ...brands].map(([b, n]) => (
@@ -149,7 +149,7 @@ export const StringsSection: React.FC<StringsSectionProps> = ({ strings, status,
               {expanded ? `${filtered.length} strings shown` : ''}
             </p>
 
-            <ul id={`${uid}-grid`} className={cx('grid gap-4 sm:grid-cols-2 lg:grid-cols-4', expanded ? 'mt-6' : 'mt-10')}>
+            <ul id={`${uid}-grid`} className={cx('grid gap-4 sm:grid-cols-2 lg:grid-cols-4', 'mt-6')}>
               {shown.map((p) => (
                 <li key={p.id} className="flex">
                   <StringCard product={p} onUse={onUseString} />

@@ -9,7 +9,7 @@ export const PageIntro: React.FC<{ title: string; intro?: React.ReactNode; child
   children,
   tone = 'paper',
 }) => (
-  <section aria-labelledby="page-title" className={cx('border-b border-line py-10 sm:py-14', tone === 'paper' ? 'bg-paper' : 'bg-white')}>
+  <section aria-labelledby="page-title" className={cx('border-b border-line py-7 sm:py-9', tone === 'paper' ? 'bg-paper' : 'bg-white')}>
     <div className={container}>
       <h1 id="page-title" className="font-display text-[36px] font-semibold leading-[1.05] tracking-[0.01em] text-ink sm:text-[48px]">
         {title}

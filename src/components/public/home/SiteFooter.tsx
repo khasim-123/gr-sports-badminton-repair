@@ -58,10 +58,10 @@ const COLUMNS: { heading: string; links: FooterLink[] }[] = [
   },
 ];
 
-const socialClass = 'inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/15';
+const socialClass = 'inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/15';
 
 const linkClass =
-  'inline-flex min-h-[40px] items-center text-left text-white/75 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white rounded';
+  'inline-flex min-h-[36px] items-center text-left text-white/75 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white rounded lg:min-h-[30px]';
 
 export const SiteFooter: React.FC<SiteFooterProps> = ({ pages, onOpenPage, onTracking, onStaffLogin, showStaffLinks }) => {
   const SHOP = useShop();
@@ -106,50 +106,64 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({ pages, onOpenPage, onTra
     );
   };
 
+  const socials = (
+    // Always all four; an icon becomes a link once its page is added in Shop settings.
+    <ul className="flex items-center gap-2" aria-label="Social media">
+      {SHOP.socials.map((s) => (
+        <li key={s.key}>
+          {s.url ? (
+            <a
+              href={s.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`${SHOP.name} on ${s.label}`}
+              title={s.label}
+              className={cx(socialClass, 'transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white')}
+            >
+              <SocialIcon name={s.key} />
+            </a>
+          ) : (
+            <span role="img" aria-label={s.label} title={s.label} className={socialClass}>
+              <SocialIcon name={s.key} />
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
     <footer className="bg-ink text-white">
-      <div className={cx(container, 'py-12 sm:py-14')}>
-        {/* Logo and social media */}
-        <div className="flex flex-col gap-5 border-b border-white/10 pb-8 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <Wordmark tone="dark" />
-            <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-white/70">
-              Badminton store, racket stringing and repairs in {SHOP.city}.
-            </p>
-          </div>
-          {/* Always all four; an icon becomes a link once its page is added in Shop settings. */}
-          <ul className="flex items-center gap-2" aria-label="Social media">
-            {SHOP.socials.map((s) => (
-              <li key={s.key}>
-                {s.url ? (
-                  <a
-                    href={s.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`${SHOP.name} on ${s.label}`}
-                    title={s.label}
-                    className={cx(socialClass, 'transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white')}
-                  >
-                    <SocialIcon name={s.key} />
-                  </a>
-                ) : (
-                  <span role="img" aria-label={s.label} title={s.label} className={socialClass}>
-                    <SocialIcon name={s.key} />
-                  </span>
-                )}
+      <div className={cx(container, 'py-8 lg:py-10')}>
+        {/* The shop's promises, one row on laptops */}
+        {SHOP.footerHighlights.length > 0 && (
+          <ul className="grid gap-x-8 gap-y-2.5 border-b border-white/10 pb-6 sm:grid-cols-3">
+            {SHOP.footerHighlights.map((h) => (
+              <li key={h} className="flex gap-2.5 text-[14px] leading-snug text-white/85">
+                <span aria-hidden="true" className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                {h}
               </li>
             ))}
           </ul>
-        </div>
+        )}
 
-        <div className="grid gap-8 pt-8 sm:grid-cols-2 lg:grid-cols-12">
+        <div className={cx('grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-12 lg:gap-x-8', SHOP.footerHighlights.length > 0 && 'pt-6')}>
+          {/* Logo, line about the shop, social media */}
+          <div className="col-span-2 lg:col-span-4">
+            <Wordmark tone="dark" />
+            <p className="mt-2 max-w-xs text-[14px] leading-relaxed text-white/70">
+              Badminton store, racket stringing and repairs in {SHOP.city}.
+            </p>
+            <div className="mt-4">{socials}</div>
+          </div>
+
           {COLUMNS.map((col) => {
             const items = col.links.map((l) => ({ key: l.label, node: renderLink(l) })).filter((i) => i.node);
             if (items.length === 0) return null;
             return (
               <nav key={col.heading} aria-label={col.heading} className="lg:col-span-2">
                 <h2 className="text-[14px] font-semibold text-white">{col.heading}</h2>
-                <ul className="mt-2 text-[15px]">
+                <ul className="mt-1.5 text-[15px] lg:text-[14px]">
                   {items.map((i) => (
                     <li key={i.key}>{i.node}</li>
                   ))}
@@ -158,41 +172,29 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({ pages, onOpenPage, onTra
             );
           })}
 
-          <div className="sm:col-span-2 lg:col-span-6 lg:pl-6">
-            {SHOP.footerHighlights.length > 0 && (
-              <ul className="space-y-3">
-                {SHOP.footerHighlights.map((h) => (
-                  <li key={h} className="flex gap-3 text-[15px] leading-snug text-white/85">
-                    <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-                    {h}
-                  </li>
-                ))}
+          {showStaffLinks && (
+            <nav aria-label="Staff and management access" className="lg:col-span-2">
+              <h2 className="text-[14px] font-semibold text-white">Staff access</h2>
+              <ul className="mt-1.5 text-[15px] lg:text-[14px]">
+                <li>
+                  <button type="button" onClick={() => onStaffLogin('EMPLOYEE')} className={linkClass}>
+                    Employee login
+                  </button>
+                </li>
+                <li>
+                  <button type="button" onClick={() => onStaffLogin('ADMIN')} className={linkClass}>
+                    Admin login
+                  </button>
+                </li>
               </ul>
-            )}
-            {showStaffLinks && (
-              <div className={cx(SHOP.footerHighlights.length > 0 && 'mt-7')}>
-                <h2 className="text-[14px] font-semibold text-white">Staff and management access</h2>
-                <ul className="mt-1 flex flex-wrap gap-x-6 text-[15px]">
-                  <li>
-                    <button type="button" onClick={() => onStaffLogin('EMPLOYEE')} className={linkClass}>
-                      Employee login
-                    </button>
-                  </li>
-                  <li>
-                    <button type="button" onClick={() => onStaffLogin('ADMIN')} className={linkClass}>
-                      Admin login
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            )}
-          </div>
+            </nav>
+          )}
         </div>
       </div>
 
       <div className="border-t border-white/10">
         {/* Right padding keeps the text clear of the floating WhatsApp button. */}
-        <div className={cx(container, 'flex flex-col gap-1 py-5 pb-24 text-[13px] text-white/60 sm:flex-row sm:items-center sm:justify-between sm:pb-5 sm:pr-24 lg:pr-24')}>
+        <div className={cx(container, 'flex flex-col gap-1 py-4 pb-20 text-[13px] text-white/60 sm:flex-row sm:items-center sm:justify-between sm:pb-4 sm:pr-24 lg:pr-24')}>
           <p>
             © {year} {SHOP.name}, {SHOP.city}
           </p>
