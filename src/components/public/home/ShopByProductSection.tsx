@@ -106,6 +106,17 @@ const Tile: React.FC<{ category: ProductCategory; card?: boolean }> = ({ categor
 
 /** Time each position stays before the row slides on (when sliding on its own). */
 const SLIDE_MS = 4500;
+/** After the visitor moves the row (arrows, swipe), it waits this long before sliding on again. */
+const RESUME_MS = 8000;
+
+/** True when focus came from the keyboard (not a click or tap on an arrow). */
+function keyboardFocus(el: EventTarget): boolean {
+  try {
+    return el instanceof Element && el.matches(':focus-visible');
+  } catch {
+    return false;
+  }
+}
 
 /** Previous / next on the left and right of the row, over the middle of the photos. */
 const sideArrowClass =
@@ -113,9 +124,9 @@ const sideArrowClass =
 
 /**
  * A sliding row of tiles: three across on laptops, two on tablets, one (with the next peeking in)
- * on phones. Arrows and swipe move it; it also slides on its own, stopping while the pointer or
- * keyboard focus is on it, when it's off screen, and for good once someone moves it themselves.
- * Never slides on its own with "reduce motion".
+ * on phones. Arrows and swipe move it; it also slides on its own, waiting while the mouse moves
+ * over it or keyboard focus is in it, while it's off screen, and for a few seconds after someone
+ * moves it themselves. Never slides on its own with "reduce motion".
  */
 const TileSlider: React.FC<{ id: string; title: string; intro?: string; categories: ProductCategory[] }> = ({ id, title, intro, categories }) => {
   const uid = useId();
@@ -123,7 +134,10 @@ const TileSlider: React.FC<{ id: string; title: string; intro?: string; categori
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
   const [overflowing, setOverflowing] = useState(false);
-  const [paused, setPaused] = useState(false); // the visitor moved it themselves
+  // When the visitor last moved it themselves: sliding on waits RESUME_MS from then.
+  const resumeAt = useRef(0);
+  const [nudged, setNudged] = useState(0);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
   const [hovering, setHovering] = useState(false);
   const [focusInside, setFocusInside] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -199,12 +213,24 @@ const TileSlider: React.FC<{ id: string; title: string; intro?: string; categori
     [reduced],
   );
 
-  const sliding = overflowing && !reduced && !paused && !hovering && !focusInside && visible && pageVisible;
+  const visitorMoved = useCallback(() => {
+    resumeAt.current = Date.now() + RESUME_MS;
+    setNudged((n) => n + 1);
+  }, []);
+
+  const sliding = overflowing && !reduced && !hovering && !focusInside && visible && pageVisible;
   useEffect(() => {
     if (!sliding) return;
-    const t = window.setInterval(() => move(1, { wrap: true }), SLIDE_MS);
-    return () => window.clearInterval(t);
-  }, [sliding, move]);
+    let every: number | undefined;
+    const first = window.setTimeout(() => {
+      move(1, { wrap: true });
+      every = window.setInterval(() => move(1, { wrap: true }), SLIDE_MS);
+    }, Math.max(SLIDE_MS, resumeAt.current - Date.now()));
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(every);
+    };
+  }, [sliding, move, nudged]);
 
   const arrowStyle = arrowTop !== null ? { top: arrowTop } : undefined;
 
@@ -213,9 +239,10 @@ const TileSlider: React.FC<{ id: string; title: string; intro?: string; categori
       <SectionHeader id={`${id}-title`} title={title} intro={intro} />
       <div
         className="relative mt-6"
-        onMouseEnter={() => setHovering(true)}
-        onMouseLeave={() => setHovering(false)}
-        onFocusCapture={() => setFocusInside(true)}
+        // Only a mouse actually moving over it: not the row scrolling in under a resting pointer.
+        onPointerMove={(e) => e.pointerType === 'mouse' && (e.movementX || e.movementY) && setHovering(true)}
+        onPointerLeave={() => setHovering(false)}
+        onFocusCapture={(e) => setFocusInside(keyboardFocus(e.target))}
         onBlurCapture={(e) => {
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusInside(false);
         }}
@@ -224,9 +251,22 @@ const TileSlider: React.FC<{ id: string; title: string; intro?: string; categori
           id={`${uid}-track`}
           ref={trackRef}
           onScroll={measure}
-          // A swipe or drag means the visitor is in charge now: stop sliding on its own.
-          onPointerDown={() => setPaused(true)}
-          onWheel={(e) => Math.abs(e.deltaX) > Math.abs(e.deltaY) && setPaused(true)}
+          // A sideways swipe or scroll is the visitor moving it; scrolling the page up or down isn't.
+          onTouchStart={(e) => {
+            const t = e.touches[0];
+            touchStart.current = t ? { x: t.clientX, y: t.clientY } : null;
+          }}
+          onTouchMove={(e) => {
+            const s = touchStart.current;
+            const t = e.touches[0];
+            if (!s || !t) return;
+            const dx = Math.abs(t.clientX - s.x);
+            if (dx > 10 && dx > Math.abs(t.clientY - s.y)) {
+              touchStart.current = null;
+              visitorMoved();
+            }
+          }}
+          onWheel={(e) => Math.abs(e.deltaX) > Math.abs(e.deltaY) && visitorMoved()}
           // Phones: the row runs to the screen edges (the next card peeks in); wider: within the page column.
           className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto overscroll-x-contain px-4 py-1 sm:-mx-1 sm:scroll-px-1 sm:gap-5 sm:px-1 lg:gap-6"
         >
@@ -246,7 +286,7 @@ const TileSlider: React.FC<{ id: string; title: string; intro?: string; categori
             <button
               type="button"
               onClick={() => {
-                setPaused(true);
+                visitorMoved();
                 move(-1);
               }}
               disabled={atStart}
@@ -260,7 +300,7 @@ const TileSlider: React.FC<{ id: string; title: string; intro?: string; categori
             <button
               type="button"
               onClick={() => {
-                setPaused(true);
+                visitorMoved();
                 move(1);
               }}
               disabled={atEnd}

@@ -1,6 +1,6 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, createEvent, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ShopByProductSection, type ProductCategory } from './ShopByProductSection';
 
 const category = (overrides: Partial<ProductCategory>): ProductCategory => ({
@@ -64,5 +64,103 @@ describe('ShopByProductSection', () => {
 
     await userEvent.setup().click(within(row).getByRole('button', { name: /Academies/ }));
     expect(openAcademies).toHaveBeenCalledTimes(1);
+  });
+
+  describe('slider sliding on its own', () => {
+    const scrollBy = vi.fn();
+    beforeEach(() => {
+      vi.useFakeTimers();
+      scrollBy.mockReset();
+      // jsdom has no layout: make the row wider than its box so it can slide.
+      vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (this: HTMLElement) {
+        return this.tagName === 'UL' ? 1200 : 0;
+      });
+      vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
+        return this.tagName === 'UL' ? 400 : 0;
+      });
+      Object.defineProperty(HTMLElement.prototype, 'scrollBy', { configurable: true, value: scrollBy });
+      // The row is on screen.
+      vi.stubGlobal(
+        'IntersectionObserver',
+        class {
+          constructor(private cb: (entries: { isIntersecting: boolean }[]) => void) {}
+          observe() {
+            this.cb([{ isIntersecting: true }]);
+          }
+          disconnect() {}
+        },
+      );
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+      delete (HTMLElement.prototype as { scrollBy?: unknown }).scrollBy;
+    });
+
+    const renderSlider = () => {
+      render(
+        <ShopByProductSection
+          id="sections"
+          title="What you'll find"
+          layout="slider"
+          categories={['badminton', 'tshirts', 'academies', 'events'].map((key) => category({ key, name: key }))}
+        />,
+      );
+      return screen.getByRole('list').parentElement as HTMLElement;
+    };
+    const wait = (ms: number) => act(() => vi.advanceTimersByTime(ms));
+    // jsdom has no PointerEvent: give the event the mouse fields the slider reads.
+    const mouseMove = (el: Element, movementX: number) => {
+      const e = createEvent.pointerMove(el);
+      Object.defineProperties(e, { pointerType: { value: 'mouse' }, movementX: { value: movementX }, movementY: { value: 0 } });
+      fireEvent(el, e);
+    };
+
+    it('keeps sliding with the mouse resting on it, and waits while the mouse moves over it', () => {
+      const area = renderSlider();
+      wait(4500);
+      expect(scrollBy).toHaveBeenCalledTimes(1);
+      // The row scrolling in under a resting mouse is not the visitor pointing at it.
+      fireEvent.mouseEnter(area);
+      mouseMove(area, 0);
+      wait(4500);
+      expect(scrollBy).toHaveBeenCalledTimes(2);
+
+      mouseMove(area, 6);
+      wait(20000);
+      expect(scrollBy).toHaveBeenCalledTimes(2);
+      fireEvent.pointerLeave(area);
+      wait(4500);
+      expect(scrollBy).toHaveBeenCalledTimes(3);
+    });
+
+    it('slides on again a few seconds after the visitor uses the arrows', () => {
+      const area = renderSlider();
+      fireEvent.click(within(area).getByRole('button', { name: 'Next' }));
+      expect(scrollBy).toHaveBeenCalledTimes(1);
+      wait(7900);
+      expect(scrollBy).toHaveBeenCalledTimes(1);
+      wait(100);
+      expect(scrollBy).toHaveBeenCalledTimes(2);
+      wait(4500);
+      expect(scrollBy).toHaveBeenCalledTimes(3);
+    });
+
+    it('on phones a sideways swipe holds it for a few seconds; scrolling the page past it does not', () => {
+      const area = renderSlider();
+      const row = within(area).getByRole('list');
+      fireEvent.touchStart(row, { touches: [{ clientX: 200, clientY: 300 }] });
+      fireEvent.touchMove(row, { touches: [{ clientX: 195, clientY: 150 }] });
+      wait(4500);
+      expect(scrollBy).toHaveBeenCalledTimes(1);
+
+      fireEvent.touchStart(row, { touches: [{ clientX: 300, clientY: 300 }] });
+      fireEvent.touchMove(row, { touches: [{ clientX: 150, clientY: 310 }] });
+      wait(4500);
+      expect(scrollBy).toHaveBeenCalledTimes(1);
+      wait(3500);
+      expect(scrollBy).toHaveBeenCalledTimes(2);
+    });
   });
 });
