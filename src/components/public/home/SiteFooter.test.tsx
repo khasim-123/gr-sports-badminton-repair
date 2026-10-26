@@ -29,14 +29,18 @@ describe('SiteFooter', () => {
 
     for (const line of HIGHLIGHTS) expect(screen.getByText(line)).toBeInTheDocument();
     const socials = screen.getByRole('list', { name: 'Social media' });
-    expect(within(socials).getAllByRole('link')).toHaveLength(1); // only https links are shown
+    expect(within(socials).getAllByRole('link')).toHaveLength(1); // only https links open a page
     expect(within(socials).getByRole('link', { name: 'GR Sports on Instagram' })).toHaveAttribute('href', 'https://instagram.com/grsports');
+    // The others still show, as plain icons.
+    expect(within(socials).getAllByRole('img').map((i) => i.getAttribute('aria-label'))).toEqual(['Facebook', 'X', 'YouTube']);
   });
 
-  it('shows no highlights or social icons when none are set', () => {
+  it('always shows the four social icons, even before any link is added', () => {
     primeShopSettings(DEFAULT_SHOP_SETTINGS);
     renderFooter();
-    expect(screen.queryByRole('list', { name: 'Social media' })).not.toBeInTheDocument();
+    const socials = screen.getByRole('list', { name: 'Social media' });
+    expect(within(socials).getAllByRole('listitem')).toHaveLength(4);
+    expect(within(socials).queryByRole('link')).not.toBeInTheDocument();
     expect(screen.queryByText(/SLA/)).not.toBeInTheDocument();
   });
 

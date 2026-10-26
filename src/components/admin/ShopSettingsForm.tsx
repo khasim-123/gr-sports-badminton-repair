@@ -302,7 +302,7 @@ export const ShopSettingsForm: React.FC<{ onSaved?: (s: ShopSettings) => void }>
         <legend className="sr-only">Social media</legend>
         <div>
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Social media</p>
-          <p className="text-xs text-slate-600 mt-1">Shown as icons in the website footer. Leave a link empty to hide that icon.</p>
+          <p className="text-xs text-slate-600 mt-1">The four icons always show in the website footer. Add a link to make that icon open your page.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {SOCIALS.map(({ key, label, placeholder }) => (

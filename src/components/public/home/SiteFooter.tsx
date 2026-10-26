@@ -58,6 +58,8 @@ const COLUMNS: { heading: string; links: FooterLink[] }[] = [
   },
 ];
 
+const socialClass = 'inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/15';
+
 const linkClass =
   'inline-flex min-h-[40px] items-center text-left text-white/75 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white rounded';
 
@@ -115,24 +117,29 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({ pages, onOpenPage, onTra
               Badminton store, racket stringing and repairs in {SHOP.city}.
             </p>
           </div>
-          {SHOP.socials.length > 0 && (
-            <ul className="flex items-center gap-2" aria-label="Social media">
-              {SHOP.socials.map((s) => (
-                <li key={s.key}>
+          {/* Always all four; an icon becomes a link once its page is added in Shop settings. */}
+          <ul className="flex items-center gap-2" aria-label="Social media">
+            {SHOP.socials.map((s) => (
+              <li key={s.key}>
+                {s.url ? (
                   <a
                     href={s.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`${SHOP.name} on ${s.label}`}
                     title={s.label}
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/15 transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                    className={cx(socialClass, 'transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white')}
                   >
                     <SocialIcon name={s.key} />
                   </a>
-                </li>
-              ))}
-            </ul>
-          )}
+                ) : (
+                  <span role="img" aria-label={s.label} title={s.label} className={socialClass}>
+                    <SocialIcon name={s.key} />
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
 
         <div className="grid gap-8 pt-8 sm:grid-cols-2 lg:grid-cols-12">
