@@ -30,6 +30,7 @@ from app.routers.events import public_events
 from app.security import CurrentUser, require_admin
 from app.services.content_service import (
     business_today,
+    clean_mrp,
     compute_days,
     get_availability_settings,
     new_id,
@@ -274,6 +275,7 @@ def list_strings(db: Session = Depends(get_db), _: CurrentUser = Depends(require
 @router.post("/admin/strings", response_model=StringProductSchema, status_code=status.HTTP_201_CREATED)
 def create_string(payload: StringProductCreate, db: Session = Depends(get_db), admin: CurrentUser = Depends(require_admin)):
     data = payload.model_dump()
+    data["mrp"] = clean_mrp(data.get("mrp"), data.get("price"))
     if data.get("sortOrder") is None:
         data["sortOrder"] = db.query(StringProductModel).count()
     product = StringProductModel(id=new_id("STR"), createdAt=now_iso(), **data)
@@ -292,6 +294,9 @@ def update_string(
 ):
     product = _get_product(db, product_id)
     data = payload.model_dump(exclude_unset=True)
+    if "price" in data or "mrp" in data:
+        price = data["price"] if "price" in data else product.price
+        data["mrp"] = clean_mrp(data["mrp"] if "mrp" in data else product.mrp, price)
     for key, value in data.items():
         if key in ("name", "brand") and value is None:
             continue
@@ -402,6 +407,7 @@ def list_rackets(db: Session = Depends(get_db), _: CurrentUser = Depends(require
 def create_racket(payload: RacketCreate, db: Session = Depends(get_db), admin: CurrentUser = Depends(require_admin)):
     data = payload.model_dump()
     data["images"] = _clean_images(data["images"])
+    data["mrp"] = clean_mrp(data.get("mrp"), data.get("price"))
     if data.get("sortOrder") is None:
         data["sortOrder"] = db.query(RacketModel).count()
     racket = RacketModel(id=new_id("RKT"), createdAt=now_iso(), **data)
@@ -423,6 +429,9 @@ def update_racket(
     data = payload.model_dump(exclude_unset=True)
     if "images" in data:
         data["images"] = _clean_images(data["images"] or [])
+    if "price" in data or "mrp" in data:
+        price = data["price"] if "price" in data else racket.price
+        data["mrp"] = clean_mrp(data["mrp"] if "mrp" in data else racket.mrp, price)
     for key, value in data.items():
         if key in ("brand", "name", "condition", "inStock", "isFeatured", "isActive", "sortOrder") and value is None:
             continue

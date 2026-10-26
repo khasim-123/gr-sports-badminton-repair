@@ -1,5 +1,6 @@
 """Shared helpers for admin-managed website content."""
 import io
+import math
 import re
 import uuid
 from datetime import date, datetime, timedelta, timezone
@@ -94,6 +95,26 @@ def clean_date(value: Optional[str], label: str, required: bool = False) -> Opti
     except ValueError:
         raise HTTPException(status_code=422, detail=f"{label} is not a valid date")
     return v
+
+
+# ---------- Prices ----------
+
+MRP_MAX = 1_000_000
+
+
+def clean_mrp(mrp: Optional[float], price: Optional[float]) -> Optional[float]:
+    """The original price (MRP) shown struck through next to the shop's price: empty / 0 = none.
+    It needs a price, and must be more than it (otherwise there's no saving to show)."""
+    if mrp is None or mrp == 0:
+        return None
+    mrp = float(mrp)
+    if not math.isfinite(mrp) or mrp < 0 or mrp > MRP_MAX:
+        raise HTTPException(status_code=422, detail="Original price must be between ₹1 and ₹10,00,000")
+    if price is None or price <= 0:
+        raise HTTPException(status_code=422, detail="Add your price before the original price")
+    if mrp <= price:
+        raise HTTPException(status_code=422, detail="The original price must be more than your price")
+    return round(mrp, 2)
 
 
 # ---------- Media ----------

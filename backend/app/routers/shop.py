@@ -57,7 +57,7 @@ from app.schemas import (
     ShopOrderSchema,
 )
 from app.security import CurrentUser, get_current_user, rate_limit, rate_limiter, require_admin
-from app.services.content_service import BUSINESS_TZ, new_id, now_iso, validate_link
+from app.services.content_service import BUSINESS_TZ, clean_mrp, new_id, now_iso, validate_link
 from app.services.notification_service import create_notification, log_audit
 from app.services.pricing_service import calculate_delivery_charge, road_distance_km, valid_coordinates
 from app.services.shop_settings import display_phone as shop_display_phone, get_shop_settings
@@ -187,6 +187,7 @@ def serialize_apparel(product: ApparelProductModel) -> ApparelProductSchema:
         fabric=product.fabric,
         fit=product.fit,
         price=product.price,
+        mrp=product.mrp,
         images=list(product.images or []),
         customisable=bool(product.customisable),
         isFeatured=bool(product.isFeatured),
@@ -241,6 +242,7 @@ def _clean_product(data: Dict[str, Any]) -> Dict[str, Any]:
     if price > PRICE_MAX:
         raise _bad("Price must be at most ₹1,00,000")
     d["price"] = round(price, 2)
+    d["mrp"] = clean_mrp(d.get("mrp"), d["price"])
     d["images"] = _clean_images(d.get("images"))
     for flag in ("customisable", "isFeatured", "isActive"):
         d[flag] = bool(d.get(flag))
@@ -838,7 +840,7 @@ def record_order_payment(order_id: str, payload: OrderPaymentInput, db: Session 
 # ---------------- Admin: apparel catalogue ----------------
 
 _PRODUCT_REQUIRED = ("name", "category", "price", "images", "customisable", "isFeatured", "isActive", "sortOrder")
-_PRODUCT_FIELDS = ("name", "category", "description", "fabric", "fit", "price", "images",
+_PRODUCT_FIELDS = ("name", "category", "description", "fabric", "fit", "price", "mrp", "images",
                    "customisable", "isFeatured", "isActive", "sortOrder")
 _VARIANT_FIELDS = ("size", "colour", "colourHex", "stock", "sku", "sortOrder")
 

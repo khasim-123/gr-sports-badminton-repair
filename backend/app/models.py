@@ -218,6 +218,7 @@ class StringProductModel(Base):
     name = Column(String, nullable=False)
     gauge = Column(String, nullable=True)
     price = Column(Float, nullable=True)  # None = price on request
+    mrp = Column(Float, nullable=True)  # original price (MRP), shown struck through next to price; None = not shown
     description = Column(Text, nullable=True)
     isFeatured = Column(Boolean, default=False)
     isActive = Column(Boolean, default=True)
@@ -253,6 +254,7 @@ class RacketModel(Base):
     brand = Column(String, nullable=False)
     name = Column(String, nullable=False)
     price = Column(Float, nullable=True)  # None = price on request
+    mrp = Column(Float, nullable=True)  # original price (MRP), shown struck through next to price; None = not shown
     tag = Column(String, nullable=True)
     weight = Column(String, nullable=True)
     balance = Column(String, nullable=True)
@@ -437,6 +439,7 @@ class ApparelProductModel(Base):
     fabric = Column(String, nullable=True)
     fit = Column(String, nullable=True)
     price = Column(Float, nullable=False)  # rupees per piece
+    mrp = Column(Float, nullable=True)  # original price (MRP), shown struck through next to price; None = not shown
     images = Column(JSON, default=list)  # photo URLs, first = main (max 6)
     customisable = Column(Boolean, default=False)  # name / number printing on request
     isFeatured = Column(Boolean, default=False)

@@ -22,6 +22,7 @@ import {
 import { useApp } from '../../../context/AppContext';
 import { contentService } from '../../../services/contentService';
 import { StringProduct, StringProductInput, StringVariant, StringVariantInput } from '../../../types/content';
+import { PriceTag } from '../../public/home/PriceTag';
 import { Button } from '../../common/Button';
 import { EmptyState } from '../../common/EmptyStates';
 import { MediaUpload } from './MediaUpload';
@@ -51,6 +52,8 @@ import {
   inputClass,
   inputErrorClass,
   nullIfEmpty,
+  originalPriceHint,
+  parseOriginalPrice,
   switchGroupClass,
 } from './shared';
 
@@ -68,9 +71,6 @@ const withCounts = (p: StringProduct): StringProduct => ({
 
 const hasPrice = (p: StringProduct) => p.price !== null && p.price !== undefined;
 
-const formatPrice = (price: number) =>
-  `₹${price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
-
 const productLabel = (p: StringProduct) => [p.brand, p.name].filter(Boolean).join(' ');
 
 // =====================================================================
@@ -83,6 +83,7 @@ interface ProductFormState {
   name: string;
   gauge: string;
   price: string;
+  mrp: string;
   description: string;
   isFeatured: boolean;
   isActive: boolean;
@@ -94,6 +95,7 @@ const productToForm = (p: StringProduct | null, defaultBrand: string): ProductFo
   name: p?.name ?? '',
   gauge: p?.gauge ?? '',
   price: p && hasPrice(p) ? String(p.price) : '',
+  mrp: p?.mrp ? String(p.mrp) : '',
   description: p?.description ?? '',
   isFeatured: p?.isFeatured ?? false,
   isActive: p?.isActive ?? true,
@@ -127,6 +129,8 @@ const ProductFormModal: React.FC<{
       price = Number(priceText);
       if (!Number.isFinite(price) || price < 0) errs.price = 'Enter an amount in rupees, or leave it empty.';
     }
+    const original = parseOriginalPrice(form.mrp, errs.price ? null : price);
+    if (original.error) errs.mrp = original.error;
     setErrors(errs);
     if (Object.keys(errs).length) {
       focusFirstInvalid(formId);
@@ -139,6 +143,7 @@ const ProductFormModal: React.FC<{
       name: form.name.trim(),
       gauge: nullIfEmpty(form.gauge),
       price,
+      mrp: original.mrp,
       description: nullIfEmpty(form.description),
       isFeatured: form.isFeatured,
       isActive: form.isActive,
@@ -209,12 +214,12 @@ const ProductFormModal: React.FC<{
               placeholder="e.g. Pro 66XB"
             />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <Field label="Gauge" htmlFor="sp-gauge" optional hint="e.g. 0.66 mm">
               <input id="sp-gauge" value={form.gauge} onChange={(e) => set('gauge', e.target.value)} className={inputClass} />
             </Field>
             <Field
-              label="Price (₹)"
+              label="Your price (₹)"
               htmlFor="sp-price"
               error={errors.price}
               hint={form.price.trim() ? 'Stringing price, string included' : 'Empty = shows “Price on request”'}
@@ -229,6 +234,25 @@ const ProductFormModal: React.FC<{
                 onChange={(e) => set('price', e.target.value)}
                 placeholder="Price on request"
                 className={`${inputClass} ${errors.price ? inputErrorClass : ''}`}
+              />
+            </Field>
+            <Field
+              label="Original price (₹)"
+              htmlFor={"sp-mrp"}
+              optional
+              error={errors.mrp}
+              hint={originalPriceHint(form.mrp, form.price)}
+            >
+              <input
+                id={"sp-mrp"}
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step="any"
+                value={form.mrp}
+                onChange={(e) => set('mrp', e.target.value)}
+                placeholder="MRP"
+                className={`${inputClass} ${errors.mrp ? inputErrorClass : ''}`}
               />
             </Field>
           </div>
@@ -816,7 +840,7 @@ export const StringsManager: React.FC = () => {
                         </p>
                         <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[13px]">
                           {hasPrice(p) ? (
-                            <span className="font-semibold text-ink tabular-nums">{formatPrice(p.price as number)}</span>
+                            <PriceTag price={p.price as number} mrp={p.mrp} size="compact" />
                           ) : (
                             <span className="font-medium text-amber-800">No price yet</span>
                           )}

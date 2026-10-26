@@ -64,6 +64,7 @@ export interface StringProduct {
   name: string;
   gauge?: string | null;
   price?: number | null; // null = "Price on request"
+  mrp?: number | null; // original price (MRP), shown struck through next to price; null = not shown
   description?: string | null;
   isFeatured: boolean;
   isActive: boolean;
@@ -82,6 +83,7 @@ export interface Racket {
   brand: string; // e.g. "Yonex"
   name: string; // model, e.g. "Astrox 88D Pro"
   price?: number | null; // null = "Price on request"
+  mrp?: number | null; // original price (MRP), shown struck through next to price; null = not shown
   tag?: string | null; // short badge, e.g. "Bestseller"
   weight?: string | null; // e.g. "3U / 4U"
   balance?: string | null; // e.g. "Head Heavy"

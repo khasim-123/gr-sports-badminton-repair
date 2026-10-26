@@ -8,6 +8,7 @@ import { EnquiryForm } from '../public/enquiry/EnquiryForm';
 import { beyondFreeText, formatKm } from '../public/home/format';
 import { HeroCarousel, type HeroSlide } from '../public/home/HeroCarousel';
 import { Photo } from '../public/home/Photo';
+import { PriceTag } from '../public/home/PriceTag';
 import { scrollToSection, useShop } from '../public/home/shop';
 import { WhatsAppIcon, btn, container, cx } from '../public/home/ui';
 import { usePageIntent, useRevealIntent } from '../public/layout/PageIntro';
@@ -17,7 +18,6 @@ import {
   CATEGORY_LABELS,
   CATEGORY_ORDER,
   activeApparel,
-  formatInr,
   photoSrcSet,
   productColours,
   productInStock,
@@ -390,7 +390,9 @@ const ProductCard: React.FC<{ product: ApparelProduct; onOpen: () => void }> = (
         )}
       </div>
       <span className="mt-3 block text-[15px] font-semibold leading-snug text-ink group-hover:underline group-hover:underline-offset-4">{p.name}</span>
-      <span className="mt-0.5 block text-[15px] tabular-nums text-ink">{formatInr(p.price)}</span>
+      <span className="mt-0.5 block">
+        <PriceTag price={p.price} mrp={p.mrp} />
+      </span>
       <span className="mt-2 flex items-center gap-2 text-[13px] text-ink-muted">
         {colours.length > 0 && (
           <span className="flex items-center gap-1" aria-label={`Colours: ${colours.map((c) => c.colour).join(', ')}`}>

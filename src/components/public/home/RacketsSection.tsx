@@ -1,7 +1,8 @@
 import React, { useId, useMemo, useState } from 'react';
 import type { Racket } from '../../../types/content';
 import { useCart } from '../../../context/CartContext';
-import { formatInr, hasPrice, productLabel, safeImageUrl } from './format';
+import { hasPrice, productLabel, safeImageUrl } from './format';
+import { PriceTag } from './PriceTag';
 import { SECTION_IDS, useShop } from './shop';
 import { SectionHeader, WhatsAppIcon, btn, container, cx } from './ui';
 
@@ -203,9 +204,11 @@ const RacketCard: React.FC<{ racket: Racket }> = ({ racket: r }) => {
 
         <div className="mt-auto pt-5">
           <p className="flex items-baseline justify-between gap-3">
-            <span className={cx(priced ? 'font-display text-[24px] font-semibold text-ink' : 'text-[15px] text-ink-muted')}>
-              {priced ? formatInr(r.price as number) : 'Ask for price'}
-            </span>
+            {priced ? (
+              <PriceTag price={r.price as number} mrp={r.mrp} size="display" />
+            ) : (
+              <span className="text-[15px] text-ink-muted">Ask for price</span>
+            )}
             {!inStock && <span className="text-[14px] font-medium text-flameRed">Out of stock</span>}
           </p>
           {priced && inStock ? (
@@ -232,7 +235,7 @@ const RacketCard: React.FC<{ racket: Racket }> = ({ racket: r }) => {
                 href={SHOP.whatsAppLink(message)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={cx(btn.base, btn.secondary, 'w-11 shrink-0 px-0')}
+                className={cx(btn.base, btn.secondary, 'w-11 shrink-0 !px-0')}
                 aria-label={`Ask about the ${label} on WhatsApp`}
                 title="Ask on WhatsApp"
               >

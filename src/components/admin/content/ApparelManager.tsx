@@ -23,6 +23,7 @@ import {
 import { useApp } from '../../../context/AppContext';
 import { shopService } from '../../../services/shopService';
 import type { ApparelCategory, ApparelProduct, ApparelProductInput, ApparelVariant } from '../../../types/shop';
+import { PriceTag } from '../../public/home/PriceTag';
 import { Button } from '../../common/Button';
 import { EmptyState } from '../../common/EmptyStates';
 import { MediaUpload } from './MediaUpload';
@@ -56,6 +57,8 @@ import {
   labelClass,
   hintClass,
   nullIfEmpty,
+  originalPriceHint,
+  parseOriginalPrice,
   switchGroupClass,
 } from './shared';
 
@@ -284,6 +287,7 @@ interface FormState {
   name: string;
   category: ApparelCategory;
   price: string;
+  mrp: string;
   fabric: string;
   fit: string;
   description: string;
@@ -297,6 +301,7 @@ const toForm = (p: ApparelProduct | null): FormState => ({
   name: p?.name ?? '',
   category: p?.category ?? 't-shirt',
   price: p && Number.isFinite(p.price) ? String(p.price) : '',
+  mrp: p?.mrp ? String(p.mrp) : '',
   fabric: p?.fabric ?? '',
   fit: p?.fit ?? '',
   description: p?.description ?? '',
@@ -315,7 +320,7 @@ const ApparelFormModal: React.FC<{
   const { addToast } = useApp();
   const uid = useId();
   const [form, setForm] = useState<FormState>(() => toForm(product));
-  const [errors, setErrors] = useState<Partial<Record<'name' | 'price' | 'images', string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<'name' | 'price' | 'mrp' | 'images', string>>>({});
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -334,6 +339,8 @@ const ApparelFormModal: React.FC<{
     const price = Number(form.price.trim());
     if (!form.price.trim()) errs.price = 'Add the price. Items sold online need one.';
     else if (!Number.isFinite(price) || price <= 0) errs.price = 'Enter a price above ₹0.';
+    const original = parseOriginalPrice(form.mrp, errs.price ? null : price);
+    if (original.error) errs.mrp = original.error;
     if (form.images.length > MAX_APPAREL_PHOTOS) errs.images = `An item can have up to ${MAX_APPAREL_PHOTOS} photos.`;
     else if (form.images.some((u) => !isAllowedPhotoUrl(u))) errs.images = 'One of the photos has a link the website can’t use. Remove it and upload the photo instead.';
     setErrors(errs);
@@ -346,6 +353,7 @@ const ApparelFormModal: React.FC<{
       name: form.name.trim(),
       category: form.category,
       price: Math.round(price * 100) / 100,
+      mrp: original.mrp,
       fabric: nullIfEmpty(form.fabric),
       fit: nullIfEmpty(form.fit),
       description: nullIfEmpty(form.description),
@@ -429,7 +437,7 @@ const ApparelFormModal: React.FC<{
                   ))}
                 </select>
               </Field>
-              <Field label="Price per piece (₹)" htmlFor={`${uid}-price`} required error={errors.price}>
+              <Field label="Your price per piece (₹)" htmlFor={`${uid}-price`} required error={errors.price}>
                 <input
                   id={`${uid}-price`}
                   type="number"
@@ -440,6 +448,25 @@ const ApparelFormModal: React.FC<{
                   onChange={(e) => set('price', e.target.value)}
                   placeholder="e.g. 499"
                   className={`${inputClass} ${errors.price ? inputErrorClass : ''}`}
+                />
+              </Field>
+              <Field
+                label="Original price (₹)"
+                htmlFor={`${uid}-mrp`}
+                optional
+                error={errors.mrp}
+                hint={originalPriceHint(form.mrp, form.price)}
+              >
+                <input
+                  id={`${uid}-mrp`}
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="any"
+                  value={form.mrp}
+                  onChange={(e) => set('mrp', e.target.value)}
+                  placeholder="MRP"
+                  className={`${inputClass} ${errors.mrp ? inputErrorClass : ''}`}
                 />
               </Field>
               <Field label="Fabric" htmlFor={`${uid}-fabric`} optional hint='e.g. "100% polyester dry-fit, 160 GSM"'>
@@ -1331,7 +1358,7 @@ const ProductRow: React.FC<{
             {p.customisable && <span className={`${chipClass} bg-white border-line text-ink-soft`}>Name / number printing</span>}
           </div>
           <p className="mt-0.5 text-[13px] text-ink-muted break-words">
-            <span className="font-semibold text-ink tabular-nums">₹{Number(p.price || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+            <PriceTag price={Number(p.price || 0)} mrp={p.mrp} size="compact" />
             {[p.fabric, p.fit].filter((s) => s && s.trim()).map((s) => ` · ${s}`)}
           </p>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[13px]">

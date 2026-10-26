@@ -485,6 +485,7 @@ class StringProductBase(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     gauge: Optional[str] = Field(default=None, max_length=40)
     price: Optional[float] = Field(default=None, ge=0)
+    mrp: Optional[float] = Field(default=None, ge=0)  # original price, shown struck through
     description: Optional[str] = Field(default=None, max_length=1000)
     isFeatured: bool = False
     isActive: bool = True
@@ -500,6 +501,7 @@ class StringProductUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=120)
     gauge: Optional[str] = Field(default=None, max_length=40)
     price: Optional[float] = Field(default=None, ge=0)
+    mrp: Optional[float] = Field(default=None, ge=0)  # original price, shown struck through
     description: Optional[str] = Field(default=None, max_length=1000)
     isFeatured: Optional[bool] = None
     isActive: Optional[bool] = None
@@ -522,6 +524,7 @@ class RacketBase(BaseModel):
     brand: str = Field(min_length=1, max_length=40)
     name: str = Field(min_length=1, max_length=120)
     price: Optional[float] = Field(default=None, ge=0)
+    mrp: Optional[float] = Field(default=None, ge=0)  # original price, shown struck through
     tag: Optional[str] = Field(default=None, max_length=30)
     weight: Optional[str] = Field(default=None, max_length=40)
     balance: Optional[str] = Field(default=None, max_length=40)
@@ -543,6 +546,7 @@ class RacketUpdate(BaseModel):
     brand: Optional[str] = Field(default=None, min_length=1, max_length=40)
     name: Optional[str] = Field(default=None, min_length=1, max_length=120)
     price: Optional[float] = Field(default=None, ge=0)
+    mrp: Optional[float] = Field(default=None, ge=0)  # original price, shown struck through
     tag: Optional[str] = Field(default=None, max_length=30)
     weight: Optional[str] = Field(default=None, max_length=40)
     balance: Optional[str] = Field(default=None, max_length=40)
@@ -999,6 +1003,7 @@ class ApparelProductCreate(BaseModel):
     fabric: Optional[str] = Field(default=None, max_length=500)
     fit: Optional[str] = Field(default=None, max_length=500)
     price: float
+    mrp: Optional[float] = None  # original price, shown struck through
     images: List[str] = Field(default_factory=list, max_length=50)
     customisable: bool = False
     isFeatured: bool = False
@@ -1014,6 +1019,7 @@ class ApparelProductUpdate(BaseModel):
     fabric: Optional[str] = Field(default=None, max_length=500)
     fit: Optional[str] = Field(default=None, max_length=500)
     price: Optional[float] = None
+    mrp: Optional[float] = None
     images: Optional[List[str]] = Field(default=None, max_length=50)
     customisable: Optional[bool] = None
     isFeatured: Optional[bool] = None
@@ -1029,6 +1035,7 @@ class ApparelProductSchema(BaseModel):
     fabric: Optional[str] = None
     fit: Optional[str] = None
     price: float
+    mrp: Optional[float] = None
     images: List[str] = []
     customisable: bool = False
     isFeatured: bool = False

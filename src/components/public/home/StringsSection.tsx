@@ -2,7 +2,8 @@ import React, { useId, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import type { StringProduct, StringVariant } from '../../../types/content';
 import { useCart } from '../../../context/CartContext';
-import { formatInr, hasPrice, inStockCount, productLabel, safeHex, safeImageUrl, sortedVariants } from './format';
+import { hasPrice, inStockCount, productLabel, safeHex, safeImageUrl, sortedVariants } from './format';
+import { PriceTag } from './PriceTag';
 import { SECTION_IDS, useShop } from './shop';
 import { SectionHeader, btn, container, cx, fieldControl } from './ui';
 
@@ -268,7 +269,11 @@ const StringCard: React.FC<{ product: StringProduct; onUse: (product: StringProd
       )}
 
       <div className="mt-auto pt-4">
-        {hasPrice(p.price) && <p className="mb-2 text-[15px] font-semibold text-ink">{formatInr(p.price)}</p>}
+        {hasPrice(p.price) && (
+          <p className="mb-2">
+            <PriceTag price={p.price} mrp={p.mrp} />
+          </p>
+        )}
         {hasPrice(p.price) && selected?.inStock && (
           <button
             type="button"

@@ -13,6 +13,7 @@ import { PUBLIC_PAGES, type PageIntent, type PublicPageId } from '../../../utils
 import { CATEGORY_LABELS, activeApparel, productPhotos } from '../../shop/shopFormat';
 import { eventDateText, eventPhoto, visibleEvents } from '../home/events';
 import { activeStrings, formatInr, hasPrice, inStockCount, safeImageUrl } from '../home/format';
+import { discountPercent } from '../home/PriceTag';
 import { activeRackets } from '../home/RacketsSection';
 import { useHomeContent } from '../home/useHomeContent';
 
@@ -42,6 +43,12 @@ export function normalise(text: string | null | undefined): string {
     .replace(/[^a-z0-9₹]+/g, ' ')
     .trim();
 }
+
+/** "₹1,499 (25% off)" when an original price is set. */
+const priceText = (price: number, mrp?: number | null): string => {
+  const off = discountPercent(price, mrp);
+  return off ? `${formatInr(price)} (${off}% off)` : formatInr(price);
+};
 
 const item = (
   key: string,
@@ -139,7 +146,7 @@ export function useSearchIndex(active: boolean): SearchItem[] {
       const used = r.condition === 'used';
       out.push(
         item(`racket-${r.id}`, 'Rackets', `${r.brand} ${r.name}`.trim(), 'rackets', {
-          detail: [used ? 'Second-hand' : null, hasPrice(r.price) ? formatInr(r.price) : 'Ask for price', r.inStock === false ? 'Out of stock' : null]
+          detail: [used ? 'Second-hand' : null, hasPrice(r.price) ? priceText(r.price, r.mrp) : 'Ask for price', r.inStock === false ? 'Out of stock' : null]
             .filter(Boolean)
             .join(' · '),
           image: safeImageUrl(r.images?.[0]),
@@ -152,7 +159,7 @@ export function useSearchIndex(active: boolean): SearchItem[] {
       const colours = inStockCount(s);
       out.push(
         item(`string-${s.id}`, 'Strings', `${s.brand} ${s.name}`.trim(), 'strings', {
-          detail: [s.gauge, `${colours} colour${colours === 1 ? '' : 's'} in stock`, hasPrice(s.price) ? formatInr(s.price) : null].filter(Boolean).join(' · '),
+          detail: [s.gauge, `${colours} colour${colours === 1 ? '' : 's'} in stock`, hasPrice(s.price) ? priceText(s.price, s.mrp) : null].filter(Boolean).join(' · '),
           image: safeImageUrl(s.variants.find((v) => v.imageUrl)?.imageUrl),
           keywords: [s.code, 'string', s.variants.map((v) => v.colour).join(' ')].filter(Boolean).join(' '),
           intent: { brand: s.brand, item: s.id },
@@ -162,7 +169,7 @@ export function useSearchIndex(active: boolean): SearchItem[] {
     for (const p of apparel) {
       out.push(
         item(`apparel-${p.id}`, 'T-shirts', p.name, 'tshirts', {
-          detail: [CATEGORY_LABELS[p.category], formatInr(p.price)].filter(Boolean).join(' · '),
+          detail: [CATEGORY_LABELS[p.category], priceText(p.price, p.mrp)].filter(Boolean).join(' · '),
           image: productPhotos(p)[0] || null,
           keywords: [p.fabric, p.fit, p.customisable ? 'custom printed' : null, 'tshirt t shirt clothing'].filter(Boolean).join(' '),
           intent: { item: p.id },

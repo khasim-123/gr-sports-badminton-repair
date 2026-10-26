@@ -32,6 +32,7 @@ export interface ApparelProduct {
   fabric?: string | null; // "100% polyester dry-fit, 160 GSM"
   fit?: string | null; // "Regular fit"
   price: number; // ₹ per piece (required for apparel)
+  mrp?: number | null; // original price (MRP), shown struck through next to price; null = not shown
   images: string[]; // photo URLs; the first is the main photo (max 6)
   customisable: boolean; // name/number/team printing available on request
   isFeatured: boolean;

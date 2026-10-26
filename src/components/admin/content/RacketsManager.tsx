@@ -20,6 +20,7 @@ import {
 import { useApp } from '../../../context/AppContext';
 import { contentService } from '../../../services/contentService';
 import { Racket, RacketCondition, RacketInput } from '../../../types/content';
+import { PriceTag } from '../../public/home/PriceTag';
 import { Button } from '../../common/Button';
 import { EmptyState } from '../../common/EmptyStates';
 import { MediaUpload } from './MediaUpload';
@@ -52,6 +53,8 @@ import {
   inputErrorClass,
   labelClass,
   nullIfEmpty,
+  originalPriceHint,
+  parseOriginalPrice,
   switchGroupClass,
 } from './shared';
 
@@ -68,8 +71,6 @@ const sortRackets = (list: Racket[]) =>
   [...list].sort((a, b) => a.sortOrder - b.sortOrder || racketLabel(a).localeCompare(racketLabel(b)));
 
 const hasPrice = (r: Racket) => typeof r.price === 'number' && Number.isFinite(r.price);
-
-const formatPrice = (price: number) => `₹${price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
 const racketLabel = (r: Pick<Racket, 'brand' | 'name'>) => {
   const brand = (r.brand || '').trim();
@@ -271,6 +272,7 @@ interface RacketFormState {
   brand: string;
   name: string;
   price: string;
+  mrp: string;
   tag: string;
   weight: string;
   balanceChoice: string; // one of BALANCE_OPTIONS, '' or OTHER
@@ -292,6 +294,7 @@ const racketToForm = (r: Racket | null): RacketFormState => {
     brand: r?.brand ?? '',
     name: r?.name ?? '',
     price: r && hasPrice(r) ? String(r.price) : '',
+    mrp: r?.mrp ? String(r.mrp) : '',
     tag: r?.tag ?? '',
     weight: r?.weight ?? '',
     balanceChoice: !balance ? '' : known ? known : OTHER,
@@ -314,7 +317,7 @@ const RacketFormModal: React.FC<{
   const { addToast } = useApp();
   const uid = useId();
   const [form, setForm] = useState<RacketFormState>(() => racketToForm(racket));
-  const [errors, setErrors] = useState<Partial<Record<'brand' | 'name' | 'price' | 'images', string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<'brand' | 'name' | 'price' | 'mrp' | 'images', string>>>({});
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -344,6 +347,8 @@ const RacketFormModal: React.FC<{
       price = Number(priceText);
       if (!Number.isFinite(price) || price < 0) errs.price = 'Enter an amount in rupees, or leave it empty.';
     }
+    const original = parseOriginalPrice(form.mrp, errs.price ? null : price);
+    if (original.error) errs.mrp = original.error;
     if (form.images.length > MAX_RACKET_PHOTOS) errs.images = `A racket can have up to ${MAX_RACKET_PHOTOS} photos.`;
     else if (form.images.some((u) => !isAllowedPhotoUrl(u))) errs.images = 'One of the photos has a link the website can’t use. Remove it and upload the photo instead.';
     setErrors(errs);
@@ -358,6 +363,7 @@ const RacketFormModal: React.FC<{
       brand: form.brand.trim(),
       name: form.name.trim(),
       price,
+      mrp: original.mrp,
       tag: nullIfEmpty(form.tag),
       weight: nullIfEmpty(form.weight),
       balance: nullIfEmpty(balance),
@@ -487,9 +493,9 @@ const RacketFormModal: React.FC<{
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <Field
-              label="Price (₹)"
+              label="Your price (₹)"
               htmlFor={`${uid}-price`}
               error={errors.price}
               hint={form.price.trim() ? 'Shown on the website' : 'Empty = shows “Price on request”'}
@@ -504,6 +510,25 @@ const RacketFormModal: React.FC<{
                 onChange={(e) => set('price', e.target.value)}
                 placeholder="Price on request"
                 className={`${inputClass} ${errors.price ? inputErrorClass : ''}`}
+              />
+            </Field>
+            <Field
+              label="Original price (₹)"
+              htmlFor={`${uid}-mrp`}
+              optional
+              error={errors.mrp}
+              hint={originalPriceHint(form.mrp, form.price)}
+            >
+              <input
+                id={`${uid}-mrp`}
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step="any"
+                value={form.mrp}
+                onChange={(e) => set('mrp', e.target.value)}
+                placeholder="MRP"
+                className={`${inputClass} ${errors.mrp ? inputErrorClass : ''}`}
               />
             </Field>
             <Field label="Tag" htmlFor={`${uid}-tag`} optional hint="A short badge, e.g. Bestseller">
@@ -686,7 +711,7 @@ const RacketRow: React.FC<{
           {specs.length > 0 && <p className="mt-0.5 text-[13px] text-ink-muted break-words">{specs.join(' · ')}</p>}
           <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[13px]">
             {hasPrice(r) ? (
-              <span className="font-semibold text-ink tabular-nums">{formatPrice(r.price as number)}</span>
+              <PriceTag price={r.price as number} mrp={r.mrp} size="compact" />
             ) : (
               <span className="font-medium text-amber-800">No price yet</span>
             )}

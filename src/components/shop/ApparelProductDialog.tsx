@@ -4,6 +4,7 @@ import { CheckCircle2, X } from 'lucide-react';
 import { MAX_CART_QTY, useCart } from '../../context/CartContext';
 import type { ApparelProduct } from '../../types/shop';
 import { useModalBehavior } from '../public/home/Dialog';
+import { PriceTag } from '../public/home/PriceTag';
 import { useShop } from '../public/home/shop';
 import { WhatsAppIcon, btn, cx } from '../public/home/ui';
 import {
@@ -171,7 +172,9 @@ const ProductPanel: React.FC<{
           <h2 id={`${uid}-title`} className="mt-1 pr-12 font-display text-[30px] font-semibold leading-[1.05] text-balance">
             {p.name}
           </h2>
-          <p className="mt-2 font-display text-[28px] font-semibold tabular-nums">{formatInr(p.price)}</p>
+          <p className="mt-2">
+            <PriceTag price={p.price} mrp={p.mrp} size="large" />
+          </p>
           {p.description && <p className="mt-3 text-[15px] leading-relaxed text-ink-soft">{p.description}</p>}
 
           {facts.length > 0 && (

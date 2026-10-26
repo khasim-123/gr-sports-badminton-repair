@@ -648,6 +648,33 @@ export const ListSkeleton: React.FC<{ rows?: number; withImage?: boolean }> = ({
   </div>
 );
 
+// ---------- Original price (MRP) ----------
+
+/**
+ * The original price typed in a product form ('' = none). Same rules as the server: it needs a
+ * price and must be more than it (it is shown struck through next to the price, with the % off).
+ */
+export const parseOriginalPrice = (text: string, price: number | null): { mrp: number | null; error?: string } => {
+  const t = text.trim();
+  if (!t) return { mrp: null };
+  const mrp = Number(t);
+  if (!Number.isFinite(mrp) || mrp <= 0) return { mrp: null, error: 'Enter an amount in rupees, or leave it empty.' };
+  if (price === null || !(price > 0)) return { mrp: null, error: 'Add your price first: the original price shows next to it.' };
+  if (mrp <= price) return { mrp: null, error: 'Make it more than your price, or leave it empty.' };
+  return { mrp: Math.round(mrp * 100) / 100 };
+};
+
+/** Hint under the original price field: what customers will see. */
+export const originalPriceHint = (mrpText: string, priceText: string): string => {
+  const mrp = Number(mrpText.trim());
+  const price = Number(priceText.trim());
+  if (mrpText.trim() && priceText.trim() && mrp > price && price > 0) {
+    const off = Math.round(((mrp - price) / mrp) * 100);
+    return `Shown as ₹${mrp.toLocaleString('en-IN')} struck through${off >= 1 ? ` · ${off}% off` : ''}`;
+  }
+  return 'The MRP, shown struck through next to your price. Empty = not shown.';
+};
+
 // ---------- Pills (filter chips) ----------
 
 export interface PillOption<T extends string> {
