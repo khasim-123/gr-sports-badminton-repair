@@ -12,7 +12,7 @@ const SECTION_ALIASES: Record<string, string> = {
   home: '',
   rackets: 'rackets',
   strings: 'strings',
-  stringing: 'stringing',
+  stringing: 'book', // the stringing section was removed; the booking form starts on Stringing
   repair: 'repairs',
   repairs: 'repairs',
   book: 'book',

@@ -30,7 +30,7 @@ interface SiteHeaderProps {
 /** Menu groups: badminton services & gear, and courts & events. Items whose section isn't on the
  * page (e.g. no rackets listed) are left out. */
 const BADMINTON_ITEMS: { id: string; note: string }[] = [
-  { id: 'stringing', note: 'Restringing at the tension you choose' },
+  { id: 'book', note: 'Book a pickup for restringing' },
   { id: 'repairs', note: 'Frame, shaft, joint, handle and grip' },
   { id: 'strings', note: 'Strings and colours we stock' },
   { id: 'rackets', note: 'Rackets at the shop' },

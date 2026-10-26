@@ -71,7 +71,6 @@ export function currentShop(): ShopView {
 /** Section ids on the homepage (also the targets of src/utils/storeNavigation.ts). */
 export const SECTION_IDS = {
   book: 'book',
-  stringing: 'stringing',
   repairs: 'repairs',
   events: 'events',
   strings: 'strings',

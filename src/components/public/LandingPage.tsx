@@ -17,7 +17,7 @@ import { activeStrings, describePickupHours, formatKm, localIsoDate, safeImageUr
 import { HeroCarousel, type HeroAction, type HeroSlide } from './home/HeroCarousel';
 import { RacketsSection, activeRackets } from './home/RacketsSection';
 import { ReviewsSection } from './home/ReviewsSection';
-import { RepairsSection, StringingSection } from './home/ServicesSection';
+import { RepairsSection } from './home/ServicesSection';
 import { SiteFooter } from './home/SiteFooter';
 import { SiteHeader, type NavItem } from './home/SiteHeader';
 import { StringBookingDialog, type StringBookingRequest } from './home/StringBookingDialog';
@@ -102,7 +102,8 @@ export const LandingPage: React.FC = () => {
   const nav: NavItem[] = useMemo(
     () =>
       [
-        { id: SECTION_IDS.stringing, label: 'Stringing' },
+        // The stringing packages section is gone (website map); "Stringing" opens the booking form.
+        { id: SECTION_IDS.book, label: 'Stringing' },
         { id: SECTION_IDS.repairs, label: 'Repairs' },
         { id: SECTION_IDS.strings, label: 'Strings' },
         rackets.length ? { id: SECTION_IDS.rackets, label: 'Rackets' } : null,
@@ -436,8 +437,7 @@ export const LandingPage: React.FC = () => {
           onBookStringing={bookStringing}
           onBookRepair={bookRepair}
         />
-        <StringingSection gettingServices={gettingServices} repairCategories={repairCategories} onBook={startBooking} />
-        <RepairsSection gettingServices={gettingServices} repairCategories={repairCategories} onBook={startBooking} />
+        <RepairsSection repairCategories={repairCategories} onBook={startBooking} />
         <EventsSection events={events} status={status} onOpen={showEvent} />
         <CourtsSection onOpenCourts={openCourts} />
         <StringsSection
