@@ -19,6 +19,7 @@ import { RacketsSection, activeRackets } from './home/RacketsSection';
 import { ReviewsSection } from './home/ReviewsSection';
 import { RepairsSection, StringingSection } from './home/ServicesSection';
 import { SiteFooter } from './home/SiteFooter';
+import { SectionNav } from './home/SectionNav';
 import { SiteHeader, type NavItem } from './home/SiteHeader';
 import { StringBookingDialog, type StringBookingRequest } from './home/StringBookingDialog';
 import { StringsSection } from './home/StringsSection';
@@ -417,6 +418,14 @@ export const LandingPage: React.FC = () => {
         showStaffLinks={!isLoggedIn}
         onOpenTshirts={openTshirts}
         onOpenCourts={openCourts}
+      />
+      {/* The homepage's own navigator (website map): Rackets · Strings · Services (the booking form). */}
+      <SectionNav
+        items={[
+          ...(rackets.length ? [{ id: SECTION_IDS.rackets, label: 'Rackets' }] : []),
+          { id: SECTION_IDS.strings, label: 'Strings' },
+          { id: SECTION_IDS.book, label: 'Services' },
+        ]}
       />
 
       <div id="content">
