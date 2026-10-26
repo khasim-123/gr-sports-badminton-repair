@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Clock, MapPin, Phone, Ruler, Store, Truck, Wallet } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ApiError } from '../../services/apiClient';
@@ -10,6 +10,7 @@ import { HeroCarousel, type HeroSlide } from '../public/home/HeroCarousel';
 import { Photo } from '../public/home/Photo';
 import { scrollToSection, useShop } from '../public/home/shop';
 import { WhatsAppIcon, btn, container, cx } from '../public/home/ui';
+import { usePageIntent, useRevealIntent } from '../public/layout/PageIntro';
 import { PublicLayout } from '../public/layout/PublicLayout';
 import { ApparelProductDialog } from './ApparelProductDialog';
 import {
@@ -80,6 +81,16 @@ export const ApparelStore: React.FC = () => {
   const shown = category === ALL ? state.products : state.products.filter((p) => p.category === category);
   const openProduct = state.products.find((p) => p.id === openId) || null;
   const hasProducts = state.status === 'ready' && state.products.length > 0;
+
+  // Site search: a product opens its dialog; "Custom T-shirts" goes to the request form.
+  const intent = usePageIntent('tshirts');
+  const openedFor = useRef<object | null>(null);
+  useEffect(() => {
+    if (!intent?.item || openedFor.current === intent || !state.products.some((p) => p.id === intent.item)) return;
+    openedFor.current = intent; // once per search, not on every reload
+    setOpenId(intent.item);
+  }, [intent, state.products]);
+  useRevealIntent(intent, state.status !== 'loading', (i) => (i.section ? { id: i.section } : null));
 
   const free = distanceConfig.freeRadiusKm;
   const showShopLink = hasProducts || state.status === 'loading';

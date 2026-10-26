@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { peekPageIntent, subscribePageIntent, takePageIntent, type PageIntent, type PublicPageId } from '../../../utils/publicPages';
 import { container, cx } from '../home/ui';
 
@@ -19,6 +19,44 @@ export const PageIntro: React.FC<{ title: string; intro?: React.ReactNode; child
     </div>
   </section>
 );
+
+/**
+ * Scrolls an element into view and focuses it; `highlight` adds a short accent outline (an item a
+ * search result pointed at). Returns false when the element isn't on the page.
+ */
+export function revealElement(id: string, { highlight = false } = {}): boolean {
+  const el = document.getElementById(id);
+  if (!el) return false;
+  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  el.scrollIntoView({ block: highlight ? 'center' : 'start', behavior: reduced ? 'auto' : 'smooth' });
+  if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+  el.focus({ preventScroll: true });
+  if (highlight) {
+    el.classList.add('search-hit');
+    window.setTimeout(() => el.classList.remove('search-hit'), 2600);
+  }
+  return true;
+}
+
+/**
+ * Once the page is `ready`, shows what an intent asked for: `target` maps the intent to an element
+ * id (and whether to highlight it). Runs again for every new intent.
+ */
+export function useRevealIntent(
+  intent: PageIntent | null,
+  ready: boolean,
+  target: (intent: PageIntent) => { id: string; highlight?: boolean } | null,
+): void {
+  const targetRef = useRef(target);
+  targetRef.current = target;
+  useEffect(() => {
+    if (!intent || !ready) return;
+    const t = targetRef.current(intent);
+    if (!t) return;
+    const raf = requestAnimationFrame(() => revealElement(t.id, { highlight: t.highlight }));
+    return () => cancelAnimationFrame(raf);
+  }, [intent, ready]);
+}
 
 /**
  * What this page was asked to show first (e.g. the Services page with Repair selected), whether it

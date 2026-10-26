@@ -151,7 +151,7 @@ export const StringsSection: React.FC<StringsSectionProps> = ({ strings, status,
 
             <ul id={`${uid}-grid`} className={cx('grid gap-4 sm:grid-cols-2 lg:grid-cols-4', 'mt-6')}>
               {shown.map((p) => (
-                <li key={p.id} className="flex">
+                <li key={p.id} id={`string-${p.id}`} className="flex scroll-mt-28 rounded-xl">
                   <StringCard product={p} onUse={onUseString} />
                 </li>
               ))}

@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { EventsSection } from '../home/EventsSection';
 import { eventSlides, useEventDialog } from '../home/EventsHero';
 import { HeroCarousel, type HeroSlide } from '../home/HeroCarousel';
 import { useShop } from '../home/shop';
+import { usePageIntent } from '../layout/PageIntro';
 import { PublicLayout, useNavItem } from '../layout/PublicLayout';
 
 /**
@@ -13,6 +14,16 @@ export const EventsPage: React.FC = () => {
   const SHOP = useShop();
   const navItem = useNavItem();
   const { status, events, showEvent, dialog } = useEventDialog();
+
+  // An event picked in the site search opens its details.
+  const intent = usePageIntent('events');
+  const shownFor = useRef<object | null>(null);
+  useEffect(() => {
+    const event = intent?.item ? events.find((e) => e.id === intent.item) : null;
+    if (!event || shownFor.current === intent) return; // once per search, not on every refresh
+    shownFor.current = intent;
+    showEvent(event, 'details');
+  }, [intent, events, showEvent]);
 
   const slides = useMemo<HeroSlide[]>(() => {
     const fromEvents = eventSlides(events, SHOP, showEvent);

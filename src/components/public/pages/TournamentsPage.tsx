@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowRight, CirclePlus, CupSoda, Flag, Shirt, Trophy } from 'lucide-react';
 import type { TournamentDepartment } from '../../../types/content';
 import { EnquiryDialog } from '../enquiry/EnquiryDialog';
@@ -8,6 +8,7 @@ import { ReviewsSection } from '../home/ReviewsSection';
 import { scrollToSection, useShop } from '../home/shop';
 import { SectionHeader, container, cx } from '../home/ui';
 import { useHomeContent } from '../home/useHomeContent';
+import { usePageIntent } from '../layout/PageIntro';
 import { PublicLayout, useNavItem } from '../layout/PublicLayout';
 
 const LIST_ID = 'tournament-departments';
@@ -42,6 +43,13 @@ export const TournamentsPage: React.FC = () => {
   const navItem = useNavItem();
   const { status, content } = useHomeContent();
   const [department, setDepartment] = useState<(typeof DEPARTMENTS)[number] | null>(null);
+
+  // "Umpires", "Trophies"… picked in the site search open that request form.
+  const intent = usePageIntent('tournaments');
+  useEffect(() => {
+    const d = DEPARTMENTS.find((x) => x.key === intent?.item);
+    if (d) setDepartment(d);
+  }, [intent]);
 
   return (
     <PublicLayout

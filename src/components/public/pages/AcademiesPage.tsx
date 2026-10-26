@@ -8,6 +8,7 @@ import { displayMobile, normaliseMobile, safeImageUrl, safeUrl } from '../home/f
 import { scrollToSection, useShop } from '../home/shop';
 import { SectionHeader, WhatsAppIcon, btn, container, cx } from '../home/ui';
 import { useHomeContent } from '../home/useHomeContent';
+import { usePageIntent, useRevealIntent } from '../layout/PageIntro';
 import { PublicLayout, useNavItem } from '../layout/PublicLayout';
 
 const LIST_ID = 'academies-list';
@@ -31,6 +32,9 @@ export const AcademiesPage: React.FC = () => {
   const SHOP = useShop();
   const navItem = useNavItem();
   const { status, content } = useHomeContent();
+  // An academy picked in the site search.
+  const intent = usePageIntent('academies');
+  useRevealIntent(intent, status !== 'loading', (i) => (i.item ? { id: `academy-${i.item}`, highlight: true } : null));
   const academies = useMemo(() => content?.academies || [], [content]);
   const [booking, setBooking] = useState<Academy | null>(null);
 
@@ -68,7 +72,7 @@ export const AcademiesPage: React.FC = () => {
           {status !== 'loading' && academies.length > 0 && (
             <ul className="mt-6 grid gap-5 md:grid-cols-2">
               {academies.map((a) => (
-                <li key={a.id} className="flex">
+                <li key={a.id} id={`academy-${a.id}`} className="flex scroll-mt-28 rounded-2xl">
                   <AcademyCard academy={a} onBook={() => setBooking(a)} />
                 </li>
               ))}

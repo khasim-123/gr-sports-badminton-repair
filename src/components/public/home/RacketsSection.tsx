@@ -112,7 +112,7 @@ export const RacketsSection: React.FC<RacketsSectionProps> = ({
 
         <ul id={`${uid}-grid`} className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {shown.map((r) => (
-            <li key={r.id} className="flex">
+            <li key={r.id} id={`racket-${r.id}`} className="flex scroll-mt-28 rounded-xl">
               <RacketCard racket={r} />
             </li>
           ))}

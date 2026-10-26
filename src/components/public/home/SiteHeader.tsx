@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Clock, MapPin, Menu, Phone, Shirt, Truck, UserRound, X } from 'lucide-react';
-import { PUBLIC_PAGES, type PublicPageId } from '../../../utils/publicPages';
+import { PUBLIC_PAGES, type PageIntent, type PublicPageId } from '../../../utils/publicPages';
 import { CartButton } from '../../shop/CartButton';
+import { SearchBar, SearchButton } from '../layout/SiteSearch';
 import { useModalBehavior } from './Dialog';
 import { AccountButton } from './AccountButton';
 import { useShop } from './shop';
@@ -33,7 +34,7 @@ interface SiteHeaderProps {
   onAccount: () => void;
   onStaffLogin: (role: 'EMPLOYEE' | 'ADMIN') => void;
   showStaffLinks: boolean;
-  onOpenPage: (page: PublicPageId) => void;
+  onOpenPage: (page: PublicPageId, intent?: PageIntent) => void;
 }
 
 export const SiteHeader: React.FC<SiteHeaderProps> = ({
@@ -52,6 +53,9 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
   // show in the sticky header (laptops), so the menu is always one click away.
   const menuBarRef = useRef<HTMLElement>(null);
   const [menuBarOutOfView, setMenuBarOutOfView] = useState(false);
+  // While someone is typing in the search bar it stays put, even if the page scrolls.
+  const [searching, setSearching] = useState(false);
+  const menuInHeader = menuBarOutOfView && !searching;
   useEffect(() => {
     const bar = menuBarRef.current;
     if (!bar || typeof IntersectionObserver === 'undefined') return;
@@ -151,7 +155,7 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
 
       {/* Sticky header */}
       <header className="sticky top-0 z-40 border-b border-line bg-white">
-        <div className={cx(container, 'flex h-[68px] items-center justify-between gap-4')}>
+        <div className={cx(container, 'flex h-[68px] items-center gap-3 lg:gap-6')}>
           <a
             href="/"
             onClick={(e) => open(e, 'home')}
@@ -160,23 +164,30 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
           >
             {/* Short wordmark on phones (room for the buttons) and on smaller laptops once the menu
                 moves into this row; the subline otherwise. */}
-            <span className={menuBarOutOfView ? 'xl:hidden' : 'lg:hidden'}>
+            <span className={menuInHeader ? 'xl:hidden' : 'lg:hidden'}>
               <Wordmark subline={false} />
             </span>
-            <span className={menuBarOutOfView ? 'hidden xl:inline' : 'hidden lg:inline'}>
+            <span className={menuInHeader ? 'hidden xl:inline' : 'hidden lg:inline'}>
               <Wordmark />
             </span>
           </a>
 
-          {menuBarOutOfView && (
+          {/* Laptops: the search bar, or the menu once the menu bar has scrolled away. */}
+          {menuInHeader ? (
             <nav aria-label="Main menu" className="hidden lg:block">
               {menuLinks('header')}
             </nav>
+          ) : (
+            <div className="mx-auto hidden w-full max-w-xl lg:block">
+              <SearchBar onOpenPage={onOpenPage} onActiveChange={setSearching} />
+            </div>
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2">
+            <SearchButton onOpenPage={onOpenPage} className={menuInHeader ? undefined : 'lg:hidden'} />
             <CartButton />
-            <AccountButton label={accountLabel} onClick={onAccount} />
+            {/* Small phones: the account is in the menu (room for the search button). */}
+            <AccountButton label={accountLabel} onClick={onAccount} className="hidden sm:inline-flex" />
             <button
               type="button"
               onClick={() => setMenuOpen(true)}

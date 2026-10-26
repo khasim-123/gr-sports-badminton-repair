@@ -6,7 +6,7 @@ import { activeStrings } from '../home/format';
 import { StringBookingDialog, type StringBookingRequest } from '../home/StringBookingDialog';
 import { StringsSection } from '../home/StringsSection';
 import { useHomeContent } from '../home/useHomeContent';
-import { PageIntro, usePageIntent } from '../layout/PageIntro';
+import { PageIntro, usePageIntent, useRevealIntent } from '../layout/PageIntro';
 import { PublicLayout } from '../layout/PublicLayout';
 import { ServiceCta } from './ServiceCta';
 
@@ -18,6 +18,8 @@ export const StringsPage: React.FC = () => {
   const { bookStringing } = useBookingWizard();
   const strings = useMemo(() => activeStrings(content?.strings || []), [content]);
   const [stringBooking, setStringBooking] = useState<StringBookingRequest | null>(null);
+  // A string picked in the site search.
+  useRevealIntent(intent, status !== 'loading', (i) => (i.item ? { id: `string-${i.item}`, highlight: true } : null));
   const bookWithString = useCallback((product: StringProduct, colour?: string) => setStringBooking({ product, colour }), []);
 
   return (

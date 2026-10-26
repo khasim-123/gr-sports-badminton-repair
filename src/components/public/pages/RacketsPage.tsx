@@ -3,7 +3,7 @@ import { RacketsSection, activeRackets } from '../home/RacketsSection';
 import { scrollToSection, useShop } from '../home/shop';
 import { WhatsAppIcon, btn, container, cx } from '../home/ui';
 import { useHomeContent } from '../home/useHomeContent';
-import { PageIntro, usePageIntent } from '../layout/PageIntro';
+import { PageIntro, usePageIntent, useRevealIntent } from '../layout/PageIntro';
 import { PublicLayout } from '../layout/PublicLayout';
 import { ServiceCta } from './ServiceCta';
 
@@ -23,10 +23,12 @@ export const RacketsPage: React.FC = () => {
 
   // "Re-sell" opens the page on the second-hand rackets.
   useEffect(() => {
-    if (intent?.condition !== 'used' || status === 'loading') return;
+    if (intent?.condition !== 'used' || intent.item || status === 'loading') return;
     const raf = requestAnimationFrame(() => scrollToSection(USED_ID, { focus: true }));
     return () => cancelAnimationFrame(raf);
   }, [intent, status]);
+  // A racket picked in the site search.
+  useRevealIntent(intent, status !== 'loading', (i) => (i.item ? { id: `racket-${i.item}`, highlight: true } : null));
 
   return (
     <PublicLayout page="rackets">

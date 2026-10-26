@@ -59,6 +59,8 @@ export interface PageIntent {
   condition?: 'new' | 'used';
   /** Element id on the page to scroll to. */
   section?: string;
+  /** One item to show (site search): a racket, string, T-shirt, academy, event or tournament department id. */
+  item?: string;
 }
 
 let pending: { page: PublicPageId; intent: PageIntent } | null = null;

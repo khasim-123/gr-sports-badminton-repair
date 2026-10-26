@@ -43,6 +43,15 @@
   scrollbar-width: none;
 }
 
+/* The item a site-search result opened: a short accent outline so it's easy to spot (also while
+   it has keyboard focus, which would otherwise show the ink focus outline instead). */
+.search-hit,
+.search-hit:focus-visible {
+  outline: 3px solid #fcd116;
+  outline-offset: 4px;
+  transition: outline-color 0.6s ease;
+}
+
 .marquee-container:hover .marquee-track {
   animation-play-state: paused;
 }

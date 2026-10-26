@@ -94,7 +94,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ page, navigator, ski
         onAccount={onAccount}
         onStaffLogin={onStaffLogin}
         showStaffLinks={!isLoggedIn}
-        onOpenPage={(p) => go(p)}
+        onOpenPage={go}
       />
       {navigator && <PageNavigator label={navigator.label} items={navigator.items} />}
       <main id="content" onClickCapture={onClickCapture}>
