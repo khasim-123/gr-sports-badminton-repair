@@ -73,6 +73,7 @@ const Tile: React.FC<{ category: ProductCategory; card?: boolean }> = ({ categor
     )}
   >
     <span
+      data-photo
       className={cx(
         'relative block shrink-0 overflow-hidden bg-paper-deep',
         card ? 'aspect-[16/10] w-full' : 'aspect-square w-20 rounded-xl sm:aspect-[16/10] sm:w-full sm:rounded-none',
@@ -107,7 +108,11 @@ const Tile: React.FC<{ category: ProductCategory; card?: boolean }> = ({ categor
 const SLIDE_MS = 4500;
 
 const controlClass =
-  'inline-flex h-11 w-11 items-center justify-center rounded-full border border-line bg-white text-ink transition-colors hover:border-ink/40 disabled:cursor-default disabled:opacity-40 disabled:hover:border-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sportsBlue';
+  'inline-flex h-11 w-11 items-center justify-center rounded-full border border-line bg-white text-ink transition-colors hover:border-ink/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sportsBlue';
+
+/** Previous / next on the left and right of the row, over the middle of the photos. */
+const sideArrowClass =
+  'absolute z-10 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white text-ink shadow-lg shadow-ink/15 ring-1 ring-black/5 transition-[transform,background-color] hover:bg-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sportsBlue';
 
 /**
  * A sliding row of tiles: three across on laptops, two on tablets, one (with the next peeking in)
@@ -127,6 +132,8 @@ const TileSlider: React.FC<{ id: string; title: string; intro?: string; categori
   const [visible, setVisible] = useState(false);
   const [pageVisible, setPageVisible] = useState(() => typeof document === 'undefined' || !document.hidden);
   const [reduced, setReduced] = useState(prefersReducedMotion);
+  // Height of the arrows: the middle of the card photos (they have a fixed shape).
+  const [arrowTop, setArrowTop] = useState<number | null>(null);
 
   const measure = useCallback(() => {
     const el = trackRef.current;
@@ -134,6 +141,12 @@ const TileSlider: React.FC<{ id: string; title: string; intro?: string; categori
     setAtStart(el.scrollLeft <= 4);
     setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
     setOverflowing(el.scrollWidth > el.clientWidth + 4);
+    const photo = el.querySelector<HTMLElement>('[data-photo]');
+    const wrap = el.parentElement;
+    if (photo && wrap) {
+      const p = photo.getBoundingClientRect();
+      setArrowTop(Math.round(p.top + p.height / 2 - wrap.getBoundingClientRect().top));
+    }
   }, []);
 
   useEffect(() => {
@@ -196,55 +209,33 @@ const TileSlider: React.FC<{ id: string; title: string; intro?: string; categori
     return () => window.clearInterval(t);
   }, [sliding, move]);
 
-  const controls = overflowing ? (
-    <div className="flex items-center gap-2">
-      {!reduced && (
-        <button
-          type="button"
-          onClick={() => setPaused((p) => !p)}
-          className={controlClass}
-          aria-label={paused ? 'Start sliding' : 'Stop sliding'}
-          title={paused ? 'Start sliding' : 'Stop sliding'}
-        >
-          {paused ? (
-            <Play className="h-4 w-4" fill="currentColor" aria-hidden="true" />
-          ) : (
-            <Pause className="h-4 w-4" fill="currentColor" aria-hidden="true" />
-          )}
-        </button>
-      )}
+  // Top right: stop / start the sliding (the arrows sit on the row itself).
+  const controls =
+    overflowing && !reduced ? (
       <button
         type="button"
-        onClick={() => {
-          setPaused(true);
-          move(-1);
-        }}
-        disabled={atStart}
+        onClick={() => setPaused((p) => !p)}
         className={controlClass}
-        aria-label="Previous"
-        aria-controls={`${uid}-track`}
+        aria-label={paused ? 'Start sliding' : 'Stop sliding'}
+        title={paused ? 'Start sliding' : 'Stop sliding'}
       >
-        <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+        {paused ? (
+          <Play className="h-4 w-4" fill="currentColor" aria-hidden="true" />
+        ) : (
+          <Pause className="h-4 w-4" fill="currentColor" aria-hidden="true" />
+        )}
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          setPaused(true);
-          move(1);
-        }}
-        disabled={atEnd}
-        className={controlClass}
-        aria-label="Next"
-        aria-controls={`${uid}-track`}
-      >
-        <ChevronRight className="h-5 w-5" aria-hidden="true" />
-      </button>
-    </div>
-  ) : undefined;
+    ) : undefined;
+
+  const arrowStyle = arrowTop !== null ? { top: arrowTop } : undefined;
 
   return (
     <>
-      <SectionHeader id={`${id}-title`} title={title} intro={intro} action={controls} />
+      {/* The stop / start button stays beside the heading, phones too (no row of its own). */}
+      <div className="flex items-end justify-between gap-4">
+        <SectionHeader id={`${id}-title`} title={title} intro={intro} />
+        {controls && <div className="shrink-0">{controls}</div>}
+      </div>
       <div
         className="relative mt-6"
         onMouseEnter={() => setHovering(true)}
@@ -273,6 +264,40 @@ const TileSlider: React.FC<{ id: string; title: string; intro?: string; categori
             </li>
           ))}
         </ul>
+
+        {overflowing && (
+          <>
+            {/* Hidden (and out of the tab order) when the row can't move that way. */}
+            <button
+              type="button"
+              onClick={() => {
+                setPaused(true);
+                move(-1);
+              }}
+              disabled={atStart}
+              style={arrowStyle}
+              className={cx(sideArrowClass, 'left-1 sm:-left-5 lg:-left-6', !arrowStyle && 'top-1/3', atStart && 'invisible')}
+              aria-label="Previous"
+              aria-controls={`${uid}-track`}
+            >
+              <ChevronLeft className="h-6 w-6" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPaused(true);
+                move(1);
+              }}
+              disabled={atEnd}
+              style={arrowStyle}
+              className={cx(sideArrowClass, 'right-1 sm:-right-5 lg:-right-6', !arrowStyle && 'top-1/3', atEnd && 'invisible')}
+              aria-label="Next"
+              aria-controls={`${uid}-track`}
+            >
+              <ChevronRight className="h-6 w-6" aria-hidden="true" />
+            </button>
+          </>
+        )}
       </div>
     </>
   );
