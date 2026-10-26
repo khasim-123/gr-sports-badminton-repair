@@ -10,6 +10,7 @@ import { RevisedEstimateModal } from './components/customer/RevisedEstimateModal
 import { Footer } from './components/common/Footer';
 import { analyticsService } from './services/analyticsService';
 import { CartAddedNotice, CartDrawer } from './components/shop/CartDrawer';
+import { PUBLIC_VIEWS } from './utils/publicPages';
 
 // Views
 import { LandingPage } from './components/public/LandingPage';
@@ -20,6 +21,23 @@ const EmployeePortal = lazy(() => import('./components/employee/EmployeePortal')
 const AdminPortal = lazy(() => import('./components/admin/AdminPortal').then((m) => ({ default: m.AdminPortal })));
 const ApparelStore = lazy(() => import('./components/shop/ApparelStore').then((m) => ({ default: m.ApparelStore })));
 const CourtsPage = lazy(() => import('./components/courts/CourtsPage').then((m) => ({ default: m.CourtsPage })));
+// The other public pages (GR website map), also loaded on demand.
+const EventsPage = lazy(() => import('./components/public/pages/EventsPage').then((m) => ({ default: m.EventsPage })));
+const RacketsPage = lazy(() => import('./components/public/pages/RacketsPage').then((m) => ({ default: m.RacketsPage })));
+const StringsPage = lazy(() => import('./components/public/pages/StringsPage').then((m) => ({ default: m.StringsPage })));
+const ServicesPage = lazy(() => import('./components/public/pages/ServicesPage').then((m) => ({ default: m.ServicesPage })));
+const AcademiesPage = lazy(() => import('./components/public/pages/AcademiesPage').then((m) => ({ default: m.AcademiesPage })));
+const TournamentsPage = lazy(() => import('./components/public/pages/TournamentsPage').then((m) => ({ default: m.TournamentsPage })));
+const PUBLIC_PAGE_VIEWS: Record<string, React.LazyExoticComponent<React.FC>> = {
+  apparel: ApparelStore,
+  courts: CourtsPage,
+  events: EventsPage,
+  rackets: RacketsPage,
+  strings: StringsPage,
+  services: ServicesPage,
+  academies: AcademiesPage,
+  tournaments: TournamentsPage,
+};
 
 const PortalLoading: React.FC = () => (
   <div className="flex items-center justify-center gap-2 py-24 text-sm text-slate-500" role="status">
@@ -28,7 +46,7 @@ const PortalLoading: React.FC = () => (
   </div>
 );
 
-const KNOWN_VIEWS = ['landing', 'apparel', 'courts', 'login', 'customer_portal', 'employee_portal', 'admin_portal'];
+const KNOWN_VIEWS = [...PUBLIC_VIEWS, 'login', 'customer_portal', 'employee_portal', 'admin_portal'];
 
 export const App: React.FC = () => {
   const { activeView, setActiveView, isLoggedIn, currentRole, isAuthChecking, customerSubView } = useApp();
@@ -84,9 +102,10 @@ export const App: React.FC = () => {
     return <LandingPage />;
   };
 
-  // The homepage, the T-shirt store (/tshirts) and court booking (/courts) render their own
+  // The public pages (homepage, /tshirts, /courts, /academies, /events, …) render their own
   // header, main and footer.
-  const isStandaloneLanding = activeView === 'landing' || activeView === 'apparel' || activeView === 'courts';
+  const isStandaloneLanding = PUBLIC_VIEWS.includes(activeView);
+  const PublicPage = PUBLIC_PAGE_VIEWS[activeView];
   // Admin console uses an app layout on desktop: fixed top bar + sidebar, only the main area scrolls.
   const isAdminShell = !isAuthChecking && isLoggedIn && activeView === 'admin_portal' && currentRole === 'ADMIN';
   // Customer screens (portal + login) and the staff portal keep their top bar on screen while the
@@ -136,13 +155,9 @@ export const App: React.FC = () => {
 
       {/* View Router */}
       {/* The homepage renders its own header, main and footer landmarks. */}
-      {activeView === 'apparel' ? (
+      {PublicPage ? (
         <Suspense fallback={<PortalLoading />}>
-          <ApparelStore />
-        </Suspense>
-      ) : activeView === 'courts' ? (
-        <Suspense fallback={<PortalLoading />}>
-          <CourtsPage />
+          <PublicPage />
         </Suspense>
       ) : isStandaloneLanding ? (
         <LandingPage />

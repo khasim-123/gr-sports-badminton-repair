@@ -72,9 +72,26 @@ const PLACEMENTS: Record<BannerPlacement, { label: string; tab: string; noun: st
     description: 'A short notice card, e.g. holiday timings or new stock. Photo optional.',
     add: 'Add announcement',
   },
+  promo2: {
+    label: 'Promo banner (lower)',
+    tab: 'Lower promo banners',
+    noun: 'promo banner',
+    description: 'A running photo banner lower on the homepage, after “Shop by product”.',
+    add: 'Add lower promo banner',
+  },
+  announcement2: {
+    label: 'Announcement (lower)',
+    tab: 'Lower announcements',
+    noun: 'announcement',
+    description: 'A notice card lower on the homepage, after “Shop by product”. Photo optional.',
+    add: 'Add lower announcement',
+  },
 };
 const PLACEMENT_IDS = Object.keys(PLACEMENTS) as BannerPlacement[];
 const placementOf = (b: Banner): BannerPlacement => b.placement || 'hero';
+/** Notice cards (photo optional) vs running photo banners; the lower spots behave like the upper ones. */
+const isNoticePlacement = (p: BannerPlacement) => p === 'announcement' || p === 'announcement2';
+const isPromoPlacement = (p: BannerPlacement) => p === 'promo' || p === 'promo2';
 
 const sortBanners = (list: Banner[]) => [...list].sort((a, b) => a.sortOrder - b.sortOrder);
 
@@ -117,8 +134,8 @@ const emptyForm = (placement: BannerPlacement): BannerFormState => ({
   subtitle: '',
   badge: '',
   // Announcements usually just inform; slides and promos usually lead somewhere.
-  ctaLabel: placement === 'announcement' ? '' : 'Book now',
-  ctaTarget: placement === 'announcement' ? 'none' : 'stringing',
+  ctaLabel: isNoticePlacement(placement) ? '' : 'Book now',
+  ctaTarget: isNoticePlacement(placement) ? 'none' : 'stringing',
   ctaUrl: '',
   desktopImageUrl: null,
   mobileImageUrl: null,
@@ -148,7 +165,7 @@ type FormErrors = Partial<Record<keyof BannerFormState, string>>;
 const validate = (f: BannerFormState): FormErrors => {
   const e: FormErrors = {};
   if (!f.title.trim()) e.title = 'Add a title.';
-  if (!f.desktopImageUrl && f.placement !== 'announcement') e.desktopImageUrl = 'Add the wide image.';
+  if (!f.desktopImageUrl && !isNoticePlacement(f.placement)) e.desktopImageUrl = 'Add the wide image.';
   if (f.ctaTarget !== 'none' && !f.ctaLabel.trim()) e.ctaLabel = 'Add the button text, or choose "No button".';
   if (f.ctaTarget === 'url') {
     if (!f.ctaUrl.trim()) e.ctaUrl = 'Paste the link the button should open.';
@@ -167,7 +184,7 @@ const toInput = (f: BannerFormState): BannerInput => ({
   ctaUrl: f.ctaTarget === 'url' ? f.ctaUrl.trim() : null,
   desktopImageUrl: f.desktopImageUrl || null,
   // Announcements show one photo at most; the phone version is only for slides and promos.
-  mobileImageUrl: f.placement === 'announcement' ? null : f.mobileImageUrl || null,
+  mobileImageUrl: isNoticePlacement(f.placement) ? null : f.mobileImageUrl || null,
   placement: f.placement,
   isActive: f.isActive,
   startsAt: f.startsAt || null,
@@ -226,7 +243,7 @@ const BannerFormModal: React.FC<BannerFormModalProps> = ({ banner, defaultPlacem
   const uploading = uploadingDesktop || uploadingMobile;
   const formId = 'banner-form';
   const meta = PLACEMENTS[form.placement];
-  const isNotice = form.placement === 'announcement';
+  const isNotice = isNoticePlacement(form.placement);
 
   return (
     <Modal
@@ -273,7 +290,7 @@ const BannerFormModal: React.FC<BannerFormModalProps> = ({ banner, defaultPlacem
                     checked={checked}
                     onChange={() => {
                       set('placement', id);
-                      if (id === 'announcement' && errors.desktopImageUrl) setErrors((e) => ({ ...e, desktopImageUrl: undefined }));
+                      if (isNoticePlacement(id) && errors.desktopImageUrl) setErrors((e) => ({ ...e, desktopImageUrl: undefined }));
                     }}
                     className="sr-only"
                   />
@@ -311,7 +328,7 @@ const BannerFormModal: React.FC<BannerFormModalProps> = ({ banner, defaultPlacem
                   aspectClass="aspect-[16/5]"
                   contain={false}
                   hint={
-                    form.placement === 'promo'
+                    isPromoPlacement(form.placement)
                       ? 'For laptops and tablets. 1600 × 500 px works best. Promo banners take turns, one at a time.'
                       : 'For laptops and tablets. 1600 × 500 px works best.'
                   }
@@ -605,13 +622,15 @@ export const BannersManager: React.FC = () => {
         <ErrorState message={loadError} onRetry={load} retrying={loading} />
       ) : visible.length === 0 ? (
         <EmptyState
-          title={tab === 'hero' ? 'No slides yet' : tab === 'promo' ? 'No promo banners yet' : 'No announcements yet'}
+          title={tab === 'hero' ? 'No slides yet' : isPromoPlacement(tab) ? 'No promo banners yet' : 'No announcements yet'}
           description={
             tab === 'hero'
               ? 'Add your first homepage slide — e.g. a stringing offer or new string colours.'
               : tab === 'promo'
                 ? 'Promo banners run one after another further down the homepage, below the strings — e.g. new stock or a seasonal offer.'
-                : 'Announcements appear as notice cards on the homepage — e.g. holiday timings or new arrivals.'
+                : tab === 'announcement'
+                  ? 'Announcements appear as notice cards on the homepage — e.g. holiday timings or new arrivals.'
+                  : `${tabMeta.description} Nothing shows there until you add one.`
           }
           actionText={tabMeta.add}
           onAction={() => setEditing('new')}
@@ -630,7 +649,7 @@ export const BannersManager: React.FC = () => {
                 <li key={b.id} className={`${cardClass} p-3 sm:p-4`}>
                   <div className="flex flex-col md:flex-row gap-3 md:gap-5">
                     {/* Previews */}
-                    {placementOf(b) === 'announcement' ? (
+                    {isNoticePlacement(placementOf(b)) ? (
                       <div className="md:w-40 shrink-0">
                         {b.desktopImageUrl ? (
                           <figure className="relative w-40 aspect-[16/9] rounded-xl overflow-hidden bg-paper border border-line">

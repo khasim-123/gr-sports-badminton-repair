@@ -15,9 +15,9 @@ import {
   registrationStatus,
   spotsText,
 } from './events';
-import { formatDay, safeUrl, siteSrcSet } from './format';
+import { displayMobile, formatDay, normaliseMobile, safeUrl, siteSrcSet } from './format';
 import { useShop } from './shop';
-import { WhatsAppIcon, btn, cx, fieldControl, fieldHint, fieldLabel } from './ui';
+import { FieldError, WhatsAppIcon, btn, cx, fieldControl, fieldHint, fieldLabel } from './ui';
 
 interface EventDialogProps {
   event: SiteEvent | null;
@@ -25,19 +25,6 @@ interface EventDialogProps {
   intent: 'details' | 'register';
   onClose: () => void;
   onRegistered: (event: SiteEvent) => void;
-}
-
-/** "+91 98765 43210" from any 10-digit input. */
-function displayMobile(digits: string): string {
-  return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
-}
-
-/** Accepts "98765 43210", "+91 98765-43210", "09876543210" … → 10 digits, or null. */
-function normaliseMobile(value: string): string | null {
-  let digits = value.replace(/\D/g, '');
-  if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
-  else if (digits.length === 11 && digits.startsWith('0')) digits = digits.slice(1);
-  return /^[6-9]\d{9}$/.test(digits) ? digits : null;
 }
 
 interface Registered {
@@ -394,13 +381,6 @@ const RegisteredPanel: React.FC<{
 // ---------------------------------------------------------------------------
 // Registration form (registrationMode 'form')
 // ---------------------------------------------------------------------------
-
-const FieldError: React.FC<{ id: string; children: React.ReactNode }> = ({ id, children }) => (
-  <p id={id} className="mt-1.5 flex items-start gap-1.5 text-[13px] font-medium text-flameRed">
-    <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-    {children}
-  </p>
-);
 
 const RegistrationForm: React.FC<{
   event: SiteEvent;

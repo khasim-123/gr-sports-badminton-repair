@@ -35,7 +35,20 @@ export interface ShopView {
   whatsAppLink: (message?: string) => string;
   /** "Hi GR Sports, " + text — the opening of a pre-filled WhatsApp message. */
   greeting: (text: string) => string;
+  /** Social media pages the shop has set (https links only). */
+  socials: { key: SocialKey; label: string; url: string }[];
+  /** Up to 3 short promises shown in the footer. */
+  footerHighlights: string[];
 }
+
+export type SocialKey = 'instagram' | 'facebook' | 'x' | 'youtube';
+
+const SOCIALS: { key: SocialKey; label: string; field: 'instagramUrl' | 'facebookUrl' | 'xUrl' | 'youtubeUrl' }[] = [
+  { key: 'instagram', label: 'Instagram', field: 'instagramUrl' },
+  { key: 'facebook', label: 'Facebook', field: 'facebookUrl' },
+  { key: 'x', label: 'X', field: 'xUrl' },
+  { key: 'youtube', label: 'YouTube', field: 'youtubeUrl' },
+];
 
 export function shopView(s: ShopSettings): ShopView {
   return {
@@ -54,6 +67,11 @@ export function shopView(s: ShopSettings): ShopView {
     openingHours: s.openingHours,
     whatsAppLink: (message?: string) => whatsappHref(s.whatsapp, message),
     greeting: (text: string) => `Hi ${s.name}, ${text}`,
+    socials: SOCIALS.flatMap(({ key, label, field }) => {
+      const url = (s[field] || '').trim();
+      return /^https:\/\/\S+$/i.test(url) ? [{ key, label, url }] : [];
+    }),
+    footerHighlights: (s.footerHighlights || []).map((h) => (h || '').trim()).filter(Boolean).slice(0, 3),
   };
 }
 

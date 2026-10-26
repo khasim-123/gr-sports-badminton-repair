@@ -43,6 +43,12 @@ export function openStoreSection(setActiveView: (view: string) => void, section?
     window.scrollTo({ top: 0 });
     return;
   }
+  // Events have their own page now (GR website map).
+  if (section === 'events' || section === 'tournaments') {
+    setActiveView('events');
+    window.scrollTo({ top: 0 });
+    return;
+  }
   setActiveView('landing');
   window.scrollTo({ top: 0 });
   const id = section ? SECTION_ALIASES[section] ?? section : '';

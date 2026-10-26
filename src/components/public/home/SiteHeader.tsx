@@ -1,224 +1,62 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, Clock, MapPin, Menu, Phone, Shirt, Truck, UserRound, X } from 'lucide-react';
+import { Clock, MapPin, Menu, Phone, Shirt, Truck, UserRound, X } from 'lucide-react';
+import { PUBLIC_PAGES, type PublicPageId } from '../../../utils/publicPages';
 import { CartButton } from '../../shop/CartButton';
 import { useModalBehavior } from './Dialog';
 import { AccountButton } from './AccountButton';
 import { useShop } from './shop';
 import { WhatsAppIcon, Wordmark, btn, container, cx } from './ui';
 
-export interface NavItem {
-  id: string;
-  label: string;
-}
+/** The main menu (GR website map): one item per page. */
+const MAIN_MENU: { page: PublicPageId; label: string }[] = [
+  { page: 'home', label: 'Badminton' },
+  { page: 'tshirts', label: 'T-shirts' },
+  { page: 'academies', label: 'Academies' },
+  { page: 'tournaments', label: 'Tournament organizing' },
+  { page: 'events', label: 'Events' },
+];
+
+/** Extra pages in the phone menu (on laptops they sit in the page navigators and the footer). */
+const MORE_PAGES: { page: PublicPageId; label: string }[] = [
+  { page: 'services', label: 'Stringing & repairs' },
+  { page: 'rackets', label: 'Rackets' },
+  { page: 'strings', label: 'Strings' },
+  { page: 'courts', label: 'Book a court' },
+];
 
 interface SiteHeaderProps {
-  nav: NavItem[];
-  pickupDays: string;
-  pickupSlots: string;
+  /** The page being shown (highlighted in the menu). */
+  current: PublicPageId;
+  pickupLine: string;
   accountLabel: string;
   onAccount: () => void;
   onStaffLogin: (role: 'EMPLOYEE' | 'ADMIN') => void;
-  onNavigate: (id: string) => void;
   showStaffLinks: boolean;
-  /** Opens the T-shirt store (/tshirts). */
-  onOpenTshirts: () => void;
-  /** Opens court booking (/courts). */
-  onOpenCourts: () => void;
-}
-
-/** Menu groups: badminton services & gear, and courts & events. Items whose section isn't on the
- * page (e.g. no rackets listed) are left out. */
-const BADMINTON_ITEMS: { id: string; note: string }[] = [
-  { id: 'stringing', note: 'Book a pickup for restringing' },
-  { id: 'repairs', note: 'Book a repair: frame, shaft, handle or grip' },
-  { id: 'strings', note: 'Strings and colours we stock' },
-  { id: 'rackets', note: 'Rackets at the shop' },
-];
-
-interface GroupLink {
-  key: string;
-  label: string;
-  note: string;
-  href: string;
-  onSelect: () => void;
-  current?: boolean;
-}
-
-/** Desktop dropdown: opens on click or hover, closes on outside click, Esc or after choosing. */
-const NavGroup: React.FC<{
-  id: string;
-  label: string;
-  links: GroupLink[];
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  current: boolean;
-}> = ({ id, label, links, open, onOpenChange, current }) => {
-  const ref = useRef<HTMLLIElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const hoverTimer = useRef<number | undefined>(undefined);
-  const panelId = `navgroup-${id}`;
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onOpenChange(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onOpenChange(false);
-        buttonRef.current?.focus();
-      }
-    };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open, onOpenChange]);
-
-  useEffect(() => () => window.clearTimeout(hoverTimer.current), []);
-
-  // Hover opens it for mouse users; touch and keyboard use the button.
-  const hover = (next: boolean) => (e: React.PointerEvent) => {
-    if (e.pointerType !== 'mouse') return;
-    window.clearTimeout(hoverTimer.current);
-    hoverTimer.current = window.setTimeout(() => onOpenChange(next), next ? 60 : 180);
-  };
-
-  if (links.length === 0) return null;
-  return (
-    <li ref={ref} className="relative" onPointerEnter={hover(true)} onPointerLeave={hover(false)}>
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={() => onOpenChange(!open)}
-        aria-expanded={open}
-        aria-controls={panelId}
-        className={cx(
-          'relative inline-flex h-11 items-center gap-1 whitespace-nowrap rounded-lg px-3 text-[15px] font-medium transition-colors',
-          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-sportsBlue',
-          open || current ? 'text-ink' : 'text-ink-soft hover:text-ink',
-        )}
-      >
-        {label}
-        <ChevronDown className={cx('h-4 w-4 transition-transform', open && 'rotate-180')} aria-hidden="true" />
-        <span
-          aria-hidden="true"
-          className={cx('absolute inset-x-3 bottom-1.5 h-[2px] rounded-full bg-accent transition-opacity', current ? 'opacity-100' : 'opacity-0')}
-        />
-      </button>
-      {/* Kept mounted so it can fade in; `invisible` takes the closed panel out of the tab order. */}
-      <div
-        id={panelId}
-        className={cx(
-          'absolute left-0 top-full z-50 pt-2 transition-[opacity,transform,visibility] duration-150 ease-out motion-reduce:transition-none',
-          open ? 'visible translate-y-0 opacity-100' : 'pointer-events-none invisible -translate-y-1 opacity-0',
-        )}
-      >
-          <ul className="w-72 rounded-xl border border-line bg-white p-1.5 shadow-lg shadow-ink/10">
-            {links.map((l) => (
-              <li key={l.key}>
-                <a
-                  href={l.href}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onOpenChange(false);
-                    l.onSelect();
-                  }}
-                  aria-current={l.current ? 'true' : undefined}
-                  className={cx(
-                    'block rounded-lg px-3 py-2.5 transition-colors hover:bg-paper focus-visible:bg-paper',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sportsBlue',
-                    l.current && 'bg-paper',
-                  )}
-                >
-                  <span className="block text-[15px] font-semibold text-ink">{l.label}</span>
-                  <span className="mt-0.5 block text-[13px] leading-snug text-ink-muted">{l.note}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-      </div>
-    </li>
-  );
-};
-
-/** Highlights the nav item whose section is in the middle of the viewport. */
-function useActiveSection(ids: string[]): string | null {
-  const [active, setActive] = useState<string | null>(null);
-  const key = ids.join('|');
-  useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined') return;
-    const seen = new Map<string, boolean>();
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => seen.set(e.target.id, e.isIntersecting));
-        const current = ids.find((id) => seen.get(id));
-        setActive(current || null);
-      },
-      { rootMargin: '-40% 0px -55% 0px' },
-    );
-    // Sections may mount after data loads; re-scan a few times.
-    const observed = new Set<string>();
-    const scan = () =>
-      ids.forEach((id) => {
-        const el = document.getElementById(id);
-        if (el && !observed.has(id)) {
-          observed.add(id);
-          observer.observe(el);
-        }
-      });
-    scan();
-    const timers = [400, 1500, 4000].map((ms) => window.setTimeout(scan, ms));
-    return () => {
-      timers.forEach(clearTimeout);
-      observer.disconnect();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-  return active;
+  onOpenPage: (page: PublicPageId) => void;
 }
 
 export const SiteHeader: React.FC<SiteHeaderProps> = ({
-  nav,
-  pickupDays,
-  pickupSlots,
+  current,
+  pickupLine,
   accountLabel,
   onAccount,
   onStaffLogin,
-  onNavigate,
   showStaffLinks,
-  onOpenTshirts,
-  onOpenCourts,
+  onOpenPage,
 }) => {
   const SHOP = useShop();
   const [menuOpen, setMenuOpen] = useState(false);
-  const active = useActiveSection(nav.map((n) => n.id));
-  const pickupLine = pickupDays ? `Pickup ${pickupDays}${pickupSlots ? `, ${pickupSlots}` : ''}` : '';
 
-  const go = (e: React.MouseEvent, id: string) => {
+  const open = (e: React.MouseEvent, page: PublicPageId) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
     e.preventDefault();
-    onNavigate(id);
+    onOpenPage(page);
   };
-
-  const [openGroup, setOpenGroup] = useState<'badminton' | 'play' | null>(null);
-  const badmintonLinks: GroupLink[] = BADMINTON_ITEMS.flatMap(({ id, note }) => {
-    const item = nav.find((n) => n.id === id);
-    return item ? [{ key: id, label: item.label, note, href: `#${id}`, onSelect: () => onNavigate(id), current: active === id }] : [];
-  });
-  const eventsItem = nav.find((n) => n.id === 'events');
-  const playLinks: GroupLink[] = [
-    { key: 'courts', label: 'Book a court', note: 'Pick a court and a time', href: '/courts', onSelect: onOpenCourts },
-    ...(eventsItem
-      ? [{ key: 'events', label: eventsItem.label, note: 'Tournaments and coaching camps', href: '#events', onSelect: () => onNavigate('events'), current: active === 'events' }]
-      : []),
-  ];
 
   return (
     <>
-      {/* Info bar (scrolls away) */}
+      {/* Info bar ("text ad"; scrolls away) */}
       <div className="bg-ink text-white/80 text-[13px]">
         <div className={cx(container, 'flex min-h-[36px] items-center justify-between gap-4')}>
           <p className="hidden sm:flex items-center gap-1.5 min-w-0">
@@ -246,11 +84,8 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
               {SHOP.phoneDisplay}
             </a>
             <a
-              href="/tshirts"
-              onClick={(e) => {
-                e.preventDefault();
-                onOpenTshirts();
-              }}
+              href={PUBLIC_PAGES.tshirts.path}
+              onClick={(e) => open(e, 'tshirts')}
               className="lg:hidden inline-flex min-h-[36px] shrink-0 items-center gap-1.5 font-semibold text-white hover:text-accent"
             >
               <Shirt className="h-4 w-4 text-accent" aria-hidden="true" />
@@ -264,50 +99,49 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
       <header className="sticky top-0 z-40 border-b border-line bg-white">
         <div className={cx(container, 'flex h-[68px] items-center justify-between gap-4')}>
           <a
-            href="#top"
-            onClick={(e) => go(e, 'top')}
+            href="/"
+            onClick={(e) => open(e, 'home')}
             className="inline-flex min-h-[44px] shrink-0 items-center rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sportsBlue"
-            aria-label={`${SHOP.name}, back to top`}
+            aria-label={`${SHOP.name}, home`}
           >
-            <span className="sm:hidden">
+            {/* The subline needs the room the menu takes on smaller laptops. */}
+            <span className="xl:hidden">
               <Wordmark subline={false} />
             </span>
-            <span className="hidden sm:inline">
+            <span className="hidden xl:inline">
               <Wordmark />
             </span>
           </a>
 
           <nav aria-label="Main" className="hidden lg:block">
-            <ul className="flex items-center gap-1">
-              <NavGroup
-                id="badminton"
-                label="Badminton"
-                links={badmintonLinks}
-                open={openGroup === 'badminton'}
-                onOpenChange={(o) => setOpenGroup(o ? 'badminton' : null)}
-                current={badmintonLinks.some((l) => l.current)}
-              />
-              <NavGroup
-                id="play"
-                label="Courts & events"
-                links={playLinks}
-                open={openGroup === 'play'}
-                onOpenChange={(o) => setOpenGroup(o ? 'play' : null)}
-                current={playLinks.some((l) => l.current)}
-              />
-              <li>
-                <a
-                  href="/tshirts"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onOpenTshirts();
-                  }}
-                  className="inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-[15px] font-medium text-ink-soft hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-sportsBlue"
-                >
-                  <Shirt className="h-[18px] w-[18px]" aria-hidden="true" />
-                  T-shirts
-                </a>
-              </li>
+            <ul className="flex items-center gap-0.5 xl:gap-1">
+              {MAIN_MENU.map(({ page, label }) => {
+                const isCurrent = current === page;
+                return (
+                  <li key={page}>
+                    <a
+                      href={PUBLIC_PAGES[page].path}
+                      onClick={(e) => open(e, page)}
+                      aria-current={isCurrent ? 'page' : undefined}
+                      className={cx(
+                        'relative inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[15px] font-medium transition-colors xl:px-3',
+                        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-sportsBlue',
+                        isCurrent ? 'text-ink' : 'text-ink-soft hover:text-ink',
+                      )}
+                    >
+                      {page === 'tshirts' && <Shirt className="h-[18px] w-[18px]" aria-hidden="true" />}
+                      {label}
+                      <span
+                        aria-hidden="true"
+                        className={cx(
+                          'absolute inset-x-2.5 bottom-1.5 h-[2px] rounded-full bg-accent transition-opacity xl:inset-x-3',
+                          isCurrent ? 'opacity-100' : 'opacity-0',
+                        )}
+                      />
+                    </a>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
 
@@ -330,9 +164,12 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
 
       <MenuSheet
         open={menuOpen}
+        current={current}
         onClose={() => setMenuOpen(false)}
-        badmintonLinks={badmintonLinks.map((l) => ({ ...l, onSelect: () => { setMenuOpen(false); window.setTimeout(l.onSelect, 0); } }))}
-        playLinks={playLinks.map((l) => ({ ...l, onSelect: () => { setMenuOpen(false); window.setTimeout(l.onSelect, 0); } }))}
+        onOpenPage={(page) => {
+          setMenuOpen(false);
+          window.setTimeout(() => onOpenPage(page), 0);
+        }}
         pickupLine={pickupLine}
         accountLabel={accountLabel}
         onAccount={() => {
@@ -344,10 +181,6 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
           onStaffLogin(role);
         }}
         showStaffLinks={showStaffLinks}
-        onOpenTshirts={() => {
-          setMenuOpen(false);
-          onOpenTshirts();
-        }}
       />
     </>
   );
@@ -355,34 +188,50 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
 
 interface MenuSheetProps {
   open: boolean;
+  current: PublicPageId;
   onClose: () => void;
-  badmintonLinks: GroupLink[];
-  playLinks: GroupLink[];
+  onOpenPage: (page: PublicPageId) => void;
   pickupLine: string;
   accountLabel: string;
   onAccount: () => void;
   onStaffLogin: (role: 'EMPLOYEE' | 'ADMIN') => void;
   showStaffLinks: boolean;
-  onOpenTshirts: () => void;
 }
 
 const MenuSheet: React.FC<MenuSheetProps> = ({
   open,
+  current,
   onClose,
-  badmintonLinks,
-  playLinks,
+  onOpenPage,
   pickupLine,
   accountLabel,
   onAccount,
   onStaffLogin,
   showStaffLinks,
-  onOpenTshirts,
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   useModalBehavior(open, panelRef, onClose, closeRef);
   const SHOP = useShop();
   if (!open) return null;
+
+  const link = (page: PublicPageId, label: string, big: boolean) => (
+    <a
+      href={PUBLIC_PAGES[page].path}
+      onClick={(e) => {
+        e.preventDefault();
+        onOpenPage(page);
+      }}
+      aria-current={current === page ? 'page' : undefined}
+      className={cx(
+        'flex items-center rounded-xl px-3 text-ink',
+        big ? 'min-h-[52px] font-display text-[24px] font-semibold' : 'min-h-[44px] text-[16px] font-medium',
+        current === page ? 'bg-paper' : 'hover:bg-paper',
+      )}
+    >
+      {label}
+    </a>
+  );
 
   return createPortal(
     <div className="fixed inset-0 z-[60] bg-ink/50" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -408,49 +257,16 @@ const MenuSheet: React.FC<MenuSheetProps> = ({
         </div>
 
         <nav aria-label="Main" className="px-2 py-3">
-          {[
-            { heading: 'Badminton', links: badmintonLinks },
-            { heading: 'Courts & events', links: playLinks },
-          ].map((group) =>
-            group.links.length === 0 ? null : (
-              <div key={group.heading} className="mb-2">
-                <p className="px-3 pb-1 pt-2 text-[12px] font-semibold uppercase tracking-wider text-ink-muted">{group.heading}</p>
-                <ul>
-                  {group.links.map((l) => (
-                    <li key={l.key}>
-                      <a
-                        href={l.href}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          l.onSelect();
-                        }}
-                        aria-current={l.current ? 'true' : undefined}
-                        className={cx(
-                          'flex min-h-[52px] items-center rounded-xl px-3 font-display text-[24px] font-semibold text-ink',
-                          l.current ? 'bg-paper' : 'hover:bg-paper',
-                        )}
-                      >
-                        {l.label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ),
-          )}
-          <div className="border-t border-line pt-2">
-            <a
-              href="/tshirts"
-              onClick={(e) => {
-                e.preventDefault();
-                onOpenTshirts();
-              }}
-              className="flex min-h-[52px] items-center gap-3 rounded-xl px-3 font-display text-[24px] font-semibold text-ink hover:bg-paper"
-            >
-              <Shirt className="h-6 w-6 text-ink-soft" aria-hidden="true" />
-              T-shirts &amp; team wear
-            </a>
-          </div>
+          <ul>
+            {MAIN_MENU.map(({ page, label }) => (
+              <li key={page}>{link(page, label, true)}</li>
+            ))}
+          </ul>
+          <ul className="mt-2 border-t border-line pt-2">
+            {MORE_PAGES.map(({ page, label }) => (
+              <li key={page}>{link(page, label, false)}</li>
+            ))}
+          </ul>
         </nav>
 
         <div className="mt-auto space-y-3 border-t border-line px-4 py-5">

@@ -16,8 +16,12 @@ export type BannerCtaTarget =
   | 'url'
   | 'none';
 
-/** Where a banner shows on the homepage: top slideshow, photo banner further down, or a notice card. */
-export type BannerPlacement = 'hero' | 'promo' | 'announcement';
+/**
+ * Where a banner shows on the homepage: the top slideshow, a running promo banner, or an
+ * announcement card. 'promo' / 'announcement' sit after the strings; 'promo2' / 'announcement2'
+ * further down, after "Shop by product" (GR website map).
+ */
+export type BannerPlacement = 'hero' | 'promo' | 'announcement' | 'promo2' | 'announcement2';
 
 export interface Banner {
   id: string;
@@ -85,6 +89,8 @@ export interface Racket {
   maxTension?: string | null; // e.g. "Up to 28 lbs"
   description?: string | null;
   images: string[]; // photo URLs; the first is the main photo (max 6)
+  /** 'used' = a second-hand racket the shop re-sells (shown under "Re-sell"). Missing = 'new'. */
+  condition?: RacketCondition;
   inStock: boolean;
   isFeatured: boolean; // shown in the homepage rackets row
   isActive: boolean; // false = hidden from the website
@@ -92,7 +98,93 @@ export interface Racket {
   createdAt: string;
 }
 
+export type RacketCondition = 'new' | 'used';
+
 export type RacketInput = Omit<Racket, 'id' | 'createdAt' | 'sortOrder'> & { sortOrder?: number };
+
+// ---------------------------------------------------------------------------
+// Academies (admin-managed list; visitors request a slot)
+// ---------------------------------------------------------------------------
+
+export interface Academy {
+  id: string;
+  name: string;
+  area: string; // locality, e.g. "MVP Colony, Visakhapatnam"
+  address?: string | null;
+  mapsUrl?: string | null; // https Google Maps link
+  phone?: string | null; // the academy's own number, shown on the page (optional)
+  photoUrl?: string | null;
+  description?: string | null;
+  ageGroups?: string | null; // free text, e.g. "Ages 6–16 and adults"
+  fee?: string | null; // free text, e.g. "₹2,000 a month"
+  batches: string[]; // slot options visitors choose from, e.g. "Mon–Fri 6:00–7:30 AM"
+  isActive: boolean; // false = hidden from the website
+  sortOrder: number;
+  createdAt: string;
+}
+
+export type AcademyInput = Omit<Academy, 'id' | 'createdAt' | 'sortOrder'> & { sortOrder?: number };
+
+// ---------------------------------------------------------------------------
+// Enquiries: academy slot bookings, tournament organizing requests, custom T-shirt requests.
+// Visitors send them without logging in; the admin follows up by phone.
+// ---------------------------------------------------------------------------
+
+export type EnquiryKind = 'academy' | 'tournament' | 'custom_tshirt';
+export type EnquiryStatus = 'new' | 'contacted' | 'closed';
+/** Tournament organizing departments (GR website map). */
+export type TournamentDepartment = 'umpire' | 'dress' | 'trophies' | 'refreshments' | 'other';
+
+export interface EnquiryInput {
+  kind: EnquiryKind;
+  name: string;
+  mobile: string; // 10-digit Indian mobile, or +91…; the server normalises it
+  academyId?: string | null; // kind 'academy'
+  batch?: string | null; // kind 'academy': one of the academy's batches
+  department?: TournamentDepartment | null; // kind 'tournament'
+  location?: string | null; // kind 'tournament': where the tournament is
+  date?: string | null; // YYYY-MM-DD: academy start date / tournament date / T-shirts needed by
+  quantity?: number | null; // kind 'custom_tshirt'
+  notes?: string | null;
+}
+
+export interface Enquiry extends EnquiryInput {
+  id: string; // ENQ-…
+  /** Human label for the admin list, set by the server: academy name, department name or "Custom T-shirts". */
+  subject: string;
+  status: EnquiryStatus;
+  adminNote?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EnquiryUpdate {
+  status?: EnquiryStatus;
+  adminNote?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Footer pages written by the shop (About us, Shipping, …). A page with no text isn't linked.
+// ---------------------------------------------------------------------------
+
+export type SitePageSlug =
+  | 'about'
+  | 'promise'
+  | 'local-pickup'
+  | 'express-stringing'
+  | 'shuttlers-talk'
+  | 'shipping'
+  | 'returns'
+  | 'terms'
+  | 'payments'
+  | 'stringing-guide';
+
+export interface SitePage {
+  slug: SitePageSlug;
+  title: string;
+  body: string; // plain text; blank lines separate paragraphs
+  updatedAt?: string | null;
+}
 
 export type ReviewStatus = 'pending' | 'approved' | 'hidden';
 
@@ -273,6 +365,13 @@ export interface ShopSettings {
   mapsUrl?: string | null; // https Google Maps link to the shop
   openingHours: string; // free text, e.g. "Mon–Sat 10:00 AM – 8:00 PM · Sunday closed"
   declinedRepairFee: number; // ₹ charged (besides pickup & delivery) when a repair estimate is declined; 0 = none
+  /** Social media pages (https links); an empty one isn't shown in the footer. */
+  instagramUrl?: string | null;
+  facebookUrl?: string | null;
+  xUrl?: string | null;
+  youtubeUrl?: string | null;
+  /** Up to 3 short lines the footer highlights (the shop's own promises). */
+  footerHighlights?: string[];
 }
 
 export interface PublicSiteContent {
@@ -284,4 +383,6 @@ export interface PublicSiteContent {
   reviews: PublicReviewsResponse;
   documents: SiteDocument[];
   availability: PublicAvailability;
+  academies?: Academy[]; // active only (optional: older servers don't send it)
+  pages?: SitePage[]; // footer pages with text only (optional: older servers don't send it)
 }

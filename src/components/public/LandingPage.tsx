@@ -1,37 +1,37 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CalendarDays, GraduationCap, Grid3x3, LandPlot, Recycle, Trophy, Wrench } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import type { WizardPrefill } from '../../types';
-import type { Banner, BannerCtaTarget, SiteEvent, StringProduct } from '../../types/content';
+import type { Banner, BannerCtaTarget, BannerPlacement, StringProduct } from '../../types/content';
 import { analyticsService } from '../../services/analyticsService';
 import { shopService } from '../../services/shopService';
+import { PUBLIC_PAGES } from '../../utils/publicPages';
 import { peekPendingStoreSection, subscribeStoreSection, takePendingStoreSection } from '../../utils/storeNavigation';
-import { BookingSection, type BookingPreset, type BookingService, type RepairRequest, type StringingRequest } from './home/BookingSection';
-import { ContactSection } from './home/ContactSection';
-import { CourtsSection } from './home/CourtsSection';
-import { EventDialog } from './home/EventDialog';
-import { EventsSection } from './home/EventsSection';
-import { categoryLabel, eventAction, eventDateText, eventPhoto, feeText, registrationStatus, spotsText, visibleEvents } from './home/events';
+import { BookingSection, type BookingPreset, type BookingService } from './home/BookingSection';
+import { useBookingWizard } from './home/booking';
+import { BrandGridSection, type BrandTile } from './home/BrandGridSection';
+import { eventSlides, useEventDialog } from './home/EventsHero';
 import { FaqSection } from './home/FaqSection';
-import { OffersSection } from './home/OffersSection';
-import { activeStrings, describePickupHours, formatKm, localIsoDate, safeImageUrl, safeUrl } from './home/format';
+import { activeStrings, formatKm, localIsoDate, safeImageUrl, safeUrl } from './home/format';
 import { HeroCarousel, type HeroAction, type HeroSlide } from './home/HeroCarousel';
+import { OffersSection } from './home/OffersSection';
 import { RacketsSection, activeRackets } from './home/RacketsSection';
 import { ReviewsSection } from './home/ReviewsSection';
-import { SiteFooter } from './home/SiteFooter';
-import { SiteHeader, type NavItem } from './home/SiteHeader';
+import { ServiceLogosSection, type ServiceLogo } from './home/ServiceLogosSection';
+import { ShopByProductSection, type ProductCategory } from './home/ShopByProductSection';
 import { StringBookingDialog, type StringBookingRequest } from './home/StringBookingDialog';
 import { StringsSection } from './home/StringsSection';
-import { ShopByProductSection, type ProductCategory } from './home/ShopByProductSection';
 import { SECTION_IDS, scrollToSection, useShop } from './home/shop';
+import { container } from './home/ui';
 import { useHomeContent } from './home/useHomeContent';
+import { PublicLayout, useNavItem, usePublicNav } from './layout/PublicLayout';
 
 /** How long the hero shows only its photo while content loads, before falling back to the default slide. */
 const HERO_PLACEHOLDER_MS = 1200;
 
 /**
  * Menu ids that open the booking form on a service. The homepage no longer has stringing or
- * repair sections (GR website map), so "Stringing" / "Repairs" in the header, the footer and
- * links from other pages go straight to booking.
+ * repair sections (GR website map), so "Stringing" / "Repairs" links from older screens and old
+ * /#stringing, /#repairs addresses go straight to booking.
  */
 const BOOKING_LINKS: Record<string, BookingService> = { stringing: 'stringing', repairs: 'repair' };
 
@@ -46,37 +46,22 @@ const BANNER_DEFAULT_LABEL: Record<Exclude<BannerCtaTarget, 'none'>, string> = {
   url: 'Find out more',
 };
 
-function stringingPrefill(r: StringingRequest): Partial<WizardPrefill> {
-  const prefill: Partial<WizardPrefill> = {};
-  if (r.brand) prefill.batBrand = r.brand;
-  if (r.model) prefill.batModel = r.model;
-  if (r.stringName) prefill.stringType = r.stringName;
-  if (r.stringName && r.colour) prefill.stringColour = r.colour;
-  if (r.tension && r.tension >= 10 && r.tension <= 40) prefill.stringTension = r.tension;
-  if (r.pickupDate) prefill.pickupDate = r.pickupDate;
-  return prefill;
-}
-
-function repairPrefill(r: RepairRequest): Partial<WizardPrefill> {
-  const prefill: Partial<WizardPrefill> = {};
-  if (r.category) prefill.repairIssue = r.category; // a live repair category name; the wizard maps it
-  if (r.notes) prefill.repairDescription = r.notes;
-  if (r.brand) prefill.batBrand = r.brand;
-  if (r.model) prefill.batModel = r.model;
-  if (r.pickupDate) prefill.pickupDate = r.pickupDate;
-  return prefill;
-}
+const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /**
- * Public GR Sports homepage: one page with anchored sections (see ./home).
- * Live content (events, banners, strings, rackets, reviews, documents, availability) comes from
- * GET /api/content/site; prices and pickup rules from the public /config endpoints via AppContext.
- * The quick booking form hands its details to the customer booking wizard (login first if needed).
+ * Public GR Sports homepage ("Badminton" page), in the order of the GR website map:
+ * top banner, brand grid, booking form, our services, strings, promo banners and announcements,
+ * shop by product, more promo banners and announcements, rackets (new and second-hand), an events
+ * banner, reviews and FAQs. Live content comes from GET /api/content/site (shared with the other
+ * pages); the booking form hands its details to the customer booking wizard (login first if needed).
  */
 export const LandingPage: React.FC = () => {
   const app = useApp();
-  const { status, content, refreshEvents, patchEvent } = useHomeContent();
+  const { status, content } = useHomeContent();
   const SHOP = useShop();
+  const go = usePublicNav();
+  const navItem = useNavItem();
+  const { bookStringing, bookRepair } = useBookingWizard();
 
   // AppContext functions are re-created on every render; effects read the latest through this ref.
   const appRef = useRef(app);
@@ -100,28 +85,10 @@ export const LandingPage: React.FC = () => {
   // ---------------------------------------------------------------------------
   const strings = useMemo(() => activeStrings(content?.strings || []), [content]);
   const rackets = useMemo(() => activeRackets(content?.rackets), [content]);
-  const events = useMemo(() => visibleEvents(content?.events), [content]);
+  const newRackets = useMemo(() => rackets.filter((r) => r.condition !== 'used'), [rackets]);
+  const usedRackets = useMemo(() => rackets.filter((r) => r.condition === 'used'), [rackets]);
   const availability = content?.availability || null;
-  const { days: pickupDays, slots: pickupSlots } = describePickupHours(availability?.settings);
-  const stringsStatus = status;
 
-  const nav: NavItem[] = useMemo(
-    () =>
-      [
-        { id: 'stringing', label: 'Stringing' }, // BOOKING_LINKS: opens the booking form
-        { id: 'repairs', label: 'Repairs' },
-        { id: SECTION_IDS.strings, label: 'Strings' },
-        rackets.length ? { id: SECTION_IDS.rackets, label: 'Rackets' } : null,
-        { id: SECTION_IDS.events, label: 'Events' },
-        { id: SECTION_IDS.reviews, label: 'Reviews' },
-        { id: SECTION_IDS.contact, label: 'Contact' },
-      ].filter(Boolean) as NavItem[],
-    [rackets.length],
-  );
-
-  // ---------------------------------------------------------------------------
-  // Navigation within the page
-  // ---------------------------------------------------------------------------
   // ---------------------------------------------------------------------------
   // Booking
   // ---------------------------------------------------------------------------
@@ -133,11 +100,13 @@ export const LandingPage: React.FC = () => {
     requestAnimationFrame(() => scrollToSection(SECTION_IDS.book, { focus: true }));
   }, []);
 
+  // "Book with this string" opens a short form over the catalogue instead of scrolling back up.
+  const [stringBooking, setStringBooking] = useState<StringBookingRequest | null>(null);
+  const bookWithString = useCallback((product: StringProduct, colour?: string) => setStringBooking({ product, colour }), []);
+
   // ---------------------------------------------------------------------------
   // Navigation within the page
   // ---------------------------------------------------------------------------
-  const [stringsExpanded, setStringsExpanded] = useState(false);
-  const [racketsExpanded, setRacketsExpanded] = useState(false);
   const [pendingSection, setPendingSection] = useState<string | null>(() => {
     // Peek here (initialisers may run twice in development); cleared in the effect below.
     const requested = peekPendingStoreSection();
@@ -146,19 +115,22 @@ export const LandingPage: React.FC = () => {
     return hash && ((Object.values(SECTION_IDS) as string[]).includes(hash) || hash in BOOKING_LINKS) ? hash : null;
   });
 
-  const navigate = useCallback((id: string) => {
-    if (BOOKING_LINKS[id]) {
-      startBooking(BOOKING_LINKS[id]);
-      return;
-    }
-    if (id === 'top') {
-      window.scrollTo({ top: 0, behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-      return;
-    }
-    scrollToSection(id, { focus: true });
-  }, [startBooking]);
+  const navigate = useCallback(
+    (id: string) => {
+      if (BOOKING_LINKS[id]) {
+        startBooking(BOOKING_LINKS[id]);
+        return;
+      }
+      if (id === 'top') {
+        window.scrollTo({ top: 0, behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+        return;
+      }
+      scrollToSection(id, { focus: true });
+    },
+    [startBooking],
+  );
 
-  // Requests from other screens (navbar / footer links on the customer pages).
+  // Requests from other screens (menus and footers elsewhere in the app).
   useEffect(() => {
     takePendingStoreSection(); // already read by the state initialiser
     return subscribeStoreSection(() => {
@@ -170,8 +142,6 @@ export const LandingPage: React.FC = () => {
   // Scroll once the content the section depends on has loaded.
   useEffect(() => {
     if (!pendingSection || status === 'loading') return;
-    if (pendingSection === SECTION_IDS.strings) setStringsExpanded(true);
-    if (pendingSection === SECTION_IDS.rackets) setRacketsExpanded(true);
     const id = pendingSection;
     setPendingSection(null);
     if (BOOKING_LINKS[id]) {
@@ -184,54 +154,157 @@ export const LandingPage: React.FC = () => {
     return () => cancelAnimationFrame(raf);
   }, [pendingSection, status, startBooking]);
 
-  useEffect(() => {
-    if (stringsExpanded) track('home/strings');
-  }, [stringsExpanded, track]);
-  useEffect(() => {
-    if (racketsExpanded) track('home/rackets');
-  }, [racketsExpanded, track]);
-
   /** Same-page "#section" links anywhere on the page scroll smoothly instead of jumping. */
   const onClickCapture = (e: React.MouseEvent) => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const link = (e.target as HTMLElement).closest?.('a[href^="#"]');
     if (!link) return;
     const id = (link.getAttribute('href') || '').slice(1);
-    if (id && (id === 'top' || document.getElementById(id))) {
+    if (id && (id === 'top' || document.getElementById(id) || BOOKING_LINKS[id])) {
       e.preventDefault();
       navigate(id);
     }
   };
 
-  // "Book with this string" opens a short form over the catalogue instead of scrolling back up.
-  const [stringBooking, setStringBooking] = useState<StringBookingRequest | null>(null);
-  const bookWithString = useCallback((product: StringProduct, colour?: string) => setStringBooking({ product, colour }), []);
-
-  const bookStringing = (req: StringingRequest) => appRef.current.openWizardWithService('GETTING', stringingPrefill(req));
-  const bookRepair = (req: RepairRequest) => appRef.current.openWizardWithService('REPAIR', repairPrefill(req));
+  // ---------------------------------------------------------------------------
+  // Events (top banner, the events banner further down, and their details / registration dialog)
+  // ---------------------------------------------------------------------------
+  const onShowEvent = useCallback(() => track('home/event'), [track]);
+  const { events, showEvent, dialog: eventDialog } = useEventDialog(onShowEvent);
 
   // ---------------------------------------------------------------------------
-  // Accounts
+  // Banners: top slideshow, and two spots of promo banners + announcements
   // ---------------------------------------------------------------------------
-  const accountLabel = !isLoggedIn ? 'Log in' : currentRole === 'CUSTOMER' ? 'My bookings' : currentRole === 'ADMIN' ? 'Admin dashboard' : 'Staff dashboard';
-  const onAccount = () => {
-    const { isLoggedIn: loggedIn, currentRole: role, setActiveView, openAuthModal } = appRef.current;
-    if (!loggedIn) {
-      openAuthModal('CUSTOMER');
-      return;
+  const liveBanners = useMemo(() => {
+    const today = localIsoDate(new Date());
+    const live = (content?.banners || [])
+      .filter((b) => b.isActive !== false)
+      .filter((b) => (!b.startsAt || b.startsAt <= today) && (!b.endsAt || b.endsAt >= today))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const at = (placement: BannerPlacement) => live.filter((b) => (b.placement || 'hero') === placement);
+    return { hero: at('hero'), promo: at('promo'), announcement: at('announcement'), promo2: at('promo2'), announcement2: at('announcement2') };
+  }, [content]);
+
+  /** What a banner's button does. */
+  const bannerAction = useCallback(
+    (b: Banner): HeroAction | undefined => {
+      const target = b.ctaTarget || 'none';
+      if (target === 'none') return undefined;
+      const label = (b.ctaLabel || '').trim() || BANNER_DEFAULT_LABEL[target];
+      switch (target) {
+        case 'url': {
+          const href = safeUrl(b.ctaUrl);
+          return href ? { label, href, external: true } : undefined;
+        }
+        case 'stringing':
+        case 'repair':
+          return { label, onClick: () => startBooking(target) };
+        case 'tshirts':
+          return { label, href: PUBLIC_PAGES.tshirts.path, onClick: (e?: unknown) => openPage(e, 'tshirts') };
+        case 'courts':
+          return { label, href: PUBLIC_PAGES.courts.path, onClick: (e?: unknown) => openPage(e, 'courts') };
+        case 'strings':
+          return { label, href: PUBLIC_PAGES.strings.path, onClick: (e?: unknown) => openPage(e, 'strings') };
+        case 'rackets':
+          return { label, href: PUBLIC_PAGES.rackets.path, onClick: (e?: unknown) => openPage(e, 'rackets') };
+        case 'tournaments':
+          return { label, href: PUBLIC_PAGES.events.path, onClick: (e?: unknown) => openPage(e, 'events') };
+        default:
+          return undefined;
+      }
+      function openPage(e: unknown, page: 'tshirts' | 'courts' | 'strings' | 'rackets' | 'events') {
+        (e as React.MouseEvent | undefined)?.preventDefault?.();
+        go(page);
+      }
+    },
+    [startBooking, go],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Top banner: events marked "show as banner", then admin slides, else the default slide
+  // ---------------------------------------------------------------------------
+  const [heroWaitOver, setHeroWaitOver] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setHeroWaitOver(true), HERO_PLACEHOLDER_MS);
+    return () => clearTimeout(t);
+  }, []);
+  const heroPlaceholder = status === 'loading' && !heroWaitOver;
+
+  const slides: HeroSlide[] = useMemo(() => {
+    const out: HeroSlide[] = eventSlides(events, SHOP, showEvent);
+    for (const b of liveBanners.hero) {
+      const image = safeImageUrl(b.desktopImageUrl);
+      if (!image) continue;
+      out.push({
+        key: `banner-${b.id}`,
+        image,
+        mobileImage: safeImageUrl(b.mobileImageUrl),
+        alt: (b.title || '').trim() || SHOP.name,
+        eyebrow: (b.badge || '').trim() || undefined,
+        title: (b.title || '').trim() || undefined,
+        text: (b.subtitle || '').trim() || undefined,
+        primary: bannerAction(b),
+      });
     }
-    setActiveView(role === 'CUSTOMER' ? 'customer_portal' : role === 'ADMIN' ? 'admin_portal' : 'employee_portal');
-    window.scrollTo({ top: 0 });
-  };
-  const onStaffLogin = (role: 'EMPLOYEE' | 'ADMIN') => appRef.current.openAuthModal(role);
-  const openTshirts = useCallback(() => {
-    appRef.current.setActiveView('apparel');
-    window.scrollTo({ top: 0 });
-  }, []);
-  const openCourts = useCallback(() => {
-    appRef.current.setActiveView('courts');
-    window.scrollTo({ top: 0 });
-  }, []);
+    if (out.length === 0) {
+      out.push({
+        key: 'default',
+        image: '/images/site/hero-smash.webp',
+        position: '72% 32%',
+        mobilePosition: '68% 30%',
+        alt: 'A badminton player jumping for a smash in an indoor hall',
+        title: `Racket stringing and repairs in ${SHOP.locality}.`,
+        text: `Free pickup and delivery within ${formatKm(distanceConfig.freeRadiusKm)}. Pay when your racket comes back, in cash or by UPI.`,
+        primary: { label: 'Book stringing', onClick: () => startBooking('stringing') },
+        secondary: { label: 'Book a repair', onClick: () => startBooking('repair') },
+      });
+    }
+    return out;
+  }, [events, liveBanners, bannerAction, distanceConfig.freeRadiusKm, showEvent, startBooking, SHOP]);
+
+  /** The events banner further down: every upcoming event with a photo, rotating. */
+  const eventsBannerSlides = useMemo(() => eventSlides(events, SHOP, showEvent, { allEvents: true }), [events, SHOP, showEvent]);
+
+  // ---------------------------------------------------------------------------
+  // Brand grid: brands in the live rackets and strings lists
+  // ---------------------------------------------------------------------------
+  const brands = useMemo<BrandTile[]>(() => {
+    const byBrand = new Map<string, { rackets: number; strings: number }>();
+    const add = (raw: string | null | undefined, kind: 'rackets' | 'strings') => {
+      const name = (raw || '').trim();
+      if (!name) return;
+      const entry = byBrand.get(name) || { rackets: 0, strings: 0 };
+      entry[kind] += 1;
+      byBrand.set(name, entry);
+    };
+    newRackets.forEach((r) => add(r.brand, 'rackets'));
+    strings.forEach((s) => add(s.brand, 'strings'));
+    return [...byBrand.entries()]
+      .sort((a, b) => b[1].rackets + b[1].strings - (a[1].rackets + a[1].strings) || a[0].localeCompare(b[0]))
+      .map(([name, n]) => ({
+        name,
+        links: [
+          ...(n.rackets ? [{ key: 'rackets', label: count(n.rackets, 'racket', 'rackets'), onOpen: () => go('rackets', { brand: name }) }] : []),
+          ...(n.strings ? [{ key: 'strings', label: count(n.strings, 'string', 'strings'), onOpen: () => go('strings', { brand: name }) }] : []),
+        ],
+      }));
+  }, [newRackets, strings, go]);
+
+  // ---------------------------------------------------------------------------
+  // Our services (logos), each opening its page
+  // ---------------------------------------------------------------------------
+  const services = useMemo<ServiceLogo[]>(
+    () => [
+      { key: 'resell', label: 'Re-sell rackets', icon: Recycle, href: PUBLIC_PAGES.rackets.path, onOpen: () => go('rackets', { condition: 'used' }) },
+      { key: 'repair', label: 'Racket repair', icon: Wrench, href: PUBLIC_PAGES.services.path, onOpen: () => go('services', { service: 'repair' }) },
+      { key: 'stringing', label: 'Racket stringing', icon: Grid3x3, href: PUBLIC_PAGES.services.path, onOpen: () => go('services', { service: 'stringing' }) },
+      { key: 'academies', label: 'Near by academies', icon: GraduationCap, href: PUBLIC_PAGES.academies.path, onOpen: () => go('academies') },
+      { key: 'courts', label: 'Near by courts', icon: LandPlot, href: PUBLIC_PAGES.courts.path, onOpen: () => go('courts') },
+      { key: 'tournaments', label: 'Tournament organizers', icon: Trophy, href: PUBLIC_PAGES.tournaments.path, onOpen: () => go('tournaments') },
+      { key: 'events', label: 'Events', icon: CalendarDays, href: PUBLIC_PAGES.events.path, onOpen: () => go('events') },
+    ],
+    [go],
+  );
 
   // ---------------------------------------------------------------------------
   // Shop by product: one tile per catalogue the shop actually has, with live counts
@@ -249,15 +322,15 @@ export const LandingPage: React.FC = () => {
   }, []);
 
   const shopCategories = useMemo<ProductCategory[]>(() => {
-    const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
     const out: ProductCategory[] = [];
     if (rackets.length) {
       out.push({
         key: 'rackets',
         name: 'Rackets',
         detail: count(rackets.length, 'racket', 'rackets'),
-        image: '/images/site/rackets-on-court.webp',
-        onOpen: () => navigate(SECTION_IDS.rackets),
+        // Not the rackets section's photo, which follows a little further down.
+        image: '/images/site/rackets-shuttles.webp',
+        onOpen: () => go('rackets'),
       });
     }
     if (strings.length) {
@@ -266,7 +339,7 @@ export const LandingPage: React.FC = () => {
         name: 'Strings',
         detail: count(strings.length, 'string', 'strings'),
         image: '/images/site/strings-closeup.webp',
-        onOpen: () => navigate(SECTION_IDS.strings),
+        onOpen: () => go('strings'),
       });
     }
     // The T-shirts page always takes team orders, even before any styles are listed.
@@ -275,217 +348,78 @@ export const LandingPage: React.FC = () => {
       name: 'T-shirts & team wear',
       detail: apparelCount ? count(apparelCount, 'style', 'styles') : 'Team orders',
       image: '/images/apparel/hero.webp',
-      onOpen: openTshirts,
+      onOpen: () => go('tshirts'),
     });
     return out;
-  }, [rackets.length, strings.length, apparelCount, navigate, openTshirts]);
-
-  // ---------------------------------------------------------------------------
-  // Events
-  // ---------------------------------------------------------------------------
-  const [openEvent, setOpenEvent] = useState<{ id: string; intent: 'details' | 'register' } | null>(null);
-  const dialogEvent = openEvent ? events.find((e) => e.id === openEvent.id) || null : null;
-
-  const showEvent = useCallback(
-    (event: SiteEvent, intent: 'details' | 'register') => {
-      setOpenEvent({ id: event.id, intent });
-      track('home/event');
-    },
-    [track],
-  );
-
-  const onRegistered = (event: SiteEvent) => {
-    // Optimistic count; the refresh below replaces it with the server's numbers when it can.
-    patchEvent(event.id, {
-      registrationCount: event.registrationCount + 1,
-      spotsLeft: typeof event.spotsLeft === 'number' ? Math.max(event.spotsLeft - 1, 0) : event.spotsLeft,
-    });
-    refreshEvents();
-  };
-
-  // ---------------------------------------------------------------------------
-  // Hero slides: events marked "show as banner" first, then admin banners, else the default slide
-  // ---------------------------------------------------------------------------
-  const [heroWaitOver, setHeroWaitOver] = useState(false);
-  useEffect(() => {
-    const t = window.setTimeout(() => setHeroWaitOver(true), HERO_PLACEHOLDER_MS);
-    return () => clearTimeout(t);
-  }, []);
-  const heroPlaceholder = status === 'loading' && !heroWaitOver;
-
-  // Live banners (on, within their dates), by placement: top slideshow, promo banners, announcements.
-  const liveBanners = useMemo(() => {
-    const today = localIsoDate(new Date());
-    const live = (content?.banners || [])
-      .filter((b) => b.isActive !== false)
-      .filter((b) => (!b.startsAt || b.startsAt <= today) && (!b.endsAt || b.endsAt >= today))
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-    const at = (placement: NonNullable<Banner['placement']>) => live.filter((b) => (b.placement || 'hero') === placement);
-    return { hero: at('hero'), promo: at('promo'), announcement: at('announcement') };
-  }, [content]);
-
-  /** What a banner's button does. */
-  const bannerAction = useCallback(
-    (b: Banner): HeroAction | undefined => {
-      const target = b.ctaTarget || 'none';
-      if (target === 'none') return undefined;
-      const label = (b.ctaLabel || '').trim() || BANNER_DEFAULT_LABEL[target];
-      if (target === 'url') {
-        const href = safeUrl(b.ctaUrl);
-        return href ? { label, href, external: true } : undefined;
-      }
-      if (target === 'stringing' || target === 'repair') return { label, onClick: () => startBooking(target) };
-      if (target === 'tshirts') return { label, onClick: () => appRef.current.setActiveView('apparel') };
-      if (target === 'courts') return { label, onClick: openCourts };
-      const id =
-        target === 'strings'
-          ? SECTION_IDS.strings
-          : target === 'rackets'
-            ? rackets.length
-              ? SECTION_IDS.rackets
-              : SECTION_IDS.contact
-            : target === 'tournaments'
-              ? SECTION_IDS.events
-              : SECTION_IDS.contact;
-      return { label, onClick: () => navigate(id) };
-    },
-    [startBooking, openCourts, navigate, rackets.length],
-  );
-
-  const slides: HeroSlide[] = useMemo(() => {
-    const out: HeroSlide[] = [];
-
-    for (const e of events) {
-      const photo = eventPhoto(e);
-      if (!e.showAsBanner || !photo.desktop) continue;
-      const action = eventAction(e, SHOP);
-      const reg = registrationStatus(e);
-      const spots = e.registrationOpen ? spotsText(e) : null;
-      out.push({
-        key: `event-${e.id}`,
-        image: photo.desktop,
-        mobileImage: photo.mobile,
-        alt: '',
-        eyebrow: [categoryLabel(e), e.status === 'ongoing' ? 'On now' : reg].filter(Boolean).join(' · '),
-        title: e.title,
-        text: e.summary || undefined,
-        textOnPhone: false,
-        meta: [
-          { icon: 'date', text: `${eventDateText(e)}${e.timeText ? `, ${e.timeText}` : ''}` },
-          { icon: 'venue', text: e.venue },
-          { icon: 'fee', text: feeText(e) },
-          ...(spots ? [{ icon: 'spots' as const, text: spots }] : []),
-        ],
-        primary:
-          action.kind === 'link'
-            ? { label: action.label, href: action.href, external: action.external }
-            : { label: action.label, onClick: () => showEvent(e, action.kind === 'form' ? 'register' : 'details') },
-        secondary: action.kind === 'details' ? undefined : { label: 'Event details', onClick: () => showEvent(e, 'details') },
-      });
-    }
-
-    for (const b of liveBanners.hero) if (safeImageUrl(b.desktopImageUrl)) out.push(bannerSlide(b));
-
-    if (out.length === 0) {
-      out.push({
-        key: 'default',
-        image: '/images/site/hero-smash.webp',
-        position: '72% 32%',
-        mobilePosition: '68% 30%',
-        alt: 'A badminton player jumping for a smash in an indoor hall',
-        title: `Racket stringing and repairs in ${SHOP.locality}.`,
-        text: `Free pickup and delivery within ${formatKm(distanceConfig.freeRadiusKm)}. Pay when your racket comes back, in cash or by UPI.`,
-        primary: { label: 'Book stringing', onClick: () => startBooking('stringing') },
-        secondary: { label: 'Book a repair', onClick: () => startBooking('repair') },
-      });
-    }
-    return out;
-
-    function bannerSlide(b: Banner): HeroSlide {
-      return {
-        key: `banner-${b.id}`,
-        image: safeImageUrl(b.desktopImageUrl) as string,
-        mobileImage: safeImageUrl(b.mobileImageUrl),
-        alt: (b.title || '').trim() || SHOP.name,
-        eyebrow: (b.badge || '').trim() || undefined,
-        title: (b.title || '').trim() || undefined,
-        text: (b.subtitle || '').trim() || undefined,
-        primary: bannerAction(b),
-      };
-    }
-  }, [events, liveBanners, bannerAction, distanceConfig.freeRadiusKm, showEvent, startBooking, SHOP]);
+  }, [rackets.length, strings.length, apparelCount, go]);
 
   return (
-    <div id="top" className="w-full bg-white font-sans text-ink selection:bg-accent selection:text-ink" onClickCapture={onClickCapture}>
-      <a
-        href="#book"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-xl focus:bg-white focus:px-4 focus:py-3 focus:text-ink focus:shadow-lg"
-      >
-        Skip to booking
-      </a>
-      <SiteHeader
-        nav={nav}
-        pickupDays={pickupDays}
-        pickupSlots={pickupSlots}
-        accountLabel={accountLabel}
-        onAccount={onAccount}
-        onStaffLogin={onStaffLogin}
-        onNavigate={navigate}
-        showStaffLinks={!isLoggedIn}
-        onOpenTshirts={openTshirts}
-        onOpenCourts={openCourts}
+    <PublicLayout
+      page="home"
+      skipTo="book"
+      onClickCapture={onClickCapture}
+      navigator={{
+        label: 'Badminton',
+        items: [navItem('rackets', 'Rackets', 'rackets'), navItem('strings', 'Strings', 'strings'), navItem('services', 'Services', 'services')],
+      }}
+    >
+      <h1 className="sr-only">
+        {SHOP.name}: badminton store, racket stringing and repairs in {SHOP.area}
+      </h1>
+      <HeroCarousel slides={slides} placeholder={heroPlaceholder} />
+
+      <BrandGridSection brands={brands} />
+
+      <BookingSection
+        formOnly
+        strings={strings}
+        stringsStatus={status}
+        availability={availability}
+        repairCategories={repairCategories}
+        distanceConfig={distanceConfig}
+        isCustomer={isCustomer}
+        preset={preset}
+        onBookStringing={bookStringing}
+        onBookRepair={bookRepair}
       />
 
-      <div id="content">
-        <h1 className="sr-only">
-          {SHOP.name}: badminton racket stringing and repairs in {SHOP.area}
-        </h1>
-        <HeroCarousel slides={slides} placeholder={heroPlaceholder} />
+      <ServiceLogosSection services={services} />
 
-        <BookingSection
-          strings={strings}
-          stringsStatus={stringsStatus}
-          availability={availability}
-          repairCategories={repairCategories}
-          distanceConfig={distanceConfig}
-          isCustomer={isCustomer}
-          preset={preset}
-          onBookStringing={bookStringing}
-          onBookRepair={bookRepair}
+      <StringsSection strings={strings} status={status} onSeeAll={() => go('strings')} onUseString={bookWithString} />
+
+      <OffersSection promos={liveBanners.promo} announcements={liveBanners.announcement} actionFor={bannerAction} />
+
+      <ShopByProductSection categories={shopCategories} />
+
+      <OffersSection id="offers-more" promos={liveBanners.promo2} announcements={liveBanners.announcement2} actionFor={bannerAction} />
+
+      {newRackets.length > 0 && <RacketsSection rackets={newRackets} onSeeAll={() => go('rackets')} />}
+      {usedRackets.length > 0 && (
+        <RacketsSection
+          id="used-rackets"
+          rackets={usedRackets}
+          title="Second-hand rackets"
+          intro="Used rackets the shop is selling. Message us to ask about a racket's condition before you visit."
+          photo={null}
+          onSeeAll={() => go('rackets', { condition: 'used' })}
         />
-        <EventsSection events={events} status={status} onOpen={showEvent} />
-        <CourtsSection onOpenCourts={openCourts} />
-        <StringsSection
-          strings={strings}
-          status={stringsStatus}
-          expanded={stringsExpanded}
-          onExpandedChange={setStringsExpanded}
-          onUseString={bookWithString}
-        />
-        <OffersSection promos={liveBanners.promo} announcements={liveBanners.announcement} actionFor={bannerAction} />
-        <ShopByProductSection categories={shopCategories} />
-        {rackets.length > 0 && <RacketsSection rackets={rackets} expanded={racketsExpanded} onExpandedChange={setRacketsExpanded} />}
-        <ReviewsSection data={content?.reviews} status={status} />
-        <FaqSection distanceConfig={distanceConfig} gettingServices={gettingServices} />
-        <ContactSection availability={availability} documents={content?.documents || []} />
-      </div>
+      )}
 
-      <SiteFooter
-        nav={nav}
-        onNavigate={navigate}
-        onBook={startBooking}
-        onStaffLogin={onStaffLogin}
-        showStaffLinks={!isLoggedIn}
-        onOpenTshirts={openTshirts}
-        onOpenCourts={openCourts}
-      />
+      {eventsBannerSlides.length > 0 && (
+        <section id={SECTION_IDS.events} aria-labelledby="events-banner-title" className="scroll-mt-20 border-t border-line bg-white py-14 sm:py-20">
+          <div className={container}>
+            <h2 id="events-banner-title" className="sr-only">
+              Upcoming events
+            </h2>
+            <HeroCarousel slides={eventsBannerSlides} variant="inset" label="Upcoming events" />
+          </div>
+        </section>
+      )}
 
-      <EventDialog
-        event={dialogEvent}
-        intent={openEvent?.intent || 'details'}
-        onClose={() => setOpenEvent(null)}
-        onRegistered={onRegistered}
-      />
+      <ReviewsSection data={content?.reviews} status={status} />
+      <FaqSection distanceConfig={distanceConfig} gettingServices={gettingServices} />
+
+      {eventDialog}
 
       <StringBookingDialog
         request={stringBooking}
@@ -497,6 +431,6 @@ export const LandingPage: React.FC = () => {
           bookStringing(req);
         }}
       />
-    </div>
+    </PublicLayout>
   );
 };

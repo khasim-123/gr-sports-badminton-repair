@@ -164,8 +164,16 @@ export const Navbar: React.FC = () => {
       setAdminSubView('courts');
     }
   };
+  /** Website enquiries ("ENQ-…": academy slots, tournament organizing, custom T-shirts) open in the admin inbox. */
+  const isEnquiryId = (id?: string | null): id is string => !!id && id.startsWith('ENQ-');
+  const openEnquiryFromNotification = (enquiryId: string) => {
+    setSelectedRequestId(enquiryId);
+    setActiveView('admin_portal');
+    setAdminSubView('enquiries');
+  };
   /** Shop orders and court bookings open on their own screens; service requests in the request view. */
-  const canOpenLinked = (id?: string | null) => (isOrderId(id) || isCourtBookingId(id)) && canOpenOrder;
+  const canOpenLinked = (id?: string | null) =>
+    ((isOrderId(id) || isCourtBookingId(id)) && canOpenOrder) || (isEnquiryId(id) && currentRole === 'ADMIN');
 
   const handleBrandLogoClick = () => {
     if (!isLoggedIn) {
@@ -445,6 +453,9 @@ export const Navbar: React.FC = () => {
                                 setNotificationsOpen(false);
                               } else if (isCourtBookingId(notif.requestId) && canOpenOrder) {
                                 openCourtBookingFromNotification(notif.requestId);
+                                setNotificationsOpen(false);
+                              } else if (isEnquiryId(notif.requestId) && currentRole === 'ADMIN') {
+                                openEnquiryFromNotification(notif.requestId);
                                 setNotificationsOpen(false);
                               } else if (notif.requestId && requests.some((r) => r.id === notif.requestId)) {
                                 openFromNotification(notif.requestId);

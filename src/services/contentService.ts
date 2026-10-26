@@ -5,7 +5,16 @@
  */
 import { apiClient, ApiError, getAuthToken } from './apiClient';
 import {
+  Academy,
+  AcademyInput,
   AvailabilitySettings,
+  Enquiry,
+  EnquiryInput,
+  EnquiryKind,
+  EnquiryStatus,
+  EnquiryUpdate,
+  SitePage,
+  SitePageSlug,
   Banner,
   BannerInput,
   CustomerReview,
@@ -232,5 +241,51 @@ export const contentService = {
   },
   updateAvailabilitySettings(settings: AvailabilitySettings): Promise<AvailabilitySettings> {
     return apiClient.put<AvailabilitySettings>('/availability/admin', settings);
+  },
+
+  // ---------- Enquiries (public form + admin inbox) ----------
+
+  /** Academy slot booking, tournament organizing request or custom T-shirt request (no login). */
+  submitEnquiry(input: EnquiryInput): Promise<Enquiry> {
+    return apiClient.post<Enquiry>('/enquiries', input);
+  },
+  listEnquiries(filters: { kind?: EnquiryKind; status?: EnquiryStatus } = {}): Promise<Enquiry[]> {
+    const params = new URLSearchParams();
+    if (filters.kind) params.set('kind', filters.kind);
+    if (filters.status) params.set('status', filters.status);
+    const qs = params.toString();
+    return apiClient.get<Enquiry[]>(`/admin/enquiries${qs ? `?${qs}` : ''}`);
+  },
+  updateEnquiry(id: string, update: EnquiryUpdate): Promise<Enquiry> {
+    return apiClient.patch<Enquiry>(`/admin/enquiries/${id}`, update);
+  },
+
+  // ---------- Academies ----------
+
+  getPublicAcademies(): Promise<Academy[]> {
+    return apiClient.get<Academy[]>('/content/academies');
+  },
+  listAcademies(): Promise<Academy[]> {
+    return apiClient.get<Academy[]>('/content/admin/academies');
+  },
+  createAcademy(input: AcademyInput): Promise<Academy> {
+    return apiClient.post<Academy>('/content/admin/academies', input);
+  },
+  updateAcademy(id: string, input: Partial<AcademyInput>): Promise<Academy> {
+    return apiClient.put<Academy>(`/content/admin/academies/${id}`, input);
+  },
+  deleteAcademy(id: string): Promise<{ success: boolean }> {
+    return apiClient.delete(`/content/admin/academies/${id}`);
+  },
+
+  // ---------- Footer pages ----------
+
+  /** Every footer page, including ones without text yet (admin). */
+  listSitePages(): Promise<SitePage[]> {
+    return apiClient.get<SitePage[]>('/content/admin/pages');
+  },
+  /** Saves a page's title and text; an empty text takes it out of the footer. */
+  saveSitePage(slug: SitePageSlug, input: { title: string; body: string }): Promise<SitePage> {
+    return apiClient.put<SitePage>(`/content/admin/pages/${slug}`, input);
   },
 };

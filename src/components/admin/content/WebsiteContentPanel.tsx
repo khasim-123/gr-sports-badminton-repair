@@ -5,7 +5,7 @@
  */
 import { PageHeader } from '../PageHeader';
 import React, { useCallback, useEffect, useState } from 'react';
-import { CalendarClock, FileText, Images, Layers, Medal, Shirt, Star, Trophy } from 'lucide-react';
+import { CalendarClock, FileText, GraduationCap, Images, Layers, Medal, PanelBottom, Shirt, Star, Trophy } from 'lucide-react';
 import { contentService } from '../../../services/contentService';
 import { EventsManager } from './EventsManager';
 import { BannersManager } from './BannersManager';
@@ -15,18 +15,22 @@ import { ApparelManager } from './ApparelManager';
 import { ReviewsManager } from './ReviewsManager';
 import { DocumentsManager } from './DocumentsManager';
 import { AvailabilityManager } from './AvailabilityManager';
+import { AcademiesManager } from './AcademiesManager';
+import { SitePagesManager } from './SitePagesManager';
 
-type TabId = 'events' | 'banners' | 'strings' | 'rackets' | 'apparel' | 'reviews' | 'documents' | 'availability';
+type TabId = 'events' | 'banners' | 'strings' | 'rackets' | 'apparel' | 'academies' | 'reviews' | 'pages' | 'documents' | 'availability';
 
 const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'events', label: 'Events', icon: Medal },
   { id: 'banners', label: 'Banners', icon: Images },
-  { id: 'strings', label: 'Strings & stock', icon: Layers },
+  { id: 'strings', label: 'Strings', icon: Layers },
   { id: 'rackets', label: 'Rackets', icon: Trophy },
-  { id: 'apparel', label: 'T-shirts & apparel', icon: Shirt },
+  { id: 'apparel', label: 'T-shirts', icon: Shirt },
+  { id: 'academies', label: 'Academies', icon: GraduationCap },
   { id: 'reviews', label: 'Reviews', icon: Star },
+  { id: 'pages', label: 'Footer pages', icon: PanelBottom },
   { id: 'documents', label: 'Documents', icon: FileText },
-  { id: 'availability', label: 'Pickup availability', icon: CalendarClock },
+  { id: 'availability', label: 'Pickup times', icon: CalendarClock },
 ];
 
 const STORAGE_KEY = 'gr_admin_content_tab';
@@ -86,11 +90,12 @@ export const WebsiteContentPanel: React.FC = () => {
     <div className="space-y-6 min-w-0">
       <PageHeader title="Website content" subtitle="Everything customers see on the GR Sports website." />
 
-      {/* Phones: every section visible as wrapped pills. Wider screens: one row of underlined tabs. */}
+      {/* Phones: every section visible as wrapped pills. Wider screens: underlined tabs, wrapping to a
+          second row rather than hiding sections off the edge. */}
       <div
         role="tablist"
         aria-label="Website content sections"
-        className="flex flex-wrap gap-1.5 sm:flex-nowrap sm:gap-1 sm:border-b sm:border-line sm:overflow-x-auto no-scrollbar max-w-full"
+        className="flex flex-wrap gap-1.5 sm:gap-x-0.5 sm:gap-y-0 sm:border-b sm:border-line max-w-full"
       >
         {TABS.map((tab, i) => {
           const isActive = tab.id === active;
@@ -106,7 +111,7 @@ export const WebsiteContentPanel: React.FC = () => {
               tabIndex={isActive ? 0 : -1}
               onClick={() => select(tab.id)}
               onKeyDown={(e) => onTabKeyDown(e, i)}
-              className={`shrink-0 inline-flex items-center gap-2 min-h-[44px] px-3 rounded-full border text-[14px] font-medium whitespace-nowrap transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink sm:-mb-px sm:rounded-none sm:border-0 sm:border-b-2 sm:bg-transparent sm:px-3.5 sm:text-[15px] ${
+              className={`shrink-0 inline-flex items-center gap-2 min-h-[44px] px-3 rounded-full border text-[14px] font-medium whitespace-nowrap transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink sm:-mb-px sm:rounded-none sm:border-0 sm:border-b-2 sm:bg-transparent sm:px-2.5 sm:text-[15px] ${
                 isActive
                   ? 'bg-ink border-ink text-white sm:text-ink sm:border-ink sm:font-semibold'
                   : 'bg-white border-line text-ink-soft hover:text-ink hover:border-ink/30 sm:border-transparent sm:text-ink-muted sm:hover:border-line'
@@ -141,7 +146,9 @@ export const WebsiteContentPanel: React.FC = () => {
             {tab.id === 'strings' && <StringsManager />}
             {tab.id === 'rackets' && <RacketsManager />}
             {tab.id === 'apparel' && <ApparelManager />}
+            {tab.id === 'academies' && <AcademiesManager />}
             {tab.id === 'reviews' && <ReviewsManager onPendingCountChange={handlePendingCount} />}
+            {tab.id === 'pages' && <SitePagesManager />}
             {tab.id === 'documents' && <DocumentsManager />}
             {tab.id === 'availability' && <AvailabilityManager />}
           </div>

@@ -58,6 +58,19 @@ export function hasPrice(value: number | null | undefined): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0;
 }
 
+/** "+91 98765 43210" from any 10-digit input. */
+export function displayMobile(digits: string): string {
+  return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+}
+
+/** Accepts "98765 43210", "+91 98765-43210", "09876543210" … → 10 digits, or null. */
+export function normaliseMobile(value: string): string | null {
+  let digits = value.replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
+  else if (digits.length === 11 && digits.startsWith('0')) digits = digits.slice(1);
+  return /^[6-9]\d{9}$/.test(digits) ? digits : null;
+}
+
 /** Local YYYY-MM-DD (not UTC). */
 export function localIsoDate(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');

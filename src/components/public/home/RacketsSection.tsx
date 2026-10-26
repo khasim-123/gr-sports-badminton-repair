@@ -27,14 +27,40 @@ function racketPhotos(r: Racket): string[] {
 
 interface RacketsSectionProps {
   rackets: Racket[];
-  expanded: boolean;
-  onExpandedChange: (expanded: boolean) => void;
+  /** 'home': a few featured rackets and a "See all" button; 'page': every racket with a brand filter. */
+  mode?: 'home' | 'page';
+  /** Home: what "See all" does (opens the Rackets page). */
+  onSeeAll?: () => void;
+  id?: string;
+  title?: string;
+  intro?: string;
+  /** Page: start filtered to this brand (when it has rackets here). */
+  initialBrand?: string;
+  /** Photo beside the heading on laptops. */
+  photo?: { src: string; alt: string } | null;
+  /** Background of the section. */
+  tone?: 'white' | 'paper';
 }
 
+const DEFAULT_PHOTO = { src: '/images/site/rackets-on-court.webp', alt: 'Two badminton rackets and shuttles on a green court' };
+
 /** Shown only when there are active rackets (the caller hides it otherwise). */
-export const RacketsSection: React.FC<RacketsSectionProps> = ({ rackets, expanded, onExpandedChange }) => {
+export const RacketsSection: React.FC<RacketsSectionProps> = ({
+  rackets,
+  mode = 'home',
+  onSeeAll,
+  id = SECTION_IDS.rackets,
+  title = 'Rackets at the shop',
+  intro = 'A selection of the rackets we keep. Stock changes, so message us to check a model or a price before you visit.',
+  initialBrand,
+  photo = DEFAULT_PHOTO,
+  tone = 'white',
+}) => {
   const uid = useId();
-  const [brand, setBrand] = useState(ALL);
+  const expanded = mode === 'page';
+  const [brand, setBrand] = useState(() =>
+    initialBrand && rackets.some((r) => ((r.brand || '').trim() || 'Other') === initialBrand) ? initialBrand : ALL,
+  );
 
   const brands = useMemo(() => {
     const counts = new Map<string, number>();
@@ -49,39 +75,26 @@ export const RacketsSection: React.FC<RacketsSectionProps> = ({ rackets, expande
     const f = rackets.filter((r) => r.isFeatured);
     return (f.length ? f : rackets).slice(0, FEATURED_COUNT);
   }, [rackets]);
-  const canExpand = rackets.length > featured.length;
+  const canSeeAll = !expanded && !!onSeeAll && rackets.length > featured.length;
   const shown = expanded ? rackets.filter((r) => brand === ALL || ((r.brand || '').trim() || 'Other') === brand) : featured;
 
   return (
-    <section id={SECTION_IDS.rackets} aria-labelledby="rackets-title" className="scroll-mt-20 border-t border-line bg-white py-16 sm:py-24">
+    <section id={id} aria-labelledby={`${id}-title`} className={cx('scroll-mt-20 border-t border-line py-16 sm:py-24', tone === 'paper' ? 'bg-paper' : 'bg-white')}>
       <div className={container}>
         <div className="grid items-end gap-8 lg:grid-cols-12">
           <div className="lg:col-span-7">
-            <SectionHeader
-              id="rackets-title"
-              title="Rackets at the shop"
-              intro="A selection of the rackets we keep. Stock changes, so message us to check a model or a price before you visit."
-            />
-            {canExpand && (
-              <button
-                type="button"
-                onClick={() => onExpandedChange(!expanded)}
-                aria-expanded={expanded}
-                aria-controls={`${uid}-grid`}
-                className={cx(btn.base, btn.secondary, 'mt-6')}
-              >
-                {expanded ? 'Show fewer' : `See all ${rackets.length} rackets`}
+            <SectionHeader id={`${id}-title`} title={title} intro={intro} />
+            {canSeeAll && (
+              <button type="button" onClick={onSeeAll} className={cx(btn.base, btn.secondary, 'mt-6')}>
+                See all {rackets.length} rackets
               </button>
             )}
           </div>
-          <div className="hidden lg:col-span-5 lg:block">
-            <Photo
-              src="/images/site/rackets-on-court.webp"
-              alt="Two badminton rackets and shuttles on a green court"
-              sizes="460px"
-              className="rounded-xl"
-            />
-          </div>
+          {photo && (
+            <div className="hidden lg:col-span-5 lg:block">
+              <Photo src={photo.src} alt={photo.alt} sizes="460px" className="rounded-xl" />
+            </div>
+          )}
         </div>
 
         {expanded && brands.length > 1 && (

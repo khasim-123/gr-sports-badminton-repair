@@ -39,12 +39,14 @@ import {
   Users,
   ShoppingBag,
   LandPlot,
+  Inbox,
 } from 'lucide-react';
 import { WebsiteContentPanel } from './content/WebsiteContentPanel';
 import { ShopSettingsForm } from './ShopSettingsForm';
 import { CustomersPanel } from './CustomersPanel';
 import { OrdersPanel, orderSummary, useAdminOrders } from './OrdersPanel';
 import { CourtsPanel } from './CourtsPanel';
+import { EnquiriesPanel, useAdminEnquiries } from './EnquiriesPanel';
 import { courtsTodaySummary, fmtTime as fmtCourtTime, useCourtsToday } from './courts/shared';
 import { NewBookingDialog, NewBookingPrefill } from './NewBookingDialog';
 import { requestService } from '../../services/requestService';
@@ -322,6 +324,8 @@ export const AdminPortal: React.FC = () => {
 
   // Online shop orders: one list for the sidebar badge, the dashboard card and the Orders page.
   const shopOrders = useAdminOrders();
+  const enquiries = useAdminEnquiries();
+  const newEnquiries = enquiries.enquiries.filter((e) => e.status === 'new').length;
   const shopSummary = orderSummary(shopOrders.orders);
   const [ordersPreset, setOrdersPreset] = useState<{ status: string; n: number } | null>(null);
 
@@ -578,6 +582,11 @@ export const AdminPortal: React.FC = () => {
     if (selectedRequestId && selectedRequestId.startsWith('ORD-') && adminSubView !== 'orders') setAdminSubView('orders');
   }, [selectedRequestId, adminSubView, setAdminSubView]);
 
+  // A notification for a website enquiry (id "ENQ-…") opens the Enquiries page; the panel shows it.
+  useEffect(() => {
+    if (selectedRequestId && selectedRequestId.startsWith('ENQ-') && adminSubView !== 'enquiries') setAdminSubView('enquiries');
+  }, [selectedRequestId, adminSubView, setAdminSubView]);
+
   // A notification for a court booking (id "CRT-…") opens the Courts page; the panel opens the booking.
   useEffect(() => {
     if (selectedRequestId && selectedRequestId.startsWith('CRT-') && adminSubView !== 'courts') setAdminSubView('courts');
@@ -588,6 +597,12 @@ export const AdminPortal: React.FC = () => {
   useEffect(() => {
     if (adminSubView === 'courts' || adminSubView === 'dashboard') reloadCourtsToday();
   }, [adminSubView, reloadCourtsToday]);
+
+  // Fresh enquiries whenever the Enquiries page is opened.
+  const reloadEnquiries = enquiries.reload;
+  useEffect(() => {
+    if (adminSubView === 'enquiries') reloadEnquiries();
+  }, [adminSubView, reloadEnquiries]);
 
   // Fresh order numbers whenever the Orders page or the dashboard is opened.
   const reloadShopOrders = shopOrders.reload;
@@ -801,6 +816,13 @@ export const AdminPortal: React.FC = () => {
           alert: slaOverdue > 0,
         },
         { id: 'payments', label: 'Payments', icon: DollarSign, badge: unpaidRequests.length || undefined, badgeTitle: 'Unpaid requests' },
+        {
+          id: 'enquiries',
+          label: 'Enquiries',
+          icon: Inbox,
+          badge: newEnquiries || undefined,
+          badgeTitle: 'New enquiries from the website (academies, tournaments, custom T-shirts)',
+        },
       ],
     },
     {
@@ -1640,6 +1662,8 @@ export const AdminPortal: React.FC = () => {
         {adminSubView === 'orders' && <OrdersPanel data={shopOrders} preset={ordersPreset} onPresetUsed={() => setOrdersPreset(null)} />}
 
         {adminSubView === 'courts' && <CourtsPanel onBookingsChanged={reloadCourtsToday} />}
+
+        {adminSubView === 'enquiries' && <EnquiriesPanel data={enquiries} />}
 
         {/* ------------------------------------------------------------------ */}
         {/* REPAIR SLA MONITOR                                                 */}

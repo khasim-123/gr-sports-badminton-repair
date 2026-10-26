@@ -27,7 +27,23 @@ interface ShopForm {
   mapsUrl: string;
   openingHours: string;
   declinedRepairFee: string;
+  instagramUrl: string;
+  facebookUrl: string;
+  xUrl: string;
+  youtubeUrl: string;
+  highlight1: string;
+  highlight2: string;
+  highlight3: string;
 }
+
+const SOCIALS: { key: 'instagramUrl' | 'facebookUrl' | 'xUrl' | 'youtubeUrl'; label: string; placeholder: string }[] = [
+  { key: 'instagramUrl', label: 'Instagram', placeholder: 'https://instagram.com/…' },
+  { key: 'facebookUrl', label: 'Facebook', placeholder: 'https://facebook.com/…' },
+  { key: 'xUrl', label: 'X (Twitter)', placeholder: 'https://x.com/…' },
+  { key: 'youtubeUrl', label: 'YouTube', placeholder: 'https://youtube.com/@…' },
+];
+const HIGHLIGHTS = ['highlight1', 'highlight2', 'highlight3'] as const;
+const HIGHLIGHT_MAX = 120;
 
 type Errors = Partial<Record<keyof ShopForm, string>>;
 
@@ -43,6 +59,13 @@ const toForm = (s: ShopSettings): ShopForm => ({
   mapsUrl: s.mapsUrl || '',
   openingHours: s.openingHours || '',
   declinedRepairFee: String(s.declinedRepairFee ?? 0),
+  instagramUrl: s.instagramUrl || '',
+  facebookUrl: s.facebookUrl || '',
+  xUrl: s.xUrl || '',
+  youtubeUrl: s.youtubeUrl || '',
+  highlight1: s.footerHighlights?.[0] || '',
+  highlight2: s.footerHighlights?.[1] || '',
+  highlight3: s.footerHighlights?.[2] || '',
 });
 
 const validate = (f: ShopForm): Errors => {
@@ -64,6 +87,13 @@ const validate = (f: ShopForm): Errors => {
   if (f.openingHours.trim().length > 120) e.openingHours = 'Keep the opening hours to 120 characters or fewer.';
   const fee = f.declinedRepairFee.trim() === '' ? NaN : Number(f.declinedRepairFee);
   if (!Number.isFinite(fee) || fee < 0 || fee > 5000) e.declinedRepairFee = 'Enter an amount from ₹0 to ₹5,000.';
+  for (const { key } of SOCIALS) {
+    const link = f[key].trim();
+    if (link && (!/^https:\/\/\S+$/.test(link) || link.length > 300)) e[key] = 'Paste a link that starts with https://, or leave it empty.';
+  }
+  for (const key of HIGHLIGHTS) {
+    if (f[key].trim().length > HIGHLIGHT_MAX) e[key] = `Keep each line to ${HIGHLIGHT_MAX} characters or fewer.`;
+  }
   return e;
 };
 
@@ -79,6 +109,11 @@ const fromForm = (f: ShopForm): ShopSettings => ({
   mapsUrl: f.mapsUrl.trim() || null,
   openingHours: f.openingHours.trim(),
   declinedRepairFee: Number(f.declinedRepairFee),
+  instagramUrl: f.instagramUrl.trim() || null,
+  facebookUrl: f.facebookUrl.trim() || null,
+  xUrl: f.xUrl.trim() || null,
+  youtubeUrl: f.youtubeUrl.trim() || null,
+  footerHighlights: HIGHLIGHTS.map((k) => f[k].trim().replace(/\s+/g, ' ')).filter(Boolean),
 });
 
 const sameForm = (a: ShopForm, b: ShopForm) =>
@@ -262,6 +297,34 @@ export const ShopSettingsForm: React.FC<{ onSaved?: (s: ShopSettings) => void }>
           )}
         </div>
       </div>
+
+      <fieldset className="space-y-3 border-t border-line pt-5">
+        <legend className="sr-only">Social media</legend>
+        <div>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Social media</p>
+          <p className="text-xs text-slate-600 mt-1">Shown as icons in the website footer. Leave a link empty to hide that icon.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {SOCIALS.map(({ key, label, placeholder }) => (
+            <React.Fragment key={key}>{field(key, `${label} (optional)`, text(key, { type: 'url', maxLength: 300, inputMode: 'url', placeholder }))}</React.Fragment>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset className="space-y-3 border-t border-line pt-5">
+        <legend className="sr-only">Footer highlights</legend>
+        <div>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Footer highlights</p>
+          <p className="text-xs text-slate-600 mt-1">
+            Up to three short lines in your own words, shown in the footer of every page. Empty lines are left out.
+          </p>
+        </div>
+        <div className="space-y-3">
+          {HIGHLIGHTS.map((key, i) => (
+            <React.Fragment key={key}>{field(key, `Line ${i + 1}`, text(key, { maxLength: HIGHLIGHT_MAX }))}</React.Fragment>
+          ))}
+        </div>
+      </fieldset>
 
       {saveError && (
         <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">

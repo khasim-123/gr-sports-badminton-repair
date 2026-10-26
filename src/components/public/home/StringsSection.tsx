@@ -12,16 +12,23 @@ const ALL = 'All';
 interface StringsSectionProps {
   strings: StringProduct[];
   status: 'loading' | 'ready' | 'error';
-  expanded: boolean;
-  onExpandedChange: (expanded: boolean) => void;
+  /** 'home': featured strings and a "See all" button; 'page': the full catalogue with brand filter and search. */
+  mode?: 'home' | 'page';
+  /** Home: what "See all" does (opens the Strings page). */
+  onSeeAll?: () => void;
+  /** Page: start filtered to this brand (when it has strings here). */
+  initialBrand?: string;
+  /** False on the Strings page, where the page title and intro sit above. */
+  showHeader?: boolean;
   onUseString: (product: StringProduct, colour?: string) => void;
 }
 
-/** Featured strings, and on request the full catalogue with brand filter + search. */
-export const StringsSection: React.FC<StringsSectionProps> = ({ strings, status, expanded, onExpandedChange, onUseString }) => {
+/** Featured strings (home) or the full catalogue with brand filter + search (Strings page). */
+export const StringsSection: React.FC<StringsSectionProps> = ({ strings, status, mode = 'home', onSeeAll, initialBrand, showHeader = true, onUseString }) => {
   const SHOP = useShop();
   const uid = useId();
-  const [brand, setBrand] = useState(ALL);
+  const expanded = mode === 'page';
+  const [brand, setBrand] = useState(() => (initialBrand && strings.some((p) => p.brand === initialBrand) ? initialBrand : ALL));
   const [query, setQuery] = useState('');
 
   const brands = useMemo(() => {
@@ -48,8 +55,9 @@ export const StringsSection: React.FC<StringsSectionProps> = ({ strings, status,
   const brandNames = brands.map(([b]) => b);
 
   return (
-    <section id={SECTION_IDS.strings} aria-labelledby="strings-title" className="scroll-mt-20 border-t border-line bg-white py-16 sm:py-24">
+    <section id={SECTION_IDS.strings} aria-labelledby={showHeader ? 'strings-title' : 'page-title'} className="scroll-mt-20 border-t border-line bg-white py-16 sm:py-24">
       <div className={container}>
+        {showHeader && (
         <SectionHeader
           id="strings-title"
           title="Strings we stock"
@@ -59,19 +67,14 @@ export const StringsSection: React.FC<StringsSectionProps> = ({ strings, status,
               : 'The strings and colours we have in the shop right now.'
           }
           action={
-            strings.length > FEATURED_COUNT ? (
-              <button
-                type="button"
-                onClick={() => onExpandedChange(!expanded)}
-                aria-expanded={expanded}
-                aria-controls={`${uid}-grid`}
-                className={cx(btn.base, btn.secondary)}
-              >
-                {expanded ? 'Show fewer' : `See all ${strings.length} strings`}
+            !expanded && onSeeAll && strings.length > FEATURED_COUNT ? (
+              <button type="button" onClick={onSeeAll} className={cx(btn.base, btn.secondary, 'hidden sm:inline-flex')}>
+                See all {strings.length} strings
               </button>
             ) : undefined
           }
         />
+        )}
 
         {status === 'loading' && (
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-hidden="true">
@@ -170,9 +173,9 @@ export const StringsSection: React.FC<StringsSectionProps> = ({ strings, status,
               </p>
             )}
 
-            {!expanded && strings.length > FEATURED_COUNT && (
+            {!expanded && onSeeAll && strings.length > FEATURED_COUNT && (
               <div className="mt-6 sm:hidden">
-                <button type="button" onClick={() => onExpandedChange(true)} className={cx(btn.base, btn.secondary, 'w-full')} aria-controls={`${uid}-grid`} aria-expanded={false}>
+                <button type="button" onClick={onSeeAll} className={cx(btn.base, btn.secondary, 'w-full')}>
                   See all {strings.length} strings
                 </button>
               </div>

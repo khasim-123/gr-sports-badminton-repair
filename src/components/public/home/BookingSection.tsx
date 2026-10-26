@@ -53,6 +53,8 @@ interface BookingSectionProps {
   preset: BookingPreset | null;
   onBookStringing: (req: StringingRequest) => void;
   onBookRepair: (req: RepairRequest) => void;
+  /** Only the form, without the heading and the notes beside it (homepage, GR website map). */
+  formOnly?: boolean;
 }
 
 export const BookingSection: React.FC<BookingSectionProps> = ({
@@ -65,6 +67,7 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
   preset,
   onBookStringing,
   onBookRepair,
+  formOnly,
 }) => {
   const SHOP = useShop();
   const uid = useId();
@@ -137,8 +140,13 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
   const pickupField = <PickupDayField id={id('date')} availability={availability} pickup={pickup} />;
 
   return (
-    <section id={SECTION_IDS.book} aria-labelledby={`${uid}-title`} className="scroll-mt-20 bg-paper py-16 sm:py-20">
-      <div className={cx(container, 'grid gap-10 lg:grid-cols-12 lg:gap-12')}>
+    <section id={SECTION_IDS.book} aria-labelledby={`${uid}-title`} className={cx('scroll-mt-20 bg-paper', formOnly ? 'py-10 sm:py-14' : 'py-16 sm:py-20')}>
+      <div className={cx(container, !formOnly && 'grid gap-10 lg:grid-cols-12 lg:gap-12')}>
+        {formOnly ? (
+          <h2 id={`${uid}-title`} className="sr-only">
+            Book stringing or a repair
+          </h2>
+        ) : (
         <div className="lg:col-span-5">
           <SectionHeader
             id={`${uid}-title`}
@@ -172,8 +180,9 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
             </li>
           </ul>
         </div>
+        )}
 
-        <div className="lg:col-span-7">
+        <div className={formOnly ? 'mx-auto max-w-4xl' : 'lg:col-span-7'}>
           <form onSubmit={submit} className="rounded-xl border border-line bg-white p-5 sm:p-8 shadow-[0_1px_2px_rgba(15,27,43,0.04)]" noValidate>
             {notice && !noticeDismissed && (
               <div role="status" className="mb-6 flex items-start gap-3 rounded-xl border border-[#EBD9A6] bg-[#FFF8E1] px-4 py-3 text-[14px] text-[#5C4300]">

@@ -13,13 +13,15 @@ interface OffersSectionProps {
   announcements: Banner[];
   /** What a banner's button does (same targets as the top slideshow). */
   actionFor: (b: Banner) => HeroAction | undefined;
+  /** Section id (the homepage has an upper and a lower offers section). */
+  id?: string;
 }
 
 /**
  * Promo banners and announcements set up by the shop in Admin → Website content → Banners.
  * Nothing renders until the shop adds one, so the homepage never shows placeholder offers.
  */
-export const OffersSection: React.FC<OffersSectionProps> = ({ promos, announcements, actionFor }) => {
+export const OffersSection: React.FC<OffersSectionProps> = ({ promos, announcements, actionFor, id = SECTION_IDS.offers }) => {
   // Promo banners run as a slideshow (one at a time), like the top of the page.
   const promoSlides: HeroSlide[] = promos
     .filter((b) => safeImageUrl(b.desktopImageUrl))
@@ -37,12 +39,12 @@ export const OffersSection: React.FC<OffersSectionProps> = ({ promos, announceme
 
   return (
     <section
-      id={SECTION_IDS.offers}
-      aria-labelledby="offers-title"
+      id={id}
+      aria-labelledby={`${id}-title`}
       className="scroll-mt-20 border-t border-line bg-paper py-16 sm:py-20"
     >
       <div className={container}>
-        <h2 id="offers-title" className="sr-only">
+        <h2 id={`${id}-title`} className="sr-only">
           Offers and announcements
         </h2>
 

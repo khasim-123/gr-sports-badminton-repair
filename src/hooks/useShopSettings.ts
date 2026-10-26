@@ -48,6 +48,12 @@ function normalize(raw: Partial<ShopSettings> | null | undefined): ShopSettings 
     mapsUrl: str(raw.mapsUrl) ?? d.mapsUrl,
     openingHours: str(raw.openingHours) ?? d.openingHours,
     declinedRepairFee: Number.isFinite(fee) && fee >= 0 ? fee : d.declinedRepairFee,
+    // Social links and footer lines: only what the server sends (nothing is shown without them).
+    instagramUrl: str(raw.instagramUrl) ?? null,
+    facebookUrl: str(raw.facebookUrl) ?? null,
+    xUrl: str(raw.xUrl) ?? null,
+    youtubeUrl: str(raw.youtubeUrl) ?? null,
+    footerHighlights: Array.isArray(raw.footerHighlights) ? raw.footerHighlights.map(str).filter((h): h is string => !!h) : [],
   };
 }
 

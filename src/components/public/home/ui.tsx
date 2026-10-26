@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlertCircle } from 'lucide-react';
 import { useShopSettings } from '../../../hooks/useShopSettings';
 
 /** Shared look for the public homepage: buttons, section headings, form fields, small icons. */
@@ -69,6 +70,14 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({ id, eyebrow, title
 export const fieldLabel = 'block text-[14px] font-medium text-ink mb-1.5';
 export const fieldHint = 'mt-1.5 text-[13px] text-ink-muted';
 export const fieldControl = `block w-full min-h-[46px] rounded-xl border border-line bg-white px-3.5 text-[15px] text-ink placeholder:text-ink-muted/70 transition-colors hover:border-ink/30 focus:border-sportsBlue focus:outline-none focus:ring-2 focus:ring-sportsBlue/15 disabled:bg-paper disabled:text-ink-muted aria-[invalid=true]:border-flameRed`;
+
+/** Message under a field that failed validation (link it with aria-describedby). */
+export const FieldError: React.FC<{ id: string; children: React.ReactNode }> = ({ id, children }) => (
+  <p id={id} className="mt-1.5 flex items-start gap-1.5 text-[13px] font-medium text-flameRed">
+    <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+    {children}
+  </p>
+);
 
 export const Select: React.FC<React.SelectHTMLAttributes<HTMLSelectElement>> = ({ className, children, ...rest }) => (
   <div className="relative">

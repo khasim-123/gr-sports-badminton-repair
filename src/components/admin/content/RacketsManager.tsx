@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
 import { contentService } from '../../../services/contentService';
-import { Racket, RacketInput } from '../../../types/content';
+import { Racket, RacketCondition, RacketInput } from '../../../types/content';
 import { Button } from '../../common/Button';
 import { EmptyState } from '../../common/EmptyStates';
 import { MediaUpload } from './MediaUpload';
@@ -46,14 +46,16 @@ import {
   errorMessage,
   focusFirstInvalid,
   focusRing,
+  hintClass,
   iconButtonDangerClass,
   inputClass,
   inputErrorClass,
+  labelClass,
   nullIfEmpty,
   switchGroupClass,
 } from './shared';
 
-type FilterId = 'all' | 'featured' | 'out' | 'noprice' | 'nophoto' | 'hidden';
+type FilterId = 'all' | 'used' | 'featured' | 'out' | 'noprice' | 'nophoto' | 'hidden';
 
 export const MAX_RACKET_PHOTOS = 6;
 
@@ -265,6 +267,7 @@ const PhotosEditor: React.FC<{
 // =====================================================================
 
 interface RacketFormState {
+  condition: RacketCondition;
   brand: string;
   name: string;
   price: string;
@@ -285,6 +288,7 @@ const racketToForm = (r: Racket | null): RacketFormState => {
   const balance = (r?.balance || '').trim();
   const known = BALANCE_OPTIONS.find((b) => b.toLowerCase() === balance.toLowerCase());
   return {
+    condition: r?.condition === 'used' ? 'used' : 'new',
     brand: r?.brand ?? '',
     name: r?.name ?? '',
     price: r && hasPrice(r) ? String(r.price) : '',
@@ -350,6 +354,7 @@ const RacketFormModal: React.FC<{
 
     const balance = form.balanceChoice === OTHER ? form.balanceOther : form.balanceChoice;
     const input: RacketInput = {
+      condition: form.condition,
       brand: form.brand.trim(),
       name: form.name.trim(),
       price,
@@ -419,6 +424,41 @@ const RacketFormModal: React.FC<{
         </FormSection>
 
         <FormSection title="Details">
+          <div>
+            <p id={`${uid}-condition`} className={labelClass}>
+              Condition
+            </p>
+            <div role="radiogroup" aria-labelledby={`${uid}-condition`} className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-paper-deep">
+              {(
+                [
+                  { id: 'new', label: 'New' },
+                  { id: 'used', label: 'Second-hand' },
+                ] as const
+              ).map((opt) => {
+                const active = form.condition === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => set('condition', opt.id)}
+                    className={`min-h-[44px] rounded-lg text-[14px] font-medium transition-colors duration-150 ${focusRing} ${
+                      active ? 'bg-white text-ink shadow-sm' : 'text-ink-soft hover:text-ink'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className={hintClass}>
+              {form.condition === 'used'
+                ? 'Listed under “Second-hand rackets” (Re-sell). Mention its condition in the description.'
+                : 'Listed with the new rackets.'}
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-4">
             <Field label="Brand" htmlFor={`${uid}-brand`} required error={errors.brand} hint="Pick a suggestion or type any brand.">
               <input
@@ -630,6 +670,7 @@ const RacketRow: React.FC<{
           <p className="text-[13px] font-medium text-ink-muted">{r.brand}</p>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="text-[16px] font-semibold leading-snug text-ink break-words">{r.name}</span>
+            {r.condition === 'used' && <span className={`${chipClass} bg-sky-50 border-sky-200 text-sky-800`}>Second-hand</span>}
             {r.tag && <span className={`${chipClass} bg-white border-line text-ink-soft max-w-[12rem] truncate`}>{r.tag}</span>}
             {r.isFeatured && (
               <span className={`${chipClass} bg-accent/25 border-accent/60 text-ink`}>
@@ -795,24 +836,27 @@ export const RacketsManager: React.FC = () => {
   const q = query.trim().toLowerCase();
 
   const stats = useMemo(() => {
+    let used = 0;
     let featured = 0;
     let out = 0;
     let noPrice = 0;
     let noPhoto = 0;
     let hidden = 0;
     rackets.forEach((r) => {
+      if (r.condition === 'used') used++;
       if (r.isFeatured) featured++;
       if (!r.inStock) out++;
       if (!hasPrice(r)) noPrice++;
       if (photosOf(r).length === 0) noPhoto++;
       if (!r.isActive) hidden++;
     });
-    return { featured, out, noPrice, noPhoto, hidden };
+    return { used, featured, out, noPrice, noPhoto, hidden };
   }, [rackets]);
 
   const visible = useMemo(
     () =>
       rackets.filter((r) => {
+        if (filter === 'used' && r.condition !== 'used') return false;
         if (filter === 'featured' && !r.isFeatured) return false;
         if (filter === 'out' && r.inStock) return false;
         if (filter === 'noprice' && hasPrice(r)) return false;
@@ -883,6 +927,7 @@ export const RacketsManager: React.FC = () => {
               onChange={setFilter}
               options={[
                 { id: 'all', label: 'All', count: rackets.length },
+                ...(stats.used ? [{ id: 'used' as const, label: 'Second-hand', count: stats.used }] : []),
                 { id: 'featured', label: 'Featured', count: stats.featured },
                 { id: 'out', label: 'Out of stock', count: stats.out, highlight: true },
                 { id: 'noprice', label: 'No price yet', count: stats.noPrice, highlight: true },

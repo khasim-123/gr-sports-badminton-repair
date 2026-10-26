@@ -32,6 +32,7 @@ import {
   auditService,
 } from '../services';
 import confetti from 'canvas-confetti';
+import { PATH_VIEWS } from '../utils/publicPages';
 import { formatMobile, normalizeMobile } from '../utils/phone';
 
 interface ToastMessage {
@@ -270,12 +271,11 @@ const errorMessage = (err: unknown, fallback: string): string => {
 const isSessionExpiredError = (err: unknown) => err instanceof ApiError && err.status === 401;
 
 /**
- * Views with their own URL path (the rest of the app lives at "/"): the T-shirt store (/tshirts)
- * and court booking (/courts). Both open from a direct link for anyone.
+ * Views with their own URL path (the rest of the app lives at "/"): the public pages from
+ * src/utils/publicPages.ts (/tshirts, /courts, /academies, /events, …). They open from a direct
+ * link for anyone.
  */
-const APPAREL_VIEW = 'apparel';
 const COURTS_VIEW = 'courts';
-const PATH_VIEWS: Record<string, string> = { [APPAREL_VIEW]: '/tshirts', [COURTS_VIEW]: '/courts' };
 const isPathView = (view: string | null | undefined) => !!view && Object.prototype.hasOwnProperty.call(PATH_VIEWS, view);
 /** The path-backed view for the current address, if any. */
 const viewForPath = (): string | null => {
